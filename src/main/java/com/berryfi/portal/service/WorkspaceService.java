@@ -45,10 +45,35 @@ public class WorkspaceService {
             request.getName(),
             request.getDescription(),
             currentUser.getOrganizationId(),
-            currentUser.getEmail(), // Use current user as admin initially
-            currentUser.getName(),
+            request.getAdminEmail() != null ? request.getAdminEmail() : currentUser.getEmail(),
+            request.getAdminName() != null ? request.getAdminName() : currentUser.getName(),
             currentUser.getId()
         );
+
+        // Set budget information if provided
+        if (request.getMonthlyBudget() != null) {
+            workspace.setMonthlyBudget(request.getMonthlyBudget());
+        }
+        
+        if (request.getBudgetAction() != null) {
+            workspace.setBudgetAction(request.getBudgetAction());
+        }
+        
+        // Set initial credits if provided
+        if (request.getGiftedCredits() != null && request.getGiftedCredits() > 0) {
+            workspace.setGiftedCredits(request.getGiftedCredits());
+            workspace.setRemainingGiftedCredits(request.getGiftedCredits());
+        }
+        
+        if (request.getPurchasedCredits() != null && request.getPurchasedCredits() > 0) {
+            workspace.setPurchasedCredits(request.getPurchasedCredits());
+            workspace.setRemainingPurchasedCredits(request.getPurchasedCredits());
+        }
+        
+        // Update current balance manually
+        Double giftedBalance = workspace.getRemainingGiftedCredits() != null ? workspace.getRemainingGiftedCredits() : 0.0;
+        Double purchasedBalance = workspace.getRemainingPurchasedCredits() != null ? workspace.getRemainingPurchasedCredits() : 0.0;
+        workspace.setCurrentBalance(giftedBalance + purchasedBalance);
 
         Workspace savedWorkspace = workspaceRepository.save(workspace);
         logger.info("Created workspace: {} with ID: {}", savedWorkspace.getName(), savedWorkspace.getId());
