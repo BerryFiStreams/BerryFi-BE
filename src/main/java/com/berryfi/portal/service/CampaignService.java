@@ -238,6 +238,52 @@ public class CampaignService {
         analytics.setAverageConversionRate(campaignRepository.getAverageConversionRate(organizationId));
         return analytics;
     }
+
+    /**
+     * Pause a campaign.
+     */
+    public CampaignResponse pauseCampaign(String campaignId, String organizationId) {
+        Campaign campaign = campaignRepository.findById(campaignId)
+            .orElseThrow(() -> new RuntimeException("Campaign not found"));
+        
+        if (!campaign.getOrganizationId().equals(organizationId)) {
+            throw new RuntimeException("Campaign not found in organization");
+        }
+        
+        campaign.setStatus(CampaignStatus.PAUSED);
+        Campaign updatedCampaign = campaignRepository.save(campaign);
+        return mapToResponse(updatedCampaign);
+    }
+
+    /**
+     * Resume a campaign.
+     */
+    public CampaignResponse resumeCampaign(String campaignId, String organizationId) {
+        Campaign campaign = campaignRepository.findById(campaignId)
+            .orElseThrow(() -> new RuntimeException("Campaign not found"));
+        
+        if (!campaign.getOrganizationId().equals(organizationId)) {
+            throw new RuntimeException("Campaign not found in organization");
+        }
+        
+        campaign.setStatus(CampaignStatus.ACTIVE);
+        Campaign updatedCampaign = campaignRepository.save(campaign);
+        return mapToResponse(updatedCampaign);
+    }
+
+    /**
+     * Get campaign URL.
+     */
+    public String getCampaignUrl(String campaignId, String organizationId) {
+        Campaign campaign = campaignRepository.findById(campaignId)
+            .orElseThrow(() -> new RuntimeException("Campaign not found"));
+        
+        if (!campaign.getOrganizationId().equals(organizationId)) {
+            throw new RuntimeException("Campaign not found in organization");
+        }
+        
+        return campaign.getUrl();
+    }
     
     /**
      * Map Campaign entity to CampaignResponse DTO.

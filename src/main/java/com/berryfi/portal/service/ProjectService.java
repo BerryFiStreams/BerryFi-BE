@@ -375,6 +375,45 @@ public class ProjectService {
             }
         }
     }
+    /**
+     * Get project configuration.
+     */
+    @PreAuthorize("hasPermission('project', 'read')")
+    public ProjectConfigResponse getProjectConfig(String projectId, User currentUser) {
+        logger.debug("Getting configuration for project: {}", projectId);
+        
+        Project project = findProjectWithAccess(projectId, currentUser);
+        
+        // Mock implementation - return success response
+        return new ProjectConfigResponse();
+    }
+
+    /**
+     * Get project branding settings.
+     */
+    @PreAuthorize("hasPermission('project', 'read')")
+    public ProjectBrandingResponse getProjectBranding(String projectId, User currentUser) {
+        logger.debug("Getting branding settings for project: {}", projectId);
+        
+        Project project = findProjectWithAccess(projectId, currentUser);
+        
+        // Mock implementation - return success response
+        return new ProjectBrandingResponse();
+    }
+
+    /**
+     * Get project link settings.
+     */
+    @PreAuthorize("hasPermission('project', 'read')")
+    public ProjectLinksResponse getProjectLinks(String projectId, User currentUser) {
+        logger.debug("Getting link settings for project: {}", projectId);
+        
+        Project project = findProjectWithAccess(projectId, currentUser);
+        
+        // Mock implementation - return success response
+        return new ProjectLinksResponse();
+    }
+
     private void validateOrganizationAccess(String organizationId, User currentUser) {
         // In a real implementation, you would check if the user belongs to the organization
         // For now, we'll just log it

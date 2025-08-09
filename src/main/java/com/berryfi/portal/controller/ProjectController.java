@@ -253,4 +253,59 @@ public class ProjectController {
             return displayName;
         }
     }
+
+    /**
+     * Get project configuration.
+     * GET /api/projects/{projectId}/config
+     */
+    @GetMapping("/{projectId}/config")
+    public ResponseEntity<ProjectConfigResponse> getProjectConfig(
+            @PathVariable String projectId,
+            @AuthenticationPrincipal User currentUser) {
+        logger.info("Getting config for project: {}", projectId);
+
+        try {
+            ProjectConfigResponse config = projectService.getProjectConfig(projectId, currentUser);
+            return ResponseEntity.ok(config);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Get project branding settings.
+     * GET /api/projects/{projectId}/branding
+     */
+    @GetMapping("/{projectId}/branding")
+    public ResponseEntity<ProjectBrandingResponse> getBrandingSettings(
+            @PathVariable String projectId,
+            @AuthenticationPrincipal User currentUser) {
+        logger.info("Getting branding settings for project: {}", projectId);
+
+        try {
+            ProjectBrandingResponse branding = projectService.getProjectBranding(projectId, currentUser);
+            return ResponseEntity.ok(branding);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Get project link settings.
+     * GET /api/projects/{projectId}/links
+     */
+    @GetMapping("/{projectId}/links")
+    public ResponseEntity<ProjectLinksResponse> getLinkSettings(
+            @PathVariable String projectId,
+            @AuthenticationPrincipal User currentUser) {
+        logger.info("Getting link settings for project: {}", projectId);
+
+        try {
+            ProjectLinksResponse links = projectService.getProjectLinks(projectId, currentUser);
+            return ResponseEntity.ok(links);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
 }

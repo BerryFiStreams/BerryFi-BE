@@ -160,4 +160,81 @@ public class CampaignController {
         CampaignService.CampaignAnalytics analytics = campaignService.getCampaignAnalytics(organizationId);
         return ResponseEntity.ok(analytics);
     }
+
+    /**
+     * Pause campaign.
+     * POST /api/team/campaigns/{campaignId}/pause
+     */
+    @PostMapping("/{campaignId}/pause")
+    public ResponseEntity<CampaignResponse> pauseCampaign(
+            @PathVariable String campaignId,
+            @RequestHeader("X-Organization-ID") String organizationId) {
+        try {
+            CampaignResponse response = campaignService.pauseCampaign(campaignId, organizationId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Resume campaign.
+     * POST /api/team/campaigns/{campaignId}/resume
+     */
+    @PostMapping("/{campaignId}/resume")
+    public ResponseEntity<CampaignResponse> resumeCampaign(
+            @PathVariable String campaignId,
+            @RequestHeader("X-Organization-ID") String organizationId) {
+        try {
+            CampaignResponse response = campaignService.resumeCampaign(campaignId, organizationId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Copy campaign link.
+     * POST /api/team/campaigns/{campaignId}/copy-link
+     */
+    @PostMapping("/{campaignId}/copy-link")
+    public ResponseEntity<CampaignLinkResponse> copyCampaignLink(
+            @PathVariable String campaignId,
+            @RequestHeader("X-Organization-ID") String organizationId) {
+        try {
+            String url = campaignService.getCampaignUrl(campaignId, organizationId);
+            return ResponseEntity.ok(new CampaignLinkResponse(url));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Response DTO for campaign link copy operation.
+     */
+    public static class CampaignLinkResponse {
+        private boolean success = true;
+        private CampaignLinkData data;
+
+        public CampaignLinkResponse(String url) {
+            this.data = new CampaignLinkData(url);
+        }
+
+        public boolean isSuccess() { return success; }
+        public void setSuccess(boolean success) { this.success = success; }
+
+        public CampaignLinkData getData() { return data; }
+        public void setData(CampaignLinkData data) { this.data = data; }
+
+        public static class CampaignLinkData {
+            private String url;
+
+            public CampaignLinkData(String url) {
+                this.url = url;
+            }
+
+            public String getUrl() { return url; }
+            public void setUrl(String url) { this.url = url; }
+        }
+    }
 }
