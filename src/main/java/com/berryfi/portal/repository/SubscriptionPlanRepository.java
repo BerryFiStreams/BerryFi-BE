@@ -30,7 +30,7 @@ public interface SubscriptionPlanRepository extends JpaRepository<SubscriptionPl
     /**
      * Find subscription plans by max CCU
      */
-    List<SubscriptionPlan> findByMaxCcuGreaterThanEqualAndActiveTrueOrderByPriceAsc(Integer maxCcu);
+    List<SubscriptionPlan> findByMaxCCUGreaterThanEqualAndActiveTrueOrderByPriceAsc(Integer maxCCU);
 
     /**
      * Find subscription plans by price range
@@ -92,8 +92,8 @@ public interface SubscriptionPlanRepository extends JpaRepository<SubscriptionPl
     /**
      * Get max CCU offered by any active plan
      */
-    @Query("SELECT MAX(sp.maxCcu) FROM SubscriptionPlan sp WHERE sp.active = true")
-    Integer getMaxCcuOffered();
+    @Query("SELECT MAX(sp.maxCCU) FROM SubscriptionPlan sp WHERE sp.active = true")
+    Integer getMaxCCUOffered();
 
     /**
      * Get total credits offered by all active plans
