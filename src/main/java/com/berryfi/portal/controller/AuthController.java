@@ -4,6 +4,7 @@ import com.berryfi.portal.dto.auth.AuthResponse;
 import com.berryfi.portal.dto.auth.LoginRequest;
 import com.berryfi.portal.dto.auth.RefreshTokenRequest;
 import com.berryfi.portal.dto.auth.RefreshTokenResponse;
+import com.berryfi.portal.dto.auth.RegisterRequest;
 import com.berryfi.portal.dto.error.ApiError;
 import com.berryfi.portal.dto.user.UserDto;
 import com.berryfi.portal.exception.AuthenticationException;
@@ -36,6 +37,24 @@ public class AuthController {
         } catch (AuthenticationException e) {
             ApiError error = new ApiError(401, e.getMessage(), "Unauthorized");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        } catch (Exception e) {
+            ApiError error = new ApiError(400, "Bad Request", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * User registration endpoint.
+     * POST /api/auth/register
+     */
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        try {
+            AuthResponse response = authService.register(registerRequest);
+            return ResponseEntity.ok(response);
+        } catch (AuthenticationException e) {
+            ApiError error = new ApiError(400, e.getMessage(), "Bad Request");
+            return ResponseEntity.badRequest().body(error);
         } catch (Exception e) {
             ApiError error = new ApiError(400, "Bad Request", e.getMessage());
             return ResponseEntity.badRequest().body(error);

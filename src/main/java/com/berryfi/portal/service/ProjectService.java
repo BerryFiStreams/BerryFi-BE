@@ -33,6 +33,9 @@ public class ProjectService {
     @Autowired
     private WorkspaceService workspaceService;
 
+    @Autowired
+    private UrlTrackingService urlTrackingService;
+
     /**
      * Create a new project.
      */
@@ -74,7 +77,16 @@ public class ProjectService {
         validateOrganizationAccess(organizationId, currentUser);
 
         return projectRepository.findByOrganizationId(organizationId, pageable)
-                .map(ProjectSummary::from);
+                .map(project -> {
+                    ProjectSummary summary = ProjectSummary.from(project);
+                    // Generate user-specific tracking URL
+                    if (project.getLinks() != null && !project.getLinks().trim().isEmpty()) {
+                        String trackingUrl = urlTrackingService.generateTrackingUrl(
+                            project.getId(), currentUser.getId(), "https://track.berryfi.app");
+                        summary.setTrackingUrl(trackingUrl);
+                    }
+                    return summary;
+                });
     }
 
     /**
@@ -241,7 +253,16 @@ public class ProjectService {
         validateOrganizationAccess(organizationId, currentUser);
 
         return projectRepository.searchProjects(organizationId, keyword, pageable)
-                .map(ProjectSummary::from);
+                .map(project -> {
+                    ProjectSummary summary = ProjectSummary.from(project);
+                    // Generate user-specific tracking URL
+                    if (project.getLinks() != null && !project.getLinks().trim().isEmpty()) {
+                        String trackingUrl = urlTrackingService.generateTrackingUrl(
+                            project.getId(), currentUser.getId(), "https://track.berryfi.app");
+                        summary.setTrackingUrl(trackingUrl);
+                    }
+                    return summary;
+                });
     }
 
     /**

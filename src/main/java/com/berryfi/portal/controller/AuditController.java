@@ -1,12 +1,17 @@
 package com.berryfi.portal.controller;
 
 import com.berryfi.portal.dto.audit.*;
+import com.berryfi.portal.entity.User;
 import com.berryfi.portal.service.AuditService;
+import com.berryfi.portal.service.AuthService;
+import com.berryfi.portal.service.FileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +26,12 @@ public class AuditController {
 
     @Autowired
     private AuditService auditService;
+
+    @Autowired
+    private AuthService authService;
+
+    @Autowired
+    private FileService fileService;
 
     /**
      * Get audit logs with pagination and filtering.
@@ -136,6 +147,82 @@ public class AuditController {
         try {
             AuditLogDetailResponse details = auditService.getAuditLogDetails(logId);
             return ResponseEntity.ok(details);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Get current user's audit logs.
+     * GET /audit/my-logs
+     */
+    @GetMapping("/my-logs")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Page<AuditLogResponse>> getMyAuditLogs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            User currentUser = authService.getUserByEmail(
+                org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getName());
+            
+            Pageable pageable = PageRequest.of(page, size);
+            Page<AuditLogResponse> auditLogs = auditService.getAuditLogsByUser(
+                currentUser.getId(), currentUser.getOrganizationId(), pageable);
+            return ResponseEntity.ok(auditLogs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Get URL access logs for a specific project and current user.
+     * GET /audit/projects/{projectId}/url-access
+     */
+    @GetMapping("/projects/{projectId}/url-access")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Page<AuditLogResponse>> getUrlAccessLogs(
+            @PathVariable String projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            User currentUser = authService.getUserByEmail(
+                org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getName());
+            
+            Pageable pageable = PageRequest.of(page, size);
+            Page<AuditLogResponse> auditLogs = auditService.getUrlAccessLogs(
+                currentUser.getId(), projectId, pageable);
+            return ResponseEntity.ok(auditLogs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Download exported audit log file.
+     * GET /audit/download/{fileName}
+     */
+    @GetMapping("/download/{fileName}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_ORG_OWNER')")
+    public ResponseEntity<String> downloadExportedFile(@PathVariable String fileName) {
+        try {
+            // Check if file exists
+            if (!fileService.exportFileExists(fileName)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Read file content
+            String content = fileService.readExportFile(fileName);
+            String contentType = fileService.getContentType(fileName);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName);
+            headers.add(HttpHeaders.CONTENT_TYPE, contentType);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }

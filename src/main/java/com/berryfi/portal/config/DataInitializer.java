@@ -37,6 +37,7 @@ public class DataInitializer implements CommandLineRunner {
             superAdmin.setPassword(passwordEncoder.encode("SuperSecurePassword@123"));
             superAdmin.setRole(Role.SUPER_ADMIN);
             superAdmin.setAccountType(AccountType.ORGANIZATION);
+            superAdmin.setOrganizationId("berryfi");
             superAdmin.setStatus(UserStatus.ACTIVE);
             userRepository.save(superAdmin);
         }

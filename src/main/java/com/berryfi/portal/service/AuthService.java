@@ -4,6 +4,7 @@ import com.berryfi.portal.dto.auth.AuthResponse;
 import com.berryfi.portal.dto.auth.LoginRequest;
 import com.berryfi.portal.dto.auth.RefreshTokenRequest;
 import com.berryfi.portal.dto.auth.RefreshTokenResponse;
+import com.berryfi.portal.dto.auth.RegisterRequest;
 import com.berryfi.portal.dto.user.UserDto;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.enums.UserStatus;
@@ -16,11 +17,12 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Service for authentication operations.
@@ -39,7 +41,7 @@ public class AuthService {
     private JwtService jwtService;
 
     @Autowired
-    private CustomUserDetailsService userDetailsService;
+    private PasswordEncoder passwordEncoder;
 
     /**
      * Authenticate user and return tokens.
@@ -79,6 +81,53 @@ public class AuthService {
         } catch (DisabledException e) {
             throw new AuthenticationException("Account is disabled");
         }
+    }
+
+    /**
+     * Register a new user.
+     */
+    public AuthResponse register(RegisterRequest registerRequest) {
+        // Check if user already exists
+        if (userRepository.existsByEmail(registerRequest.getEmail())) {
+            throw new AuthenticationException("User with this email already exists");
+        }
+
+        // Create new user
+        User user = new User();
+        user.setName(registerRequest.getName());
+        user.setEmail(registerRequest.getEmail());
+        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        user.setRole(registerRequest.getRole());
+        user.setAccountType(registerRequest.getAccountType());
+        user.setStatus(UserStatus.ACTIVE);
+
+        // Auto-generate organizationId if not provided
+        if (registerRequest.getOrganizationId() == null || registerRequest.getOrganizationId().trim().isEmpty()) {
+            user.setOrganizationId(generateOrganizationId());
+        } else {
+            user.setOrganizationId(registerRequest.getOrganizationId());
+        }
+
+        // Set workspaceId if provided
+        if (registerRequest.getWorkspaceId() != null && !registerRequest.getWorkspaceId().trim().isEmpty()) {
+            user.setWorkspaceId(registerRequest.getWorkspaceId());
+        }
+
+        // Save user
+        User savedUser = userRepository.save(user);
+
+        // Generate tokens
+        String accessToken = jwtService.generateAccessToken(savedUser);
+        String refreshToken = jwtService.generateRefreshToken(savedUser);
+
+        // Save refresh token
+        savedUser.setRefreshToken(refreshToken);
+        savedUser.setLastLogin(LocalDateTime.now());
+        userRepository.save(savedUser);
+
+        // Return response
+        UserDto userDto = UserDto.fromUser(savedUser);
+        return new AuthResponse(userDto, accessToken, refreshToken);
     }
 
     /**
@@ -179,5 +228,12 @@ public class AuthService {
             return true; // Simplified for now
         }
         return false;
+    }
+
+    /**
+     * Generate a unique organization ID.
+     */
+    private String generateOrganizationId() {
+        return "org_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
     }
 }
