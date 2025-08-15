@@ -53,7 +53,7 @@ RUN keytool -importcert -alias cacert -keystore $JAVA_HOME/lib/security/cacerts 
 RUN addgroup -g 1000 spring && adduser -u 1000 -G spring -s /bin/sh -D spring
 
 # Copy the built jar from the builder stage
-COPY --from=builder /app/target/portal.jar portal.jar
+COPY --from=builder /app/target/portal-0.0.1-SNAPSHOT.jar portal.jar
 
 # Create logs directory and set permissions
 RUN mkdir -p /app/logs && chown -R spring:spring /app
