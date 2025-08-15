@@ -84,7 +84,8 @@ public class SecurityConfig {
                     "/api-docs/**", 
                     "/swagger-ui/**", 
                     "/swagger-ui.html",
-                    "/v3/api-docs/**"
+                    "/v3/api-docs/**",
+                    "/track/**"  // Tracking URLs should be publicly accessible
                     ).permitAll()
                 .requestMatchers("/api/test/public").permitAll() // Public test endpoint
                 .requestMatchers("/h2-console/**").permitAll() // H2 console for development
