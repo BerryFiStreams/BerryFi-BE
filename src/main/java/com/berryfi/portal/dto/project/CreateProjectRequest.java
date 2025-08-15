@@ -14,8 +14,6 @@ public class CreateProjectRequest {
 
     private String description;
 
-    private String workspaceId;
-
     @NotBlank(message = "Organization ID is required")
     private String organizationId;
 
@@ -50,14 +48,6 @@ public class CreateProjectRequest {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
     }
 
     public String getOrganizationId() {

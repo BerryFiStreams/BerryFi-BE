@@ -5,9 +5,7 @@ import com.berryfi.portal.entity.Project;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.enums.ProjectStatus;
 import com.berryfi.portal.exception.ResourceNotFoundException;
-import com.berryfi.portal.exception.UnauthorizedException;
 import com.berryfi.portal.repository.ProjectRepository;
-import com.berryfi.portal.service.WorkspaceService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +16,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -56,29 +53,12 @@ public class ProjectService {
             currentUser.getId()
         );
 
-        project.setWorkspaceId(request.getWorkspaceId());
         project.setConfig(request.getConfig());
         project.setBranding(request.getBranding());
         project.setLinks(request.getLinks());
 
         Project savedProject = projectRepository.save(project);
         logger.info("Created project: {} with ID: {}", savedProject.getName(), savedProject.getId());
-
-        // If project is associated with a workspace, update the workspace
-        if (savedProject.getWorkspaceId() != null && !savedProject.getWorkspaceId().trim().isEmpty()) {
-            try {
-                workspaceService.updateWorkspaceProject(
-                    savedProject.getWorkspaceId(), 
-                    savedProject.getId(), 
-                    savedProject.getName(), 
-                    currentUser
-                );
-                logger.info("Updated workspace {} with new project {}", 
-                           savedProject.getWorkspaceId(), savedProject.getId());
-            } catch (Exception e) {
-                logger.warn("Failed to update workspace with project: {}", e.getMessage());
-            }
-        }
 
         return ProjectResponse.from(savedProject);
     }
