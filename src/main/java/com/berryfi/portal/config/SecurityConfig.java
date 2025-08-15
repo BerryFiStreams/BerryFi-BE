@@ -78,7 +78,14 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 // Public endpoints - no authentication required
-                .requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
+                .requestMatchers(
+                    "/api/auth/login", 
+                    "/api/auth/refresh", 
+                    "/api-docs/**", 
+                    "/swagger-ui/**", 
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**"
+                    ).permitAll()
                 .requestMatchers("/api/test/public").permitAll() // Public test endpoint
                 .requestMatchers("/h2-console/**").permitAll() // H2 console for development
                 .requestMatchers("/actuator/health").permitAll() // Health check
