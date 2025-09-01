@@ -99,6 +99,44 @@ public class BillingController {
     }
 
     /**
+     * Process INR recharge and convert to credits (Admin function for Step 3)
+     * POST /billing/recharge/inr
+     */
+    @PostMapping("/recharge/inr")
+    public ResponseEntity<BillingTransactionDto> processINRRecharge(
+            @RequestBody INRRechargeRequest request) {
+        try {
+            BillingTransactionDto transaction = billingService.processINRRecharge(
+                    request.getOrganizationId(),
+                    request.getInrAmount(),
+                    request.getAdminName(),
+                    request.getDescription());
+            return ResponseEntity.ok(transaction);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Record VM usage transaction (For Step 4 - automatic VM billing)
+     * POST /billing/usage/vm
+     */
+    @PostMapping("/usage/vm")
+    public ResponseEntity<BillingTransactionDto> recordVmUsage(
+            @RequestBody VmUsageRequest request) {
+        try {
+            BillingTransactionDto transaction = billingService.recordVmUsage(
+                    request.getOrganizationId(),
+                    request.getVmType(),
+                    request.getDurationInSeconds(),
+                    request.getSessionId());
+            return ResponseEntity.ok(transaction);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Get all subscription plans
      * GET /billing/plans
      */
@@ -301,5 +339,37 @@ public class BillingController {
         public void setAmount(Double amount) { this.amount = amount; }
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
+    }
+
+    public static class INRRechargeRequest {
+        private String organizationId;
+        private Double inrAmount;
+        private String adminName;
+        private String description;
+
+        public String getOrganizationId() { return organizationId; }
+        public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
+        public Double getInrAmount() { return inrAmount; }
+        public void setInrAmount(Double inrAmount) { this.inrAmount = inrAmount; }
+        public String getAdminName() { return adminName; }
+        public void setAdminName(String adminName) { this.adminName = adminName; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+    }
+
+    public static class VmUsageRequest {
+        private String organizationId;
+        private String vmType;
+        private Double durationInSeconds;
+        private String sessionId;
+
+        public String getOrganizationId() { return organizationId; }
+        public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
+        public String getVmType() { return vmType; }
+        public void setVmType(String vmType) { this.vmType = vmType; }
+        public Double getDurationInSeconds() { return durationInSeconds; }
+        public void setDurationInSeconds(Double durationInSeconds) { this.durationInSeconds = durationInSeconds; }
+        public String getSessionId() { return sessionId; }
+        public void setSessionId(String sessionId) { this.sessionId = sessionId; }
     }
 }

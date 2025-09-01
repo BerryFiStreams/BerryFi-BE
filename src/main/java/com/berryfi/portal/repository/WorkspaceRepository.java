@@ -193,7 +193,13 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, String> {
     @Query("SELECT w FROM Workspace w WHERE w.organizationId = :organizationId AND " +
            "(LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(w.description) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Workspace> searchWorkspaces(@Param("organizationId") String organizationId, 
-                                    @Param("keyword") String keyword, 
-                                    Pageable pageable);
+    Page<Workspace> searchWorkspacesByNameOrDescription(@Param("organizationId") String organizationId, 
+                                                       @Param("keyword") String keyword, 
+                                                       Pageable pageable);
+
+    /**
+     * Find workspaces by organization ordered by updated date (recent first)
+     */
+    @Query("SELECT w FROM Workspace w WHERE w.organizationId = :organizationId ORDER BY w.updatedAt DESC")
+    List<Workspace> findByOrganizationIdOrderByUpdatedAtDesc(@Param("organizationId") String organizationId, Pageable pageable);
 }

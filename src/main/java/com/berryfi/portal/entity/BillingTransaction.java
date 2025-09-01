@@ -52,6 +52,24 @@ public class BillingTransaction {
     @Column
     private String reference;
     
+    @Column(name = "processed_by")
+    private String processedBy; // Admin who processed the transaction
+    
+    @Column(name = "inr_amount")
+    private Double inrAmount; // Original INR amount (for recharge transactions)
+    
+    @Column(name = "conversion_rate")
+    private Double conversionRate; // INR per credit rate used at time of transaction
+    
+    @Column(name = "vm_type")
+    private String vmType; // VM type for usage transactions (e.g., "T4", "A10")
+    
+    @Column(name = "duration_seconds")
+    private Double durationSeconds; // Duration in seconds for VM usage
+    
+    @Column(name = "credits_per_minute")
+    private Double creditsPerMinute; // Credits per minute rate used for VM billing
+    
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
@@ -75,6 +93,15 @@ public class BillingTransaction {
         this.resultingBalance = resultingBalance;
         this.date = LocalDateTime.now();
         this.status = "completed";
+    }
+
+    public BillingTransaction(String id, String organizationId, TransactionType type, 
+                            String description, Double amount, Double resultingBalance,
+                            String processedBy, Double inrAmount, Double conversionRate) {
+        this(id, organizationId, type, description, amount, resultingBalance);
+        this.processedBy = processedBy;
+        this.inrAmount = inrAmount;
+        this.conversionRate = conversionRate;
     }
 
     // Getters and Setters
@@ -164,6 +191,54 @@ public class BillingTransaction {
 
     public void setReference(String reference) {
         this.reference = reference;
+    }
+
+    public String getProcessedBy() {
+        return processedBy;
+    }
+
+    public void setProcessedBy(String processedBy) {
+        this.processedBy = processedBy;
+    }
+
+    public Double getInrAmount() {
+        return inrAmount;
+    }
+
+    public void setInrAmount(Double inrAmount) {
+        this.inrAmount = inrAmount;
+    }
+
+    public Double getConversionRate() {
+        return conversionRate;
+    }
+
+    public void setConversionRate(Double conversionRate) {
+        this.conversionRate = conversionRate;
+    }
+
+    public String getVmType() {
+        return vmType;
+    }
+
+    public void setVmType(String vmType) {
+        this.vmType = vmType;
+    }
+
+    public Double getDurationSeconds() {
+        return durationSeconds;
+    }
+
+    public void setDurationSeconds(Double durationSeconds) {
+        this.durationSeconds = durationSeconds;
+    }
+
+    public Double getCreditsPerMinute() {
+        return creditsPerMinute;
+    }
+
+    public void setCreditsPerMinute(Double creditsPerMinute) {
+        this.creditsPerMinute = creditsPerMinute;
     }
 
     public LocalDateTime getCreatedAt() {

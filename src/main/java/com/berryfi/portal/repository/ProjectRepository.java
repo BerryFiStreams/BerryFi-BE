@@ -188,4 +188,10 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
     Page<Project> searchProjects(@Param("organizationId") String organizationId, 
                                  @Param("keyword") String keyword, 
                                  Pageable pageable);
+
+    /**
+     * Find projects by organization ordered by updated date (recent first)
+     */
+    @Query("SELECT p FROM Project p WHERE p.organizationId = :organizationId ORDER BY p.updatedAt DESC")
+    List<Project> findByOrganizationIdOrderByUpdatedAtDesc(@Param("organizationId") String organizationId, Pageable pageable);
 }

@@ -207,4 +207,9 @@ public interface UsageSessionRepository extends JpaRepository<UsageSession, Stri
             @Param("organizationId") String organizationId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Count total sessions by organization
+     */
+    long countByOrganizationId(String organizationId);
 }

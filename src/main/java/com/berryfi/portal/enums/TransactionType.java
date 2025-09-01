@@ -5,6 +5,7 @@ package com.berryfi.portal.enums;
  */
 public enum TransactionType {
     CREDIT_ADDED("credit_added"),
+    RECHARGE("recharge"),
     USAGE("usage"),
     ALLOCATION("allocation"),
     REFUND("refund");

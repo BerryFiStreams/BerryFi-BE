@@ -35,6 +35,9 @@ public class BillingService {
     @Autowired
     private SubscriptionPlanRepository subscriptionPlanRepository;
 
+    @Autowired
+    private PricingService pricingService;
+
     /**
      * Get billing balance for organization
      */
@@ -132,6 +135,47 @@ public class BillingService {
     }
 
     /**
+     * Process INR recharge and convert to credits (Step 3 in your process)
+     * This is the main method admins will use for manual recharges
+     */
+    public BillingTransactionDto processINRRecharge(String organizationId, Double inrAmount, 
+                                                  String adminName, String description) {
+        try {
+            // Calculate credits from INR amount using current conversion rate from database
+            Double credits = pricingService.convertINRToCredits(inrAmount);
+            Double conversionRate = pricingService.getCurrentINRPerCreditRate();
+            
+            // Get current balance
+            Double currentBalance = getCurrentBalance(organizationId);
+            Double newBalance = currentBalance + credits;
+            
+            // Create enhanced description for audit trail
+            String enhancedDescription = String.format("Manual recharge by %s: INR %.2f converted to %.2f credits (Rate: %.2f INR/credit). %s", 
+                    adminName, inrAmount, credits, conversionRate, description != null ? description : "");
+            
+            // Create transaction with recharge type and additional metadata
+            BillingTransaction transaction = new BillingTransaction();
+            transaction.setId(UUID.randomUUID().toString());
+            transaction.setOrganizationId(organizationId);
+            transaction.setType(TransactionType.RECHARGE);
+            transaction.setAmount(credits);
+            transaction.setResultingBalance(newBalance);
+            transaction.setDescription(enhancedDescription);
+            transaction.setProcessedBy(adminName);
+            transaction.setInrAmount(inrAmount);
+            transaction.setConversionRate(conversionRate);
+            transaction.setDate(LocalDateTime.now());
+            transaction.setStatus("completed");
+
+            transaction = billingTransactionRepository.save(transaction);
+            return convertToTransactionDto(transaction);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to process INR recharge: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Record usage transaction
      */
     public BillingTransactionDto recordUsage(String organizationId, Double amount, String description) {
@@ -141,6 +185,49 @@ public class BillingService {
         
         return createTransaction(organizationId, TransactionType.USAGE, 
                                -amount, newBalance, description, null);
+    }
+
+    /**
+     * Record VM usage transaction based on VM type and duration (Step 4 in your process)
+     * This method automatically calculates credits based on VM type and duration
+     */
+    public BillingTransactionDto recordVmUsage(String organizationId, String vmType, 
+                                             Double durationInSeconds, String sessionId) {
+        try {
+            // Calculate credits for VM usage using database configuration
+            Double creditsUsed = pricingService.calculateVmUsageCredits(vmType, durationInSeconds);
+            Double creditsPerMinute = pricingService.getCurrentCreditsPerMinuteForVm(vmType);
+            
+            // Get current balance
+            Double currentBalance = getCurrentBalance(organizationId);
+            Double newBalance = currentBalance - creditsUsed;
+            
+            // Create detailed description for audit trail
+            double minutes = durationInSeconds / 60.0;
+            String description = String.format("VM Usage - %s: %.2f minutes (%.0f seconds) @ %.2f credits/minute = %.2f credits. Session: %s", 
+                    vmType, minutes, durationInSeconds, creditsPerMinute, creditsUsed, sessionId);
+            
+            // Create usage transaction
+            BillingTransaction transaction = new BillingTransaction();
+            transaction.setId(UUID.randomUUID().toString());
+            transaction.setOrganizationId(organizationId);
+            transaction.setType(TransactionType.USAGE);
+            transaction.setAmount(-creditsUsed);
+            transaction.setResultingBalance(newBalance);
+            transaction.setDescription(description);
+            transaction.setReference(sessionId);
+            transaction.setVmType(vmType);
+            transaction.setDurationSeconds(durationInSeconds);
+            transaction.setCreditsPerMinute(creditsPerMinute);
+            transaction.setDate(LocalDateTime.now());
+            transaction.setStatus("completed");
+
+            transaction = billingTransactionRepository.save(transaction);
+            return convertToTransactionDto(transaction);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to record VM usage: " + e.getMessage(), e);
+        }
     }
 
     /**
