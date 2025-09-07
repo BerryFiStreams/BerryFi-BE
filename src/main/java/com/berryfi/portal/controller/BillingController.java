@@ -3,6 +3,7 @@ package com.berryfi.portal.controller;
 import com.berryfi.portal.dto.billing.*;
 import com.berryfi.portal.enums.*;
 import com.berryfi.portal.service.BillingService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,6 +22,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/billing")
 @CrossOrigin(origins = "*")
+@Tag(name = "Billing", description = "Billing and payment operations")
 public class BillingController {
 
     @Autowired

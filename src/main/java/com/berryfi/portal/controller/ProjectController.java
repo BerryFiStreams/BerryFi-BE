@@ -4,6 +4,7 @@ import com.berryfi.portal.dto.project.*;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.enums.ProjectStatus;
 import com.berryfi.portal.service.ProjectService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/projects")
 @CrossOrigin(origins = "*", maxAge = 3600)
+@Tag(name = "Projects", description = "Project management operations")
 public class ProjectController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);

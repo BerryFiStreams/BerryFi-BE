@@ -74,6 +74,12 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
             case "auth:refresh" -> Permission.AUTH_REFRESH;
             case "auth:view_profile" -> Permission.AUTH_VIEW_PROFILE;
             
+            // Dashboard permissions
+            case "dashboard:read", "dashboard:view" -> Permission.REPORTS_VIEW_DASHBOARD;
+            
+            // Reports permissions
+            case "reports:view_dashboard" -> Permission.REPORTS_VIEW_DASHBOARD;
+            
             default -> null;
         };
     }

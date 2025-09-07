@@ -1,32 +1,35 @@
 package com.berryfi.portal.dto.reports;
 
+import com.berryfi.portal.dto.dashboard.DashboardSummary;
+import com.berryfi.portal.dto.dashboard.RecentProject;
+import com.berryfi.portal.dto.dashboard.RecentWorkspace;
+
 import java.util.List;
-import java.util.Map;
 
 /**
  * Response DTO for dashboard reports.
  */
 public class DashboardReportResponse {
-    private Map<String, Object> overview;
-    private List<Map<String, Object>> widgets;
-    private Map<String, Object> kpis;
+    private DashboardSummary summary;
+    private List<RecentWorkspace> recentWorkspaces;
+    private List<RecentProject> recentProjects;
 
     public DashboardReportResponse() {}
 
-    public DashboardReportResponse(Map<String, Object> overview, List<Map<String, Object>> widgets,
-                                  Map<String, Object> kpis) {
-        this.overview = overview;
-        this.widgets = widgets;
-        this.kpis = kpis;
+    public DashboardReportResponse(DashboardSummary summary, List<RecentWorkspace> recentWorkspaces,
+                                  List<RecentProject> recentProjects) {
+        this.summary = summary;
+        this.recentWorkspaces = recentWorkspaces;
+        this.recentProjects = recentProjects;
     }
 
     // Getters and setters
-    public Map<String, Object> getOverview() { return overview; }
-    public void setOverview(Map<String, Object> overview) { this.overview = overview; }
+    public DashboardSummary getSummary() { return summary; }
+    public void setSummary(DashboardSummary summary) { this.summary = summary; }
 
-    public List<Map<String, Object>> getWidgets() { return widgets; }
-    public void setWidgets(List<Map<String, Object>> widgets) { this.widgets = widgets; }
+    public List<RecentWorkspace> getRecentWorkspaces() { return recentWorkspaces; }
+    public void setRecentWorkspaces(List<RecentWorkspace> recentWorkspaces) { this.recentWorkspaces = recentWorkspaces; }
 
-    public Map<String, Object> getKpis() { return kpis; }
-    public void setKpis(Map<String, Object> kpis) { this.kpis = kpis; }
+    public List<RecentProject> getRecentProjects() { return recentProjects; }
+    public void setRecentProjects(List<RecentProject> recentProjects) { this.recentProjects = recentProjects; }
 }

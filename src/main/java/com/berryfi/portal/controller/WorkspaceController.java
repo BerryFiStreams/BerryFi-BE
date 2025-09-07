@@ -3,6 +3,7 @@ package com.berryfi.portal.controller;
 import com.berryfi.portal.dto.workspace.*;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.service.WorkspaceService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +22,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/workspaces")
 @CrossOrigin(origins = "*", maxAge = 3600)
+@Tag(name = "Workspaces", description = "Workspace management operations")
 public class WorkspaceController {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkspaceController.class);

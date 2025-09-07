@@ -1,16 +1,18 @@
 package com.berryfi.portal.controller;
 
 import com.berryfi.portal.dto.reports.*;
+import com.berryfi.portal.entity.User;
 import com.berryfi.portal.service.ReportsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * REST Controller for reports endpoints.
  */
 @RestController
-@RequestMapping("/reports")
+@RequestMapping("/api/reports")
 @CrossOrigin(origins = "*")
 public class ReportsController {
 
@@ -42,12 +44,9 @@ public class ReportsController {
      */
     @GetMapping("/dashboard")
     public ResponseEntity<DashboardReportResponse> getDashboardReport(
-            @RequestParam(required = false) String organizationId,
-            @RequestParam(required = false) String workspaceId,
-            @RequestParam(required = false) String dateRange) {
+            @AuthenticationPrincipal User currentUser) {
         try {
-            DashboardReportResponse report = reportsService.getDashboardReport(
-                    organizationId, workspaceId, dateRange);
+            DashboardReportResponse report = reportsService.getDashboardReport(currentUser);
             return ResponseEntity.ok(report);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

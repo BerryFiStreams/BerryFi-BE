@@ -1,6 +1,9 @@
 package com.berryfi.portal.service;
 
 import com.berryfi.portal.dto.reports.*;
+import com.berryfi.portal.dto.dashboard.DashboardResponse;
+import com.berryfi.portal.entity.User;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -11,6 +14,9 @@ import java.util.*;
  */
 @Service
 public class ReportsService {
+
+    @Autowired
+    private DashboardService dashboardService;
 
     /**
      * Get analytics reports data.
@@ -40,27 +46,16 @@ public class ReportsService {
     /**
      * Get dashboard reports.
      */
-    public DashboardReportResponse getDashboardReport(String organizationId, String workspaceId, String dateRange) {
-        // Mock implementation
-        Map<String, Object> overview = new HashMap<>();
-        overview.put("totalProjects", 12);
-        overview.put("activeProjects", 8);
-        overview.put("totalUsers", 45);
-        overview.put("totalCredits", 50000.0);
-
-        List<Map<String, Object>> widgets = new ArrayList<>();
-        Map<String, Object> widget = new HashMap<>();
-        widget.put("type", "chart");
-        widget.put("title", "Usage Trends");
-        widget.put("data", Arrays.asList(100, 120, 130, 110, 150));
-        widgets.add(widget);
-
-        Map<String, Object> kpis = new HashMap<>();
-        kpis.put("conversionRate", 23.5);
-        kpis.put("sessionDuration", 18.5);
-        kpis.put("creditsPerSession", 120.0);
-
-        return new DashboardReportResponse(overview, widgets, kpis);
+    public DashboardReportResponse getDashboardReport(User currentUser) {
+        // Get dashboard data using the dashboard service
+        DashboardResponse dashboardData = dashboardService.getDashboardData(currentUser);
+        
+        // Convert DashboardResponse to DashboardReportResponse
+        return new DashboardReportResponse(
+            dashboardData.getSummary(),
+            dashboardData.getRecentWorkspaces(),
+            dashboardData.getRecentProjects()
+        );
     }
 
     /**

@@ -44,7 +44,7 @@ public class DashboardService {
     /**
      * Get dashboard data for the current user's organization.
      */
-    @PreAuthorize("hasPermission('dashboard', 'read')")
+    @PreAuthorize("hasPermission('reports', 'view_dashboard')")
     public DashboardResponse getDashboardData(User currentUser) {
         logger.info("Getting dashboard data for user: {} in organization: {}", 
                    currentUser.getId(), currentUser.getOrganizationId());
