@@ -334,6 +334,11 @@ public class VmController {
         private String vmStatus;
         private String azureResourceId;
         
+        // VM Connection details
+        private String vmIpAddress;
+        private Integer vmPort;
+        private String connectionUrl;
+        
         // Client tracking information
         private String username;
         private String clientIpAddress;
@@ -357,10 +362,26 @@ public class VmController {
             this.clientCity = session.getClientCity();
             this.userAgent = session.getUserAgent();
             
+            // VM Connection details from session (if available) or VM instance
+            this.vmIpAddress = session.getVmIpAddress();
+            this.vmPort = session.getVmPort();
+            this.connectionUrl = session.getConnectionUrl();
+            
             if (vmInstance != null) {
                 this.vmType = vmInstance.getVmType();
                 this.vmStatus = vmInstance.getStatus().name();
                 this.azureResourceId = vmInstance.getAzureResourceId();
+                
+                // If session doesn't have connection details, use VM instance details
+                if (this.vmIpAddress == null) {
+                    this.vmIpAddress = vmInstance.getIpAddress();
+                }
+                if (this.vmPort == null) {
+                    this.vmPort = vmInstance.getPort();
+                }
+                if (this.connectionUrl == null) {
+                    this.connectionUrl = vmInstance.getConnectionUrl();
+                }
             }
         }
 
@@ -375,6 +396,11 @@ public class VmController {
         public String getVmType() { return vmType; }
         public String getVmStatus() { return vmStatus; }
         public String getAzureResourceId() { return azureResourceId; }
+        
+        // Getters for VM connection details
+        public String getVmIpAddress() { return vmIpAddress; }
+        public Integer getVmPort() { return vmPort; }
+        public String getConnectionUrl() { return connectionUrl; }
         
         // Getters for client tracking fields
         public String getUsername() { return username; }

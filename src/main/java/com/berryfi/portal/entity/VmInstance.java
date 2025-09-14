@@ -152,7 +152,14 @@ public class VmInstance {
     }
 
     public boolean canBeAssigned() {
-        return this.status == VmStatus.AVAILABLE || this.status == VmStatus.STOPPED;
+        // VM can only be assigned if it's available/stopped AND not currently assigned to any session
+        return (this.status == VmStatus.AVAILABLE || this.status == VmStatus.STOPPED) 
+                && this.currentSessionId == null;
+    }
+
+    public boolean isInUse() {
+        return this.currentSessionId != null || 
+               (this.status != VmStatus.AVAILABLE && this.status != VmStatus.STOPPED);
     }
 
     public void assignToSession(String projectId, String sessionId) {

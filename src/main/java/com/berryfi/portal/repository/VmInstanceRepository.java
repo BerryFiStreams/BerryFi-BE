@@ -30,15 +30,24 @@ public interface VmInstanceRepository extends JpaRepository<VmInstance, String> 
     Page<VmInstance> findByProjectId(String projectId, Pageable pageable);
 
     /**
-     * Find all available VMs for a project
+     * Find all available VMs for a project (excludes VMs with active sessions)
+     * This ensures no VM is allocated to multiple sessions simultaneously
      */
-    @Query("SELECT v FROM VmInstance v WHERE v.projectId = :projectId AND v.status IN ('AVAILABLE', 'STOPPED') ORDER BY v.lastStopped ASC")
+    @Query("SELECT v FROM VmInstance v WHERE v.projectId = :projectId " +
+           "AND v.status IN ('AVAILABLE', 'STOPPED') " +
+           "AND v.id NOT IN (SELECT s.vmInstanceId FROM VmSession s WHERE s.status IN ('REQUESTED', 'STARTING', 'ACTIVE', 'TERMINATING')) " +
+           "ORDER BY v.lastStopped ASC")
     List<VmInstance> findAvailableVmsForProject(@Param("projectId") String projectId);
 
     /**
-     * Find available VMs of a specific type for a project
+     * Find available VMs of a specific type for a project (excludes VMs with active sessions)
+     * This ensures no VM is allocated to multiple sessions simultaneously
      */
-    @Query("SELECT v FROM VmInstance v WHERE v.projectId = :projectId AND v.vmType = :vmType AND v.status IN ('AVAILABLE', 'STOPPED') ORDER BY v.lastStopped ASC")
+    @Query("SELECT v FROM VmInstance v WHERE v.projectId = :projectId " +
+           "AND v.vmType = :vmType " +
+           "AND v.status IN ('AVAILABLE', 'STOPPED') " +
+           "AND v.id NOT IN (SELECT s.vmInstanceId FROM VmSession s WHERE s.status IN ('REQUESTED', 'STARTING', 'ACTIVE', 'TERMINATING')) " +
+           "ORDER BY v.lastStopped ASC")
     List<VmInstance> findAvailableVmsByTypeForProject(@Param("projectId") String projectId, @Param("vmType") String vmType);
 
     /**

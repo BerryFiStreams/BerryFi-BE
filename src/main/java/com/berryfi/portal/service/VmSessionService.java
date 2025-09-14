@@ -126,6 +126,25 @@ public class VmSessionService {
                 logger.error("VM instance has null or empty ID: {}", vm);
                 return VmSessionResult.error("VM instance has invalid ID");
             }
+            
+            // Double-check that this VM doesn't have any active session to prevent race conditions
+            Optional<VmSession> activeSessionForVm = vmSessionRepository.findActiveSessionForVm(vm.getId());
+            if (activeSessionForVm.isPresent()) {
+                logger.warn("VM {} is already in use by session {} (status: {}), finding another available VM", 
+                    vm.getId(), activeSessionForVm.get().getId(), activeSessionForVm.get().getStatus());
+                // Try to find another available VM (remove the first one from the list and try again)
+                availableVms.remove(0);
+                if (availableVms.isEmpty()) {
+                    return VmSessionResult.error("No available VMs of type " + vmType + " for this project (all are currently in use)");
+                }
+                vm = availableVms.get(0);
+                
+                // Re-check the new VM
+                activeSessionForVm = vmSessionRepository.findActiveSessionForVm(vm.getId());
+                if (activeSessionForVm.isPresent()) {
+                    return VmSessionResult.error("No available VMs of type " + vmType + " for this project (all are currently in use)");
+                }
+            }
 
             // Check workspace has sufficient credits (estimate for 1 minute initially)
             if (!billingService.hasWorkspaceSufficientCredits(workspaceId, vmType, 60.0)) {

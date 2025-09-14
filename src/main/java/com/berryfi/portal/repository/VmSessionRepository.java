@@ -52,9 +52,9 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
     List<VmSession> findActiveSessionsInWorkspace(@Param("workspaceId") String workspaceId);
 
     /**
-     * Find active session for a VM
+     * Find active session for a VM (including sessions that are terminating to prevent race conditions)
      */
-    @Query("SELECT s FROM VmSession s WHERE s.vmInstanceId = :vmInstanceId AND s.status IN ('REQUESTED', 'STARTING', 'ACTIVE')")
+    @Query("SELECT s FROM VmSession s WHERE s.vmInstanceId = :vmInstanceId AND s.status IN ('REQUESTED', 'STARTING', 'ACTIVE', 'TERMINATING')")
     Optional<VmSession> findActiveSessionForVm(@Param("vmInstanceId") String vmInstanceId);
 
     /**
