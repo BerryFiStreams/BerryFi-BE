@@ -5,6 +5,7 @@ import com.berryfi.portal.enums.LeadStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDateTime;
 
 /**
  * Request DTO for creating a new lead.
@@ -44,6 +45,11 @@ public class CreateLeadRequest {
     private String campaign;
     private String term;
     private String content;
+    
+    // Visit tracking fields
+    private Integer visitCount = 0;
+    private Long totalSessionTime = 0L;
+    private LocalDateTime lastVisitDate;
     
     // Default constructor
     public CreateLeadRequest() {}
@@ -90,4 +96,14 @@ public class CreateLeadRequest {
     
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+    
+    // Visit tracking getters and setters
+    public Integer getVisitCount() { return visitCount; }
+    public void setVisitCount(Integer visitCount) { this.visitCount = visitCount; }
+    
+    public Long getTotalSessionTime() { return totalSessionTime; }
+    public void setTotalSessionTime(Long totalSessionTime) { this.totalSessionTime = totalSessionTime; }
+    
+    public LocalDateTime getLastVisitDate() { return lastVisitDate; }
+    public void setLastVisitDate(LocalDateTime lastVisitDate) { this.lastVisitDate = lastVisitDate; }
 }

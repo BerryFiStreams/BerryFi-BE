@@ -12,6 +12,7 @@ public class LeadResponse {
     private String id;
     private String campaignId;
     private String campaignName;
+    private String projectName;
     private String firstName;
     private String lastName;
     private String email;
@@ -40,6 +41,12 @@ public class LeadResponse {
     private String assignedTo;
     private String assignedToName;
     private String createdBy;
+    
+    // Visit tracking fields
+    private Integer visitCount;
+    private Long totalSessionTime;
+    private LocalDateTime lastVisitDate;
+    
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime lastContactedAt;
@@ -56,6 +63,9 @@ public class LeadResponse {
     
     public String getCampaignName() { return campaignName; }
     public void setCampaignName(String campaignName) { this.campaignName = campaignName; }
+    
+    public String getProjectName() { return projectName; }
+    public void setProjectName(String projectName) { this.projectName = projectName; }
     
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -134,4 +144,14 @@ public class LeadResponse {
     
     public LocalDateTime getLastContactedAt() { return lastContactedAt; }
     public void setLastContactedAt(LocalDateTime lastContactedAt) { this.lastContactedAt = lastContactedAt; }
+    
+    // Visit tracking getters and setters
+    public Integer getVisitCount() { return visitCount; }
+    public void setVisitCount(Integer visitCount) { this.visitCount = visitCount; }
+    
+    public Long getTotalSessionTime() { return totalSessionTime; }
+    public void setTotalSessionTime(Long totalSessionTime) { this.totalSessionTime = totalSessionTime; }
+    
+    public LocalDateTime getLastVisitDate() { return lastVisitDate; }
+    public void setLastVisitDate(LocalDateTime lastVisitDate) { this.lastVisitDate = lastVisitDate; }
 }

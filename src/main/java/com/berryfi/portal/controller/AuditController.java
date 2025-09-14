@@ -20,7 +20,7 @@ import java.util.List;
  * REST Controller for audit endpoints.
  */
 @RestController
-@RequestMapping("/audit")
+@RequestMapping("/api/audit")
 @CrossOrigin(origins = "*")
 public class AuditController {
 

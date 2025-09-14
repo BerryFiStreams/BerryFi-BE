@@ -95,6 +95,13 @@ public class Lead {
     
     private Integer pageViews = 0;
     
+    // Visit tracking fields
+    private Integer visitCount = 0;
+    
+    private Long totalSessionTime = 0L; // cumulative time in seconds across all visits
+    
+    private LocalDateTime lastVisitDate;
+    
     private Boolean isConverted = false;
     
     private LocalDateTime convertedAt;
@@ -269,4 +276,14 @@ public class Lead {
     
     public LocalDateTime getLastContactedAt() { return lastContactedAt; }
     public void setLastContactedAt(LocalDateTime lastContactedAt) { this.lastContactedAt = lastContactedAt; }
+    
+    // Visit tracking getters and setters
+    public Integer getVisitCount() { return visitCount; }
+    public void setVisitCount(Integer visitCount) { this.visitCount = visitCount; }
+    
+    public Long getTotalSessionTime() { return totalSessionTime; }
+    public void setTotalSessionTime(Long totalSessionTime) { this.totalSessionTime = totalSessionTime; }
+    
+    public LocalDateTime getLastVisitDate() { return lastVisitDate; }
+    public void setLastVisitDate(LocalDateTime lastVisitDate) { this.lastVisitDate = lastVisitDate; }
 }
