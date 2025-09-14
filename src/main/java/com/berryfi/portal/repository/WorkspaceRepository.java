@@ -173,10 +173,9 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, String> {
      * Update workspace project association.
      */
     @Modifying
-    @Query("UPDATE Workspace w SET w.projectId = :projectId, w.projectName = :projectName, w.updatedAt = :updatedAt WHERE w.id = :workspaceId")
+    @Query("UPDATE Workspace w SET w.projectId = :projectId, w.updatedAt = :updatedAt WHERE w.id = :workspaceId")
     int updateWorkspaceProject(@Param("workspaceId") String workspaceId, 
                               @Param("projectId") String projectId,
-                              @Param("projectName") String projectName,
                               @Param("updatedAt") LocalDateTime updatedAt);
 
     /**
