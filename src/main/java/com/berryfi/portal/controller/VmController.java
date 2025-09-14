@@ -11,8 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,13 +45,15 @@ public class VmController {
     @PostMapping("/sessions/start")
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> startSession(
             @RequestBody @Valid StartVmSessionRequest request,
-            @AuthenticationPrincipal UserDetails userDetails,
             HttpServletRequest httpRequest) {
         
         try {
-            String userId = userDetails.getUsername();
-            String userEmail = getUserEmail(userDetails);
-            String username = extractUsername(userDetails);
+            // For open endpoints, we'll use request parameters or default values for user identification
+            String userId = request.getEmail() != null ? request.getEmail() : "anonymous-user";
+            String userEmail = request.getEmail() != null ? request.getEmail() : "anonymous@berryfi.com";
+            String username = (request.getFirstName() != null && request.getLastName() != null) 
+                ? request.getFirstName() + " " + request.getLastName() 
+                : "Anonymous User";
 
             // Extract client information
             String clientIp = clientInfoExtractor.getClientIpAddress(httpRequest);
@@ -106,10 +106,13 @@ public class VmController {
     @PostMapping("/sessions/{sessionId}/stop")
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> stopSession(
             @PathVariable String sessionId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @RequestBody(required = false) StopVmSessionRequest request) {
         
         try {
-            String userId = userDetails.getUsername();
+            String userId = null;
+            if (request != null && request.getEmail() != null) {
+                userId = request.getEmail();
+            }
 
             VmSessionResult result = vmSessionService.stopVmSession(sessionId, userId);
 
@@ -137,8 +140,7 @@ public class VmController {
     @PostMapping("/sessions/{sessionId}/heartbeat")
     public ResponseEntity<ApiResponse<String>> submitHeartbeat(
             @PathVariable String sessionId,
-            @RequestBody @Valid HeartbeatRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @RequestBody @Valid HeartbeatRequest request) {
         
         try {
             boolean success = vmSessionService.recordHeartbeat(
@@ -167,8 +169,7 @@ public class VmController {
      */
     @GetMapping("/sessions/{sessionId}")
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> getSession(
-            @PathVariable String sessionId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @PathVariable String sessionId) {
         
         try {
             Optional<VmSession> sessionOpt = vmSessionService.getSession(sessionId);
@@ -178,8 +179,6 @@ public class VmController {
             }
 
             VmSession session = sessionOpt.get();
-            
-            // TODO: Add authorization check - user should own session or be admin
             
             VmSessionResponseDto response = new VmSessionResponseDto(session, null);
             return ResponseEntity.ok(ApiResponse.success("Session retrieved successfully", response));
@@ -196,11 +195,15 @@ public class VmController {
      */
     @GetMapping("/sessions/active")
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> getActiveSession(
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @RequestParam(required = false) String email) {
         
         try {
-            String userId = userDetails.getUsername();
-            Optional<VmSession> sessionOpt = vmSessionService.getUserActiveSession(userId);
+            if (email == null || email.isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Email is required"));
+            }
+            
+            Optional<VmSession> sessionOpt = vmSessionService.getUserActiveSession(email);
             
             if (sessionOpt.isEmpty()) {
                 return ResponseEntity.ok(ApiResponse.success("No active session", null));
@@ -223,12 +226,9 @@ public class VmController {
     @PostMapping("/sessions/{sessionId}/terminate")
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> terminateSession(
             @PathVariable String sessionId,
-            @RequestBody @Valid TerminateSessionRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @RequestBody @Valid TerminateSessionRequest request) {
         
         try {
-            // TODO: Add admin authorization check
-            
             VmSessionResult result = vmSessionService.forceTerminateSession(sessionId, request.getReason());
 
             if (result.isSuccess()) {
@@ -249,23 +249,7 @@ public class VmController {
         }
     }
 
-    private String getUserEmail(UserDetails userDetails) {
-        // TODO: Extract email from UserDetails or JWT token
-        return userDetails.getUsername() + "@berryfi.com";
-    }
-
-    private String extractUsername(UserDetails userDetails) {
-        // Extract display name or username - can be enhanced to get from JWT claims
-        if (userDetails instanceof org.springframework.security.core.userdetails.User) {
-            return userDetails.getUsername();
-        }
-        
-        // For custom UserDetails implementations, you might want to cast and extract 
-        // the actual user's display name from your User entity
-        return userDetails.getUsername();
-    }
-
-    // Request DTOs
+    // Response DTO
     public static class StartVmSessionRequest {
         @NotBlank(message = "Project ID is required")
         private String projectId;
@@ -273,11 +257,36 @@ public class VmController {
         @NotBlank(message = "VM type is required")
         private String vmType;
 
+        // Optional user fields for non-authenticated access
+        private String firstName;
+        private String lastName;
+        private String email;
+        private String phone;
+
         public String getProjectId() { return projectId; }
         public void setProjectId(String projectId) { this.projectId = projectId; }
         
         public String getVmType() { return vmType; }
         public void setVmType(String vmType) { this.vmType = vmType; }
+
+        public String getFirstName() { return firstName; }
+        public void setFirstName(String firstName) { this.firstName = firstName; }
+
+        public String getLastName() { return lastName; }
+        public void setLastName(String lastName) { this.lastName = lastName; }
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+
+        public String getPhone() { return phone; }
+        public void setPhone(String phone) { this.phone = phone; }
+    }
+
+    public static class StopVmSessionRequest {
+        private String email;
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
     }
 
     public static class HeartbeatRequest {

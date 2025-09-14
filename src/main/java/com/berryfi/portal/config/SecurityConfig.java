@@ -90,6 +90,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/test/public").permitAll() // Public test endpoint
                 .requestMatchers("/h2-console/**").permitAll() // H2 console for development
                 .requestMatchers("/actuator/health").permitAll() // Health check
+                .requestMatchers("/api/vm/**").permitAll() // VM controller endpoints - no authentication required
                 
                 // Authentication required endpoints
                 .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()
