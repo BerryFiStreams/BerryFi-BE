@@ -20,31 +20,26 @@ import java.util.Optional;
 public interface VmInstanceRepository extends JpaRepository<VmInstance, String> {
 
     /**
-     * Find all VMs in a workspace
+     * Find all VMs for a project
      */
-    List<VmInstance> findByWorkspaceIdOrderByCreatedAtDesc(String workspaceId);
+    List<VmInstance> findByProjectIdOrderByCreatedAtDesc(String projectId);
 
     /**
-     * Find all VMs in a workspace with pagination
+     * Find all VMs for a project with pagination
      */
-    Page<VmInstance> findByWorkspaceId(String workspaceId, Pageable pageable);
+    Page<VmInstance> findByProjectId(String projectId, Pageable pageable);
 
     /**
-     * Find all available VMs in a workspace
+     * Find all available VMs for a project
      */
-    @Query("SELECT v FROM VmInstance v WHERE v.workspaceId = :workspaceId AND v.status IN ('AVAILABLE', 'STOPPED') ORDER BY v.lastStopped ASC")
-    List<VmInstance> findAvailableVmsInWorkspace(@Param("workspaceId") String workspaceId);
+    @Query("SELECT v FROM VmInstance v WHERE v.projectId = :projectId AND v.status IN ('AVAILABLE', 'STOPPED') ORDER BY v.lastStopped ASC")
+    List<VmInstance> findAvailableVmsForProject(@Param("projectId") String projectId);
 
     /**
-     * Find all VMs in an organization
+     * Find available VMs of a specific type for a project
      */
-    List<VmInstance> findByOrganizationIdOrderByCreatedAtDesc(String organizationId);
-
-    /**
-     * Find available VMs of a specific type in a workspace
-     */
-    @Query("SELECT v FROM VmInstance v WHERE v.workspaceId = :workspaceId AND v.vmType = :vmType AND v.status IN ('AVAILABLE', 'STOPPED') ORDER BY v.lastStopped ASC")
-    List<VmInstance> findAvailableVmsByTypeInWorkspace(@Param("workspaceId") String workspaceId, @Param("vmType") String vmType);
+    @Query("SELECT v FROM VmInstance v WHERE v.projectId = :projectId AND v.vmType = :vmType AND v.status IN ('AVAILABLE', 'STOPPED') ORDER BY v.lastStopped ASC")
+    List<VmInstance> findAvailableVmsByTypeForProject(@Param("projectId") String projectId, @Param("vmType") String vmType);
 
     /**
      * Find VMs by status
@@ -52,9 +47,9 @@ public interface VmInstanceRepository extends JpaRepository<VmInstance, String> 
     List<VmInstance> findByStatusOrderByUpdatedAtDesc(VmStatus status);
 
     /**
-     * Find VMs by status in a workspace
+     * Find VMs by status for a project
      */
-    List<VmInstance> findByWorkspaceIdAndStatusOrderByUpdatedAtDesc(String workspaceId, VmStatus status);
+    List<VmInstance> findByProjectIdAndStatusOrderByUpdatedAtDesc(String projectId, VmStatus status);
 
     /**
      * Find VM by current session
@@ -72,15 +67,15 @@ public interface VmInstanceRepository extends JpaRepository<VmInstance, String> 
     Optional<VmInstance> findByAzureResourceId(String azureResourceId);
 
     /**
-     * Count VMs by status in a workspace
+     * Count VMs by status for a project
      */
-    @Query("SELECT COUNT(v) FROM VmInstance v WHERE v.workspaceId = :workspaceId AND v.status = :status")
-    long countByWorkspaceIdAndStatus(@Param("workspaceId") String workspaceId, @Param("status") VmStatus status);
+    @Query("SELECT COUNT(v) FROM VmInstance v WHERE v.projectId = :projectId AND v.status = :status")
+    long countByProjectIdAndStatus(@Param("projectId") String projectId, @Param("status") VmStatus status);
 
     /**
-     * Count total VMs in a workspace
+     * Count total VMs for a project
      */
-    long countByWorkspaceId(String workspaceId);
+    long countByProjectId(String projectId);
 
     /**
      * Find VMs that have been running longer than specified duration
@@ -89,20 +84,20 @@ public interface VmInstanceRepository extends JpaRepository<VmInstance, String> 
     List<VmInstance> findRunningVmsOlderThan(@Param("cutoffTime") LocalDateTime cutoffTime);
 
     /**
-     * Find VMs by type across all workspaces
+     * Find VMs by type for a specific project
      */
-    List<VmInstance> findByVmTypeOrderByWorkspaceIdAsc(String vmType);
+    List<VmInstance> findByProjectIdAndVmTypeOrderByCreatedAtAsc(String projectId, String vmType);
 
     /**
-     * Get VM utilization statistics for a workspace
+     * Get VM utilization statistics for a project
      */
     @Query("SELECT " +
            "COUNT(v) as total, " +
            "SUM(CASE WHEN v.status = 'RUNNING' THEN 1 ELSE 0 END) as running, " +
            "SUM(CASE WHEN v.status = 'AVAILABLE' THEN 1 ELSE 0 END) as available, " +
            "SUM(CASE WHEN v.status IN ('ASSIGNED', 'STARTING') THEN 1 ELSE 0 END) as starting " +
-           "FROM VmInstance v WHERE v.workspaceId = :workspaceId")
-    Object[] getWorkspaceVmStats(@Param("workspaceId") String workspaceId);
+           "FROM VmInstance v WHERE v.projectId = :projectId")
+    Object[] getProjectVmStats(@Param("projectId") String projectId);
 
     /**
      * Find VMs that need attention (error, maintenance, etc.)
@@ -111,9 +106,9 @@ public interface VmInstanceRepository extends JpaRepository<VmInstance, String> 
     List<VmInstance> findVmsNeedingAttention();
 
     /**
-     * Check if workspace has any VM of specific type
+     * Check if project has any VM of specific type
      */
-    boolean existsByWorkspaceIdAndVmType(String workspaceId, String vmType);
+    boolean existsByProjectIdAndVmType(String projectId, String vmType);
 
     /**
      * Find managed VMs that need Azure status synchronization

@@ -1,7 +1,6 @@
 package com.berryfi.portal.service;
 
 import com.berryfi.portal.entity.*;
-import com.berryfi.portal.enums.SessionStatus;
 import com.berryfi.portal.repository.*;
 import com.berryfi.portal.dto.billing.BillingTransactionDto;
 import org.slf4j.Logger;
@@ -81,10 +80,10 @@ public class VmSessionService {
                 return VmSessionResult.error("User already has an active session: " + existingSession.get().getId());
             }
 
-            // Find available VM of requested type in workspace
-            List<VmInstance> availableVms = vmInstanceRepository.findAvailableVmsByTypeInWorkspace(workspaceId, vmType);
+            // Find available VM of requested type for this project
+            List<VmInstance> availableVms = vmInstanceRepository.findAvailableVmsByTypeForProject(projectId, vmType);
             if (availableVms.isEmpty()) {
-                return VmSessionResult.error("No available VMs of type " + vmType + " in workspace");
+                return VmSessionResult.error("No available VMs of type " + vmType + " for this project");
             }
 
             VmInstance vm = availableVms.get(0); // Take the first available VM

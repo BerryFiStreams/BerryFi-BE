@@ -10,15 +10,15 @@ import java.util.UUID;
 
 /**
  * Entity representing a VM instance in the system.
- * VMs belong to workspaces and can be assigned to projects.
+ * VMs are assigned to projects.
  */
 @Entity
 @Table(name = "vm_instances", indexes = {
-    @Index(name = "idx_vm_workspace", columnList = "workspaceId"),
-    @Index(name = "idx_vm_organization", columnList = "organizationId"),
+    @Index(name = "idx_vm_project", columnList = "projectId"),
     @Index(name = "idx_vm_status", columnList = "status"),
     @Index(name = "idx_vm_type", columnList = "vmType"),
-    @Index(name = "idx_vm_azure_resource", columnList = "azureResourceId")
+    @Index(name = "idx_vm_azure_resource", columnList = "azureResourceId"),
+    @Index(name = "idx_vm_current_project", columnList = "currentProjectId")
 })
 public class VmInstance {
     
@@ -66,13 +66,9 @@ public class VmInstance {
     @Column(name = "status", nullable = false)
     private VmStatus status = VmStatus.AVAILABLE;
     
-    @NotBlank(message = "Workspace ID is required")
-    @Column(name = "workspace_id", nullable = false)
-    private String workspaceId;
-    
-    @NotBlank(message = "Organization ID is required")
-    @Column(name = "organization_id", nullable = false)
-    private String organizationId;
+    @NotBlank(message = "Project ID is required")
+    @Column(name = "project_id", nullable = false)
+    private String projectId;
     
     @Column(name = "current_project_id")
     private String currentProjectId; // Which project is currently using this VM
@@ -123,7 +119,7 @@ public class VmInstance {
     public VmInstance(String vmName, String vmType, String azureResourceId, 
                      String azureResourceGroup, String azureSubscriptionId,
                      String azureTenantId, String azureClientId, String azureClientSecret,
-                     String workspaceId, String organizationId, String createdBy) {
+                     String projectId, String createdBy) {
         this();
         this.vmName = vmName;
         this.vmType = vmType;
@@ -133,8 +129,7 @@ public class VmInstance {
         this.azureTenantId = azureTenantId;
         this.azureClientId = azureClientId;
         this.azureClientSecret = azureClientSecret;
-        this.workspaceId = workspaceId;
-        this.organizationId = organizationId;
+        this.projectId = projectId;
         this.createdBy = createdBy;
     }
 
@@ -293,20 +288,12 @@ public class VmInstance {
         this.status = status;
     }
 
-    public String getWorkspaceId() {
-        return workspaceId;
+    public String getProjectId() {
+        return projectId;
     }
 
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
-    }
-
-    public String getOrganizationId() {
-        return organizationId;
-    }
-
-    public void setOrganizationId(String organizationId) {
-        this.organizationId = organizationId;
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
     }
 
     public String getCurrentProjectId() {

@@ -53,8 +53,7 @@ public class VmInstanceController {
                 request.getAzureTenantId(),
                 request.getAzureClientId(),
                 request.getAzureClientSecret(),
-                request.getWorkspaceId(),
-                request.getOrganizationId(),
+                request.getProjectId(),
                 userDetails.getUsername()
             );
             
@@ -68,7 +67,7 @@ public class VmInstanceController {
 
             vmInstance = vmInstanceRepository.save(vmInstance);
             
-            logger.info("Created VM instance: {} for workspace: {}", vmInstance.getId(), vmInstance.getWorkspaceId());
+            logger.info("Created VM instance: {} for project: {}", vmInstance.getId(), vmInstance.getProjectId());
             
             return ResponseEntity.ok(ApiResponse.success("VM instance created successfully", vmInstance));
 
@@ -80,36 +79,36 @@ public class VmInstanceController {
     }
 
     /**
-     * Get VM instances by workspace
+     * Get VM instances by project
      */
-    @GetMapping("/workspace/{workspaceId}")
-    public ResponseEntity<ApiResponse<Page<VmInstance>>> getVmInstancesByWorkspace(
-            @PathVariable String workspaceId,
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<ApiResponse<Page<VmInstance>>> getVmInstancesByProject(
+            @PathVariable String projectId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserDetails userDetails) {
         
         try {
-            // TODO: Add authorization check - user should have access to workspace
+            // TODO: Add authorization check - user should have access to project
             
             Pageable pageable = PageRequest.of(page, size);
-            Page<VmInstance> vmInstances = vmInstanceRepository.findByWorkspaceId(workspaceId, pageable);
+            Page<VmInstance> vmInstances = vmInstanceRepository.findByProjectId(projectId, pageable);
             
             return ResponseEntity.ok(ApiResponse.success("VM instances retrieved successfully", vmInstances));
 
         } catch (Exception e) {
-            logger.error("Failed to get VM instances for workspace {}: {}", workspaceId, e.getMessage(), e);
+            logger.error("Failed to get VM instances for project {}: {}", projectId, e.getMessage(), e);
             return ResponseEntity.internalServerError()
                 .body(ApiResponse.error("Failed to get VM instances: " + e.getMessage()));
         }
     }
 
     /**
-     * Get available VM instances by workspace and type
+     * Get available VM instances by project and type
      */
-    @GetMapping("/workspace/{workspaceId}/available")
+    @GetMapping("/project/{projectId}/available")
     public ResponseEntity<ApiResponse<List<VmInstance>>> getAvailableVmInstances(
-            @PathVariable String workspaceId,
+            @PathVariable String projectId,
             @RequestParam(required = false) String vmType,
             @AuthenticationPrincipal UserDetails userDetails) {
         
@@ -118,15 +117,15 @@ public class VmInstanceController {
             
             List<VmInstance> vmInstances;
             if (vmType != null) {
-                vmInstances = vmInstanceRepository.findAvailableVmsByTypeInWorkspace(workspaceId, vmType);
+                vmInstances = vmInstanceRepository.findAvailableVmsByTypeForProject(projectId, vmType);
             } else {
-                vmInstances = vmInstanceRepository.findAvailableVmsInWorkspace(workspaceId);
+                vmInstances = vmInstanceRepository.findAvailableVmsForProject(projectId);
             }
             
             return ResponseEntity.ok(ApiResponse.success("Available VM instances retrieved", vmInstances));
 
         } catch (Exception e) {
-            logger.error("Failed to get available VM instances for workspace {}: {}", workspaceId, e.getMessage(), e);
+            logger.error("Failed to get available VM instances for project {}: {}", projectId, e.getMessage(), e);
             return ResponseEntity.internalServerError()
                 .body(ApiResponse.error("Failed to get available VM instances: " + e.getMessage()));
         }
@@ -211,8 +210,7 @@ public class VmInstanceController {
             maskedInstance.setAzureClientId(vmInstance.getAzureClientId());
             maskedInstance.setAzureClientSecret("***"); // Mask secret
             maskedInstance.setStatus(vmInstance.getStatus());
-            maskedInstance.setWorkspaceId(vmInstance.getWorkspaceId());
-            maskedInstance.setOrganizationId(vmInstance.getOrganizationId());
+            maskedInstance.setProjectId(vmInstance.getProjectId());
             maskedInstance.setCreatedAt(vmInstance.getCreatedAt());
             maskedInstance.setDescription(vmInstance.getDescription());
             
@@ -251,7 +249,7 @@ public class VmInstanceController {
 
             vmInstanceRepository.delete(vmInstance);
             
-            logger.info("Deleted VM instance: {} from workspace: {}", vmInstanceId, vmInstance.getWorkspaceId());
+            logger.info("Deleted VM instance: {} from project: {}", vmInstanceId, vmInstance.getProjectId());
             
             return ResponseEntity.ok(ApiResponse.success("VM instance deleted successfully", null));
 
@@ -288,11 +286,8 @@ public class VmInstanceController {
         @NotBlank(message = "Azure client secret is required")
         private String azureClientSecret;
         
-        @NotBlank(message = "Workspace ID is required")
-        private String workspaceId;
-        
-        @NotBlank(message = "Organization ID is required")
-        private String organizationId;
+        @NotBlank(message = "Project ID is required")
+        private String projectId;
         
         private String azureRegion;
         private String description;
@@ -322,11 +317,8 @@ public class VmInstanceController {
         public String getAzureClientSecret() { return azureClientSecret; }
         public void setAzureClientSecret(String azureClientSecret) { this.azureClientSecret = azureClientSecret; }
         
-        public String getWorkspaceId() { return workspaceId; }
-        public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
-        
-        public String getOrganizationId() { return organizationId; }
-        public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
+        public String getProjectId() { return projectId; }
+        public void setProjectId(String projectId) { this.projectId = projectId; }
         
         public String getAzureRegion() { return azureRegion; }
         public void setAzureRegion(String azureRegion) { this.azureRegion = azureRegion; }
