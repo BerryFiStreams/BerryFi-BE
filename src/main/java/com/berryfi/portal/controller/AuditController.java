@@ -227,4 +227,155 @@ public class AuditController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    // ====================
+    // WORKSPACE-LEVEL AUDIT ENDPOINTS
+    // ====================
+
+    /**
+     * Get audit logs for a specific workspace.
+     * GET /audit/workspaces/{workspaceId}/logs
+     */
+    @GetMapping("/workspaces/{workspaceId}/logs")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_WORKSPACE_ADMIN')")
+    public ResponseEntity<Page<AuditLogResponse>> getWorkspaceAuditLogs(
+            @PathVariable String workspaceId,
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String resource,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            
+            // Get organization ID from workspace ID (you might need to add this logic)
+            // For now, using null which means the service will need to handle workspace-specific queries
+            Page<AuditLogResponse> auditLogs = auditService.getAuditLogs(
+                    null, workspaceId, userId, action, resource, startDate, endDate, pageable);
+            
+            return ResponseEntity.ok(auditLogs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // ====================
+    // VM SESSION AUDIT ENDPOINTS
+    // ====================
+
+    /**
+     * Get VM session audit logs for a workspace.
+     * GET /audit/workspaces/{workspaceId}/vm-sessions
+     */
+    @GetMapping("/workspaces/{workspaceId}/vm-sessions")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_WORKSPACE_ADMIN')")
+    public ResponseEntity<Page<VMSessionAuditLogResponse>> getVMSessionAuditLogs(
+            @PathVariable String workspaceId,
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String sessionId,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String vmInstanceId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<VMSessionAuditLogResponse> auditLogs = auditService.getVMSessionAuditLogs(
+                    workspaceId, userId, sessionId, action, vmInstanceId, 
+                    startDate, endDate, status, pageable);
+            
+            return ResponseEntity.ok(auditLogs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Get VM session audit logs for an organization (org-level access).
+     * GET /audit/organizations/{organizationId}/vm-sessions
+     */
+    @GetMapping("/organizations/{organizationId}/vm-sessions")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_ORG_OWNER')")
+    public ResponseEntity<Page<VMSessionAuditLogResponse>> getOrganizationVMSessionAuditLogs(
+            @PathVariable String organizationId,
+            @RequestParam(required = false) String workspaceId,
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String sessionId,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String vmInstanceId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<VMSessionAuditLogResponse> auditLogs = auditService.getVMSessionAuditLogsByOrganization(
+                    organizationId, workspaceId, userId, sessionId, action, vmInstanceId,
+                    startDate, endDate, status, pageable);
+            
+            return ResponseEntity.ok(auditLogs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Get VM session audit statistics for a workspace.
+     * GET /audit/workspaces/{workspaceId}/vm-sessions/stats
+     */
+    @GetMapping("/workspaces/{workspaceId}/vm-sessions/stats")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_WORKSPACE_ADMIN')")
+    public ResponseEntity<VMSessionAuditStatsResponse> getVMSessionAuditStats(
+            @PathVariable String workspaceId) {
+        try {
+            VMSessionAuditStatsResponse stats = auditService.getVMSessionAuditStats(workspaceId);
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Get current user's VM session audit logs in their workspaces.
+     * GET /audit/my-vm-sessions
+     */
+    @GetMapping("/my-vm-sessions")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Page<VMSessionAuditLogResponse>> getMyVMSessionAuditLogs(
+            @RequestParam(required = false) String workspaceId,
+            @RequestParam(required = false) String sessionId,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            User currentUser = authService.getUserByEmail(
+                org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getName());
+            
+            if (workspaceId == null) {
+                // If no workspace specified, get from user's organization
+                Pageable pageable = PageRequest.of(page, size);
+                Page<VMSessionAuditLogResponse> auditLogs = auditService.getVMSessionAuditLogsByOrganization(
+                    currentUser.getOrganizationId(), null, currentUser.getId(), sessionId, action, null,
+                    startDate, endDate, null, pageable);
+                return ResponseEntity.ok(auditLogs);
+            } else {
+                // Specific workspace
+                Pageable pageable = PageRequest.of(page, size);
+                Page<VMSessionAuditLogResponse> auditLogs = auditService.getVMSessionAuditLogs(
+                    workspaceId, currentUser.getId(), sessionId, action, null, 
+                    startDate, endDate, null, pageable);
+                return ResponseEntity.ok(auditLogs);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }

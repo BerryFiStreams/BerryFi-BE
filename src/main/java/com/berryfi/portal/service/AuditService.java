@@ -2,8 +2,12 @@ package com.berryfi.portal.service;
 
 import com.berryfi.portal.dto.audit.*;
 import com.berryfi.portal.entity.AuditLog;
+import com.berryfi.portal.entity.VMSessionAuditLog;
+import com.berryfi.portal.entity.VmSession;
 import com.berryfi.portal.repository.AuditLogRepository;
+import com.berryfi.portal.repository.VMSessionAuditLogRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -23,6 +27,9 @@ public class AuditService {
     private AuditLogRepository auditLogRepository;
 
     @Autowired
+    private VMSessionAuditLogRepository vmSessionAuditLogRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
@@ -34,12 +41,21 @@ public class AuditService {
     public Page<AuditLogResponse> getAuditLogs(String organizationId, String userId, String action, 
                                              String resource, String startDate, String endDate, 
                                              Pageable pageable) {
+        return getAuditLogs(organizationId, null, userId, action, resource, startDate, endDate, pageable);
+    }
+
+    /**
+     * Get audit logs with workspace support.
+     */
+    public Page<AuditLogResponse> getAuditLogs(String organizationId, String workspaceId, String userId, 
+                                             String action, String resource, String startDate, String endDate, 
+                                             Pageable pageable) {
         try {
             LocalDateTime start = startDate != null ? LocalDateTime.parse(startDate + "T00:00:00") : null;
             LocalDateTime end = endDate != null ? LocalDateTime.parse(endDate + "T23:59:59") : null;
 
             Page<AuditLog> auditLogs = auditLogRepository.findWithFilters(
-                organizationId, userId, action, resource, start, end, pageable);
+                organizationId, workspaceId, userId, action, resource, start, end, pageable);
 
             return auditLogs.map(this::convertToResponse);
         } catch (Exception e) {
@@ -200,8 +216,265 @@ public class AuditService {
     public List<String> getActionTypes() {
         return Arrays.asList(
             "CREATE", "UPDATE", "DELETE", "VIEW", "LOGIN", "LOGOUT", 
-            "EXPORT", "IMPORT", "DEPLOY", "STOP", "START", "PAUSE", "RESUME", "URL_ACCESS"
+            "EXPORT", "IMPORT", "DEPLOY", "STOP", "START", "PAUSE", "RESUME", "URL_ACCESS",
+            "VM_SESSION_START", "VM_SESSION_STOP", "VM_SESSION_PAUSE", "VM_SESSION_RESUME", 
+            "VM_SESSION_TERMINATE", "VM_SESSION_HEARTBEAT"
         );
+    }
+
+    // ====================
+    // VM SESSION AUDIT METHODS
+    // ====================
+
+    /**
+     * Log VM session audit event.
+     */
+    public void logVMSessionAudit(VMSessionAuditLog auditLog) {
+        try {
+            vmSessionAuditLogRepository.save(auditLog);
+        } catch (Exception e) {
+            // Log the error but don't fail the main operation
+            System.err.println("Failed to save VM session audit log: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get VM session audit logs for a workspace.
+     */
+    public Page<VMSessionAuditLogResponse> getVMSessionAuditLogs(String workspaceId, String userId, 
+                                                               String sessionId, String action, String vmInstanceId,
+                                                               String startDate, String endDate, String status,
+                                                               Pageable pageable) {
+        try {
+            LocalDateTime start = startDate != null ? LocalDateTime.parse(startDate + "T00:00:00") : null;
+            LocalDateTime end = endDate != null ? LocalDateTime.parse(endDate + "T23:59:59") : null;
+
+            Page<VMSessionAuditLog> auditLogs = vmSessionAuditLogRepository.findByWorkspaceWithFilters(
+                workspaceId, userId, sessionId, action, vmInstanceId, start, end, status, pageable);
+
+            return auditLogs.map(this::convertVMSessionToResponse);
+        } catch (Exception e) {
+            // Return empty page on error
+            return Page.empty(pageable);
+        }
+    }
+
+    /**
+     * Get VM session audit logs for an organization (org-level access).
+     */
+    public Page<VMSessionAuditLogResponse> getVMSessionAuditLogsByOrganization(String organizationId, 
+                                                                             String workspaceId, String userId,
+                                                                             String sessionId, String action, 
+                                                                             String vmInstanceId, String startDate, 
+                                                                             String endDate, String status,
+                                                                             Pageable pageable) {
+        try {
+            LocalDateTime start = startDate != null ? LocalDateTime.parse(startDate + "T00:00:00") : null;
+            LocalDateTime end = endDate != null ? LocalDateTime.parse(endDate + "T23:59:59") : null;
+
+            Page<VMSessionAuditLog> auditLogs = vmSessionAuditLogRepository.findByOrganizationWithFilters(
+                organizationId, workspaceId, userId, sessionId, action, vmInstanceId, start, end, status, pageable);
+
+            return auditLogs.map(this::convertVMSessionToResponse);
+        } catch (Exception e) {
+            return Page.empty(pageable);
+        }
+    }
+
+    /**
+     * Get VM session audit statistics for workspace.
+     */
+    public VMSessionAuditStatsResponse getVMSessionAuditStats(String workspaceId) {
+        try {
+            long totalLogs = vmSessionAuditLogRepository.countByWorkspaceId(workspaceId);
+            
+            // Get action counts
+            List<Object[]> actionCounts = vmSessionAuditLogRepository.getActionCountsByWorkspace(workspaceId);
+            Map<String, Long> actionMap = new HashMap<>();
+            for (Object[] row : actionCounts) {
+                actionMap.put((String) row[0], (Long) row[1]);
+            }
+
+            // Get user activity
+            List<Object[]> userActivity = vmSessionAuditLogRepository.getUserActivityByWorkspace(workspaceId);
+            Map<String, Long> userMap = new HashMap<>();
+            for (Object[] row : userActivity) {
+                String userName = (String) row[1];
+                Long count = (Long) row[2];
+                userMap.put(userName != null ? userName : "Unknown", count);
+            }
+
+            // Get VM instance activity
+            List<Object[]> vmActivity = vmSessionAuditLogRepository.getVmInstanceActivityByWorkspace(workspaceId);
+            Map<String, Long> vmMap = new HashMap<>();
+            for (Object[] row : vmActivity) {
+                String vmId = (String) row[0];
+                Long count = (Long) row[2];
+                vmMap.put(vmId != null ? vmId : "Unknown", count);
+            }
+
+            Double totalCreditsUsed = vmSessionAuditLogRepository.getTotalCreditsUsedByWorkspace(workspaceId);
+
+            return new VMSessionAuditStatsResponse(
+                totalLogs, actionMap, userMap, vmMap, 
+                totalCreditsUsed != null ? totalCreditsUsed : 0.0
+            );
+        } catch (Exception e) {
+            return new VMSessionAuditStatsResponse(0L, new HashMap<>(), new HashMap<>(), 
+                                                 new HashMap<>(), 0.0);
+        }
+    }
+
+    /**
+     * Convert VMSessionAuditLog to response DTO.
+     */
+    private VMSessionAuditLogResponse convertVMSessionToResponse(VMSessionAuditLog auditLog) {
+        Map<String, Object> details = new HashMap<>();
+        if (auditLog.getDetails() != null) {
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> parsedDetails = objectMapper.readValue(auditLog.getDetails(), Map.class);
+                details = parsedDetails;
+            } catch (Exception e) {
+                details.put("raw", auditLog.getDetails());
+            }
+        }
+
+        return new VMSessionAuditLogResponse(
+            auditLog.getId(),
+            auditLog.getUserId(),
+            auditLog.getUserName(),
+            auditLog.getUserEmail(),
+            auditLog.getOrganizationId(),
+            auditLog.getWorkspaceId(),
+            auditLog.getWorkspaceName(),
+            auditLog.getProjectId(),
+            auditLog.getProjectName(),
+            auditLog.getSessionId(),
+            auditLog.getVmInstanceId(),
+            auditLog.getVmInstanceType(),
+            auditLog.getAction(),
+            auditLog.getResource(),
+            auditLog.getResourceId(),
+            details,
+            auditLog.getIpAddress(),
+            auditLog.getUserAgent(),
+            auditLog.getTimestamp(),
+            auditLog.getStatus(),
+            auditLog.getErrorMessage(),
+            auditLog.getSessionDurationSeconds(),
+            auditLog.getCreditsUsed(),
+            auditLog.getSessionStatus() != null ? auditLog.getSessionStatus().toString() : null,
+            auditLog.getVmIpAddress(),
+            auditLog.getVmPort(),
+            auditLog.getConnectionUrl(),
+            auditLog.getTerminationReason(),
+            auditLog.getHeartbeatCount(),
+            auditLog.getClientCountry(),
+            auditLog.getClientCity()
+        );
+    }
+
+    // ====================
+    // CONVENIENCE METHODS FOR LOGGING ACTIONS
+    // ====================
+
+    /**
+     * Log an organization-level action.
+     */
+    public void logOrganizationAction(String userId, String userName, String organizationId, 
+                                    String action, String resource, String resourceId, 
+                                    String details, HttpServletRequest request) {
+        try {
+            AuditLog auditLog = new AuditLog(userId, userName, organizationId, action, resource, resourceId);
+            auditLog.setDetails(details);
+            
+            if (request != null) {
+                auditLog.setIpAddress(getClientIpAddress(request));
+                auditLog.setUserAgent(request.getHeader("User-Agent"));
+                auditLog.setSessionId(request.getSession().getId());
+            }
+            
+            auditLogRepository.save(auditLog);
+        } catch (Exception e) {
+            // Log error but don't fail main operation
+            System.err.println("Failed to save organization audit log: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Log a workspace-level action.
+     */
+    public void logWorkspaceAction(String userId, String userName, String organizationId, String workspaceId,
+                                 String action, String resource, String resourceId, 
+                                 String details, HttpServletRequest request) {
+        try {
+            AuditLog auditLog = new AuditLog(userId, userName, organizationId, workspaceId, action, resource, resourceId);
+            auditLog.setDetails(details);
+            
+            if (request != null) {
+                auditLog.setIpAddress(getClientIpAddress(request));
+                auditLog.setUserAgent(request.getHeader("User-Agent"));
+                auditLog.setSessionId(request.getSession().getId());
+            }
+            
+            auditLogRepository.save(auditLog);
+        } catch (Exception e) {
+            System.err.println("Failed to save workspace audit log: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Log a VM session action.
+     */
+    public void logVMSessionAction(VmSession session, String userName, String userEmail, 
+                                 String workspaceName, String projectName, String action,
+                                 String details) {
+        try {
+            VMSessionAuditLog auditLog = new VMSessionAuditLog(
+                session.getUserId(), userName, userEmail, session.getOrganizationId(),
+                session.getWorkspaceId(), workspaceName, action
+            );
+            
+            auditLog.setSessionId(session.getId());
+            auditLog.setVmInstanceId(session.getVmInstanceId());
+            auditLog.setProjectId(session.getProjectId());
+            auditLog.setProjectName(projectName);
+            auditLog.setResourceId(session.getId());
+            auditLog.setDetails(details);
+            auditLog.setIpAddress(session.getClientIpAddress());
+            auditLog.setUserAgent(session.getUserAgent());
+            auditLog.setClientCountry(session.getClientCountry());
+            auditLog.setClientCity(session.getClientCity());
+            auditLog.setSessionStatus(session.getStatus());
+            auditLog.setSessionDurationSeconds(session.getDurationInSeconds());
+            auditLog.setCreditsUsed(session.getCreditsUsed());
+            auditLog.setHeartbeatCount(session.getHeartbeatCount());
+            auditLog.setVmIpAddress(session.getVmIpAddress());
+            auditLog.setVmPort(session.getVmPort());
+            auditLog.setConnectionUrl(session.getConnectionUrl());
+            
+            vmSessionAuditLogRepository.save(auditLog);
+        } catch (Exception e) {
+            System.err.println("Failed to save VM session audit log: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Extract client IP address from request.
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        
+        return request.getRemoteAddr();
     }
 
     /**
@@ -221,6 +494,7 @@ public class AuditService {
             
             Page<AuditLog> auditLogs = auditLogRepository.findWithFilters(
                 request.getOrganizationId(), 
+                null, // workspaceId - not used in export for now
                 request.getUserId(), 
                 request.getAction(), 
                 request.getResource(), 

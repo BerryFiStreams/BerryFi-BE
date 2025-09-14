@@ -33,6 +33,16 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, String> {
     Page<AuditLog> findByUserIdAndOrganizationIdOrderByTimestampDesc(String userId, String organizationId, Pageable pageable);
 
     /**
+     * Find audit logs by workspace ID.
+     */
+    Page<AuditLog> findByWorkspaceIdOrderByTimestampDesc(String workspaceId, Pageable pageable);
+
+    /**
+     * Find audit logs by user ID and workspace ID.
+     */
+    Page<AuditLog> findByUserIdAndWorkspaceIdOrderByTimestampDesc(String userId, String workspaceId, Pageable pageable);
+
+    /**
      * Find audit logs by action and organization ID.
      */
     Page<AuditLog> findByActionAndOrganizationIdOrderByTimestampDesc(String action, String organizationId, Pageable pageable);
@@ -58,6 +68,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, String> {
      */
     @Query("SELECT a FROM AuditLog a WHERE " +
            "(:organizationId IS NULL OR a.organizationId = :organizationId) AND " +
+           "(:workspaceId IS NULL OR a.workspaceId = :workspaceId) AND " +
            "(:userId IS NULL OR a.userId = :userId) AND " +
            "(:action IS NULL OR a.action = :action) AND " +
            "(:resource IS NULL OR a.resource = :resource) AND " +
@@ -65,6 +76,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, String> {
            "(:endDate IS NULL OR a.timestamp <= :endDate) " +
            "ORDER BY a.timestamp DESC")
     Page<AuditLog> findWithFilters(@Param("organizationId") String organizationId,
+                                   @Param("workspaceId") String workspaceId,
                                    @Param("userId") String userId,
                                    @Param("action") String action,
                                    @Param("resource") String resource,
@@ -81,6 +93,16 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, String> {
      * Count logs by action and organization.
      */
     long countByActionAndOrganizationId(String action, String organizationId);
+
+    /**
+     * Count total logs by workspace.
+     */
+    long countByWorkspaceId(String workspaceId);
+
+    /**
+     * Count logs by action and workspace.
+     */
+    long countByActionAndWorkspaceId(String action, String workspaceId);
 
     /**
      * Get URL access count for a project and user.

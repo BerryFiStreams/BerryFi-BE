@@ -1,5 +1,7 @@
 package com.berryfi.portal.controller;
 
+import com.berryfi.portal.annotation.OrganizationAudit;
+import com.berryfi.portal.annotation.WorkspaceAudit;
 import com.berryfi.portal.dto.workspace.*;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.service.WorkspaceService;
@@ -35,6 +37,7 @@ public class WorkspaceController {
      * GET /api/workspaces
      */
     @GetMapping
+    @OrganizationAudit(action = "VIEW", resource = "WORKSPACE", description = "List workspaces")
     public ResponseEntity<ApiResponse<List<WorkspaceResponse>>> getWorkspaces(
             @AuthenticationPrincipal User currentUser) {
 
@@ -50,6 +53,7 @@ public class WorkspaceController {
      * POST /api/workspaces
      */
     @PostMapping
+    @OrganizationAudit(action = "CREATE", resource = "WORKSPACE", description = "Create new workspace", includeRequestParams = true, includeResponse = true)
     public ResponseEntity<ApiResponse<WorkspaceResponse>> createWorkspace(
             @Valid @RequestBody CreateWorkspaceRequest request,
             @AuthenticationPrincipal User currentUser) {
@@ -67,6 +71,7 @@ public class WorkspaceController {
      * GET /api/workspaces/stats
      */
     @GetMapping("/stats")
+    @OrganizationAudit(action = "VIEW", resource = "WORKSPACE_STATS", description = "View workspace statistics")
     public ResponseEntity<ApiResponse<WorkspaceService.WorkspaceStatistics>> getWorkspaceStatistics(
             @AuthenticationPrincipal User currentUser) {
 

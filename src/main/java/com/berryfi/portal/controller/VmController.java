@@ -1,5 +1,6 @@
 package com.berryfi.portal.controller;
 
+import com.berryfi.portal.annotation.VMSessionAudit;
 import com.berryfi.portal.dto.ApiResponse;
 import com.berryfi.portal.entity.VmSession;
 import com.berryfi.portal.entity.VmInstance;
@@ -44,6 +45,7 @@ public class VmController {
      * Start a VM session
      */
     @PostMapping("/sessions/start")
+    @VMSessionAudit(action = "VM_SESSION_START", description = "Start VM session", includeSessionDetails = true)
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> startSession(
             @RequestBody @Valid StartVmSessionRequest request,
             HttpServletRequest httpRequest) {
@@ -106,6 +108,7 @@ public class VmController {
      * Stop a VM session
      */
     @PostMapping("/sessions/{sessionId}/stop")
+    @VMSessionAudit(action = "VM_SESSION_STOP", description = "Stop VM session", includeMetrics = true)
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> stopSession(
             @PathVariable String sessionId,
             @RequestBody(required = false) StopVmSessionRequest request) {
@@ -140,6 +143,7 @@ public class VmController {
      * Submit heartbeat for a session
      */
     @PostMapping("/sessions/{sessionId}/heartbeat")
+    @VMSessionAudit(action = "VM_SESSION_HEARTBEAT", description = "VM session heartbeat")
     public ResponseEntity<ApiResponse<String>> submitHeartbeat(
             @PathVariable String sessionId,
             @RequestBody @Valid HeartbeatRequest request) {
@@ -226,6 +230,7 @@ public class VmController {
      * Force terminate session (admin endpoint)
      */
     @PostMapping("/sessions/{sessionId}/terminate")
+    @VMSessionAudit(action = "VM_SESSION_TERMINATE", description = "Force terminate VM session", includeMetrics = true)
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> terminateSession(
             @PathVariable String sessionId,
             @RequestBody @Valid TerminateSessionRequest request) {
