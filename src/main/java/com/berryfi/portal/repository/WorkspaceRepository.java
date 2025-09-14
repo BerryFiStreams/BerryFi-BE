@@ -79,6 +79,11 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, String> {
      * Find workspaces created by a specific user.
      */
     Page<Workspace> findByCreatedBy(String createdBy, Pageable pageable);
+    
+    /**
+     * Find workspaces by created by user ID and organization ID.
+     */
+    List<Workspace> findByCreatedByAndOrganizationId(String createdByUserId, String organizationId);
 
     /**
      * Find workspaces created after a specific date.

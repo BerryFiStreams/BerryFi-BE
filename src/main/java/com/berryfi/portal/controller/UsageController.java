@@ -19,7 +19,7 @@ import java.util.List;
  * REST Controller for usage tracking and analytics - workspace-based approach.
  */
 @RestController
-@RequestMapping("/usage")
+@RequestMapping("/api/usage")
 @CrossOrigin(origins = "*")
 public class UsageController {
 
@@ -28,7 +28,7 @@ public class UsageController {
 
     /**
      * Get usage sessions for user's entitled workspaces - workspace-based approach
-     * GET /usage/sessions?workspaceId=xxx&projectId=xxx&userId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
+     * GET /api/usage/sessions?workspaceId=xxx&projectId=xxx&userId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
      */
     @GetMapping("/sessions")
     public ResponseEntity<Page<UsageSessionDto>> getUsageSessions(
@@ -51,7 +51,7 @@ public class UsageController {
 
     /**
      * Get active sessions for user's entitled workspaces
-     * GET /usage/sessions/active
+     * GET /api/usage/sessions/active
      */
     @GetMapping("/sessions/active")
     public ResponseEntity<List<UsageSessionDto>> getActiveSessions(
@@ -66,7 +66,7 @@ public class UsageController {
 
     /**
      * Get usage statistics for user's entitled workspaces within date range
-     * GET /usage/statistics?startDate=xxx&endDate=xxx
+     * GET /api/usage/statistics?startDate=xxx&endDate=xxx
      */
     @GetMapping("/statistics")
     public ResponseEntity<UsageAnalyticsDto> getUsageStatistics(
@@ -84,7 +84,7 @@ public class UsageController {
 
     /**
      * Get usage analytics for user's entitled workspaces
-     * GET /usage/analytics?workspaceId=xxx&projectId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
+     * GET /api/usage/analytics?workspaceId=xxx&projectId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
      */
     @GetMapping("/analytics")
     public ResponseEntity<Page<UsageAnalyticsDto>> getUsageAnalytics(
@@ -106,7 +106,7 @@ public class UsageController {
 
     /**
      * Generate daily analytics for user's entitled workspaces
-     * POST /usage/analytics/generate
+     * POST /api/usage/analytics/generate
      */
     @PostMapping("/analytics/generate")
     public ResponseEntity<List<UsageAnalyticsDto>> generateDailyAnalytics(

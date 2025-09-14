@@ -179,6 +179,12 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
     List<VmSession> findLongRunningSessions(@Param("cutoffTime") LocalDateTime cutoffTime);
 
     /**
+     * Find sessions by multiple workspace IDs (for entitled workspaces)
+     */
+    @Query("SELECT s FROM VmSession s WHERE s.workspaceId IN :workspaceIds ORDER BY s.startTime DESC")
+    Page<VmSession> findByWorkspaceIdsOrderByStartTimeDesc(@Param("workspaceIds") List<String> workspaceIds, Pageable pageable);
+
+    /**
      * Find user's current active session
      */
     @Query("SELECT s FROM VmSession s WHERE s.userId = :userId AND s.status IN ('REQUESTED', 'STARTING', 'ACTIVE') ORDER BY s.startTime DESC")

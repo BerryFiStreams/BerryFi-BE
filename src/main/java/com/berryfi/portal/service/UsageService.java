@@ -12,9 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -130,7 +128,11 @@ public class UsageService {
             vmSessions = vmSessionRepository.findSessionsByDateRange(startDate, endDate, pageable);
         } else {
             // Get all sessions for entitled workspaces
-            vmSessions = Page.empty(pageable); // For now, we need a method to get sessions by workspace IDs
+            if (entitledWorkspaces.isEmpty()) {
+                vmSessions = Page.empty(pageable);
+            } else {
+                vmSessions = vmSessionRepository.findByWorkspaceIdsOrderByStartTimeDesc(entitledWorkspaces, pageable);
+            }
         }
 
         return vmSessions.map(this::convertVmSessionToDto);
@@ -340,11 +342,34 @@ public class UsageService {
      * Get list of workspace IDs the user is entitled to
      */
     private List<String> getUserEntitledWorkspaces(User user) {
+        // Get workspaces through team membership
         List<TeamMember> teamMembers = teamMemberRepository.findActiveWorkspacesForUser(user.getId());
-        return teamMembers.stream()
+        List<String> memberWorkspaces = teamMembers.stream()
                 .map(TeamMember::getWorkspaceId)
                 .filter(workspaceId -> workspaceId != null)
                 .collect(Collectors.toList());
+        
+        // Get workspaces where user is the admin/creator
+        List<Workspace> adminWorkspaces = workspaceRepository.findByAdminEmailAndOrganizationId(
+            user.getEmail(), user.getOrganizationId());
+        List<String> adminWorkspaceIds = adminWorkspaces.stream()
+                .map(Workspace::getId)
+                .collect(Collectors.toList());
+        
+        // Get workspaces created by the user
+        List<Workspace> createdWorkspaces = workspaceRepository.findByCreatedByAndOrganizationId(
+            user.getId(), user.getOrganizationId());
+        List<String> createdWorkspaceIds = createdWorkspaces.stream()
+                .map(Workspace::getId)
+                .collect(Collectors.toList());
+        
+        // Combine and deduplicate
+        Set<String> allWorkspaces = new HashSet<>();
+        allWorkspaces.addAll(memberWorkspaces);
+        allWorkspaces.addAll(adminWorkspaceIds);
+        allWorkspaces.addAll(createdWorkspaceIds);
+        
+        return new ArrayList<>(allWorkspaces);
     }
 
     /**
@@ -352,7 +377,22 @@ public class UsageService {
      */
     private boolean isUserEntitledToWorkspace(User user, String workspaceId) {
         if (workspaceId == null) return false;
-        return teamMemberRepository.existsByUserIdAndWorkspaceId(user.getId(), workspaceId);
+        
+        // Check team membership
+        if (teamMemberRepository.existsByUserIdAndWorkspaceId(user.getId(), workspaceId)) {
+            return true;
+        }
+        
+        // Check workspace ownership/creation
+        Optional<Workspace> workspace = workspaceRepository.findById(workspaceId);
+        if (workspace.isPresent()) {
+            Workspace ws = workspace.get();
+            // Check if user is admin or creator of the workspace in the same organization
+            return user.getOrganizationId().equals(ws.getOrganizationId()) && 
+                   (user.getEmail().equals(ws.getAdminEmail()) || user.getId().equals(ws.getCreatedBy()));
+        }
+        
+        return false;
     }
 
     /**

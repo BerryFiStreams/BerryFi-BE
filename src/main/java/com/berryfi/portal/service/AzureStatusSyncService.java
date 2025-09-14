@@ -86,17 +86,17 @@ public class AzureStatusSyncService {
         lastActiveSyncTime = syncStartTime;
         
         try {
-            logger.info("Starting active sessions sync #{} at {}", syncRun, syncStartTime);
+            logger.debug("Starting active sessions sync #{} at {}", syncRun, syncStartTime);
             
             // Get all active sessions
             List<VmSession> activeSessions = vmSessionRepository.findActiveSessions();
             
             if (activeSessions.isEmpty()) {
-                logger.info("Active sessions sync #{}: No active sessions found", syncRun);
+                logger.debug("Active sessions sync #{}: No active sessions found", syncRun);
                 return;
             }
             
-            logger.info("Active sessions sync #{}: Found {} active sessions to check", 
+            logger.debug("Active sessions sync #{}: Found {} active sessions to check", 
                 syncRun, activeSessions.size());
             
             int successCount = 0;
@@ -124,8 +124,13 @@ public class AzureStatusSyncService {
             LocalDateTime syncEndTime = LocalDateTime.now();
             long durationMs = java.time.Duration.between(syncStartTime, syncEndTime).toMillis();
             
-            logger.info("Active sessions sync #{} completed in {}ms: {} successful, {} errors, {} mismatches found", 
-                syncRun, durationMs, successCount, errorCount, mismatchCount);
+            if (mismatchCount > 0 || errorCount > 0) {
+                logger.info("Active sessions sync #{} completed in {}ms: {} successful, {} errors, {} mismatches found", 
+                    syncRun, durationMs, successCount, errorCount, mismatchCount);
+            } else {
+                logger.debug("Active sessions sync #{} completed in {}ms: {} successful, {} errors, {} mismatches found", 
+                    syncRun, durationMs, successCount, errorCount, mismatchCount);
+            }
                 
         } catch (Exception e) {
             logger.error("Active sessions sync #{} failed: {}", syncRun, e.getMessage(), e);
@@ -148,17 +153,17 @@ public class AzureStatusSyncService {
         lastFullSyncTime = syncStartTime;
         
         try {
-            logger.info("Starting full VM status sync #{} at {}", syncRun, syncStartTime);
+            logger.debug("Starting full VM status sync #{} at {}", syncRun, syncStartTime);
             
             // Get all managed VMs (those that need Azure monitoring)
             List<VmInstance> managedVms = vmInstanceRepository.findManagedVmsForSync();
             
             if (managedVms.isEmpty()) {
-                logger.info("Full VM sync #{}: No managed VMs found to sync", syncRun);
+                logger.debug("Full VM sync #{}: No managed VMs found to sync", syncRun);
                 return;
             }
             
-            logger.info("Full VM sync #{}: Found {} managed VMs to check", syncRun, managedVms.size());
+            logger.debug("Full VM sync #{}: Found {} managed VMs to check", syncRun, managedVms.size());
             
             int successCount = 0;
             int errorCount = 0;
@@ -206,8 +211,13 @@ public class AzureStatusSyncService {
             LocalDateTime syncEndTime = LocalDateTime.now();
             long durationMs = java.time.Duration.between(syncStartTime, syncEndTime).toMillis();
             
-            logger.info("Full VM sync #{} completed in {}ms: {} successful, {} errors, {} status updates", 
-                syncRun, durationMs, successCount, errorCount, statusUpdatesCount);
+            if (statusUpdatesCount > 0 || errorCount > 0) {
+                logger.info("Full VM sync #{} completed in {}ms: {} successful, {} errors, {} status updates", 
+                    syncRun, durationMs, successCount, errorCount, statusUpdatesCount);
+            } else {
+                logger.debug("Full VM sync #{} completed in {}ms: {} successful, {} errors, {} status updates", 
+                    syncRun, durationMs, successCount, errorCount, statusUpdatesCount);
+            }
                 
         } catch (Exception e) {
             logger.error("Full VM sync #{} failed: {}", syncRun, e.getMessage(), e);
