@@ -7,6 +7,7 @@ import com.berryfi.portal.entity.Workspace;
 import com.berryfi.portal.enums.ProjectStatus;
 import com.berryfi.portal.exception.ResourceNotFoundException;
 import com.berryfi.portal.repository.ProjectRepository;
+import com.berryfi.portal.repository.VmSessionRepository;
 import com.berryfi.portal.repository.WorkspaceRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -43,6 +44,9 @@ public class ProjectService {
 
     @Autowired
     private UrlTrackingService urlTrackingService;
+
+    @Autowired
+    private VmSessionRepository vmSessionRepository;
 
     /**
      * Create a new project.
@@ -87,6 +91,21 @@ public class ProjectService {
         return projectRepository.findByOrganizationId(organizationId, pageable)
                 .map(project -> {
                     ProjectSummary summary = ProjectSummary.from(project);
+                    
+                    // Calculate real statistics from VM sessions
+                    String projectId = project.getId();
+                    Double totalCreditsUsed = vmSessionRepository.getTotalCreditsUsedByProjectAllTime(projectId);
+                    Long sessionsCount = vmSessionRepository.countSessionsByProject(projectId);
+                    Long totalDurationSeconds = vmSessionRepository.getTotalDurationSecondsByProject(projectId);
+                    
+                    // Calculate uptime as total duration in hours
+                    Double uptime = totalDurationSeconds != null ? totalDurationSeconds / 3600.0 : 0.0;
+                    
+                    // Override with real calculated statistics
+                    summary.setTotalCreditsUsed(totalCreditsUsed != null ? totalCreditsUsed : 0.0);
+                    summary.setSessionsCount(sessionsCount != null ? sessionsCount.intValue() : 0);
+                    summary.setUptime(uptime);
+                    
                     // Generate user-specific tracking URL
                     if (project.getLinks() != null && !project.getLinks().trim().isEmpty()) {
                         String trackingUrl = urlTrackingService.generateTrackingUrl(
@@ -112,7 +131,23 @@ public class ProjectService {
         }
         
         Project project = projectOpt.get();
-        List<ProjectSummary> projectList = List.of(ProjectSummary.from(project));
+        ProjectSummary summary = ProjectSummary.from(project);
+        
+        // Calculate real statistics from VM sessions
+        String projectId = project.getId();
+        Double totalCreditsUsed = vmSessionRepository.getTotalCreditsUsedByProjectAllTime(projectId);
+        Long sessionsCount = vmSessionRepository.countSessionsByProject(projectId);
+        Long totalDurationSeconds = vmSessionRepository.getTotalDurationSecondsByProject(projectId);
+        
+        // Calculate uptime as total duration in hours
+        Double uptime = totalDurationSeconds != null ? totalDurationSeconds / 3600.0 : 0.0;
+        
+        // Override with real calculated statistics
+        summary.setTotalCreditsUsed(totalCreditsUsed != null ? totalCreditsUsed : 0.0);
+        summary.setSessionsCount(sessionsCount != null ? sessionsCount.intValue() : 0);
+        summary.setUptime(uptime);
+        
+        List<ProjectSummary> projectList = List.of(summary);
         return new PageImpl<>(projectList, pageable, 1);
     }
 
@@ -124,7 +159,28 @@ public class ProjectService {
         logger.debug("Fetching project: {}", projectId);
 
         Project project = findProjectWithAccess(projectId, currentUser);
-        return ProjectResponse.from(project);
+        
+        // Calculate real statistics from VM sessions
+        Double totalCreditsUsed = vmSessionRepository.getTotalCreditsUsedByProjectAllTime(projectId);
+        Long sessionsCount = vmSessionRepository.countSessionsByProject(projectId);
+        Long totalDurationSeconds = vmSessionRepository.getTotalDurationSecondsByProject(projectId);
+        
+        // Calculate uptime as a percentage (total duration / total possible time)
+        // For this example, we'll calculate uptime as total duration in hours
+        Double uptime = totalDurationSeconds != null ? totalDurationSeconds / 3600.0 : 0.0;
+        
+        // Create response from project entity
+        ProjectResponse response = ProjectResponse.from(project);
+        
+        // Override with real calculated statistics
+        response.setTotalCreditsUsed(totalCreditsUsed != null ? totalCreditsUsed : 0.0);
+        response.setSessionsCount(sessionsCount != null ? sessionsCount.intValue() : 0);
+        response.setUptime(uptime);
+        
+        logger.debug("Project {} statistics: credits={}, sessions={}, uptime={}", 
+                    projectId, totalCreditsUsed, sessionsCount, uptime);
+        
+        return response;
     }
 
     /**
@@ -271,6 +327,21 @@ public class ProjectService {
         return projectRepository.searchProjects(organizationId, keyword, pageable)
                 .map(project -> {
                     ProjectSummary summary = ProjectSummary.from(project);
+                    
+                    // Calculate real statistics from VM sessions
+                    String projectId = project.getId();
+                    Double totalCreditsUsed = vmSessionRepository.getTotalCreditsUsedByProjectAllTime(projectId);
+                    Long sessionsCount = vmSessionRepository.countSessionsByProject(projectId);
+                    Long totalDurationSeconds = vmSessionRepository.getTotalDurationSecondsByProject(projectId);
+                    
+                    // Calculate uptime as total duration in hours
+                    Double uptime = totalDurationSeconds != null ? totalDurationSeconds / 3600.0 : 0.0;
+                    
+                    // Override with real calculated statistics
+                    summary.setTotalCreditsUsed(totalCreditsUsed != null ? totalCreditsUsed : 0.0);
+                    summary.setSessionsCount(sessionsCount != null ? sessionsCount.intValue() : 0);
+                    summary.setUptime(uptime);
+                    
                     // Generate user-specific tracking URL
                     if (project.getLinks() != null && !project.getLinks().trim().isEmpty()) {
                         String trackingUrl = urlTrackingService.generateTrackingUrl(

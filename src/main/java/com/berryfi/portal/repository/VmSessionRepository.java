@@ -133,6 +133,24 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
                                       @Param("endDate") LocalDateTime endDate);
 
     /**
+     * Get total credits used by project (all time) - COMPLETED sessions only
+     */
+    @Query("SELECT COALESCE(SUM(s.creditsUsed), 0.0) FROM VmSession s WHERE s.projectId = :projectId AND s.status = 'COMPLETED'")
+    Double getTotalCreditsUsedByProjectAllTime(@Param("projectId") String projectId);
+
+    /**
+     * Count total sessions by project (all time) - COMPLETED sessions only
+     */
+    @Query("SELECT COUNT(s) FROM VmSession s WHERE s.projectId = :projectId AND s.status = 'COMPLETED'")
+    Long countSessionsByProject(@Param("projectId") String projectId);
+
+    /**
+     * Get total duration in seconds by project (all time) - COMPLETED sessions only
+     */
+    @Query("SELECT COALESCE(SUM(s.durationSeconds), 0) FROM VmSession s WHERE s.projectId = :projectId AND s.status = 'COMPLETED' AND s.durationSeconds IS NOT NULL")
+    Long getTotalDurationSecondsByProject(@Param("projectId") String projectId);
+
+    /**
      * Get session usage statistics for workspace
      */
     @Query("SELECT " +
