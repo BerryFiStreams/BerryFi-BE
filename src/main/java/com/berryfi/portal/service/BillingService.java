@@ -38,6 +38,9 @@ public class BillingService {
     @Autowired
     private PricingService pricingService;
 
+    @Autowired
+    private WorkspaceRepository workspaceRepository;
+
     /**
      * Get billing balance for organization
      */
@@ -451,5 +454,160 @@ public class BillingService {
     private String generateInvoiceNumber() {
         return "INV-" + LocalDate.now().getYear() + "-" + 
                String.format("%06d", System.currentTimeMillis() % 1000000);
+    }
+
+    /**
+     * Allocate credits from Organization to Workspace
+     */
+    public BillingTransactionDto allocateCreditsToWorkspace(String organizationId, String workspaceId, 
+                                                          Double amount, String adminName, String description) {
+        try {
+            // Validate workspace belongs to organization
+            Optional<Workspace> workspaceOpt = workspaceRepository.findById(workspaceId);
+            if (workspaceOpt.isEmpty()) {
+                throw new RuntimeException("Workspace not found: " + workspaceId);
+            }
+            
+            Workspace workspace = workspaceOpt.get();
+            if (!workspace.getOrganizationId().equals(organizationId)) {
+                throw new RuntimeException("Workspace does not belong to organization");
+            }
+
+            // Check organization has sufficient credits
+            Double orgCurrentBalance = getCurrentBalance(organizationId);
+            if (orgCurrentBalance < amount) {
+                throw new RuntimeException("Insufficient credits in organization balance");
+            }
+
+            // Deduct from organization balance
+            Double newOrgBalance = orgCurrentBalance - amount;
+
+            // Add credits to workspace
+            workspace.addPurchasedCredits(amount);
+            workspaceRepository.save(workspace);
+
+            // Create allocation transaction for organization (debit)
+            String enhancedDescription = String.format("Credit allocation by %s: %.2f credits allocated to workspace '%s' (%s). %s", 
+                    adminName, amount, workspace.getName(), workspaceId, description != null ? description : "");
+
+            BillingTransaction transaction = new BillingTransaction();
+            transaction.setId(UUID.randomUUID().toString());
+            transaction.setOrganizationId(organizationId);
+            transaction.setWorkspaceId(workspaceId);
+            transaction.setType(TransactionType.ALLOCATION);
+            transaction.setAmount(-amount);
+            transaction.setResultingBalance(newOrgBalance);
+            transaction.setDescription(enhancedDescription);
+            transaction.setProcessedBy(adminName);
+            transaction.setDate(LocalDateTime.now());
+            transaction.setStatus("completed");
+
+            transaction = billingTransactionRepository.save(transaction);
+            return convertToTransactionDto(transaction);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to allocate credits to workspace: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Record VM usage for a project and deduct credits from workspace
+     */
+    public BillingTransactionDto recordVmUsageForProject(String projectId, String vmType, 
+                                                       Double durationInSeconds, String sessionId) {
+        try {
+            // This method would need ProjectRepository - for now, let's assume we get the workspace info
+            // In a real implementation, you'd inject ProjectRepository and get the project
+            
+            // Calculate credits used
+            Double creditsUsed = pricingService.calculateVmUsageCredits(vmType, durationInSeconds);
+            Double creditsPerMinute = pricingService.getCurrentCreditsPerMinuteForVm(vmType);
+            
+            double minutes = durationInSeconds / 60.0;
+            String description = String.format("VM Usage - Project: %s, VM: %s, Duration: %.2f min (%.0f seconds) @ %.2f credits/min = %.2f credits. Session: %s", 
+                    projectId, vmType, minutes, durationInSeconds, creditsPerMinute, creditsUsed, sessionId);
+
+            // For now, we'll need the workspace info to be passed
+            // This is a placeholder that would need the full project-workspace relationship
+            throw new RuntimeException("This method needs ProjectRepository to get workspace info from projectId");
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to record VM usage for project: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Record VM usage for a workspace directly (when we have workspace info)
+     */
+    public BillingTransactionDto recordVmUsageForWorkspace(String workspaceId, String projectId, String vmType, 
+                                                         Double durationInSeconds, String sessionId) {
+        try {
+            // Get workspace
+            Optional<Workspace> workspaceOpt = workspaceRepository.findById(workspaceId);
+            if (workspaceOpt.isEmpty()) {
+                throw new RuntimeException("Workspace not found: " + workspaceId);
+            }
+            
+            Workspace workspace = workspaceOpt.get();
+            
+            // Calculate credits used
+            Double creditsUsed = pricingService.calculateVmUsageCredits(vmType, durationInSeconds);
+            Double creditsPerMinute = pricingService.getCurrentCreditsPerMinuteForVm(vmType);
+
+            // Check workspace has sufficient credits
+            if (workspace.getCurrentBalance() < creditsUsed) {
+                throw new RuntimeException("Insufficient credits in workspace balance");
+            }
+
+            // Deduct credits from workspace
+            workspace.addCreditsUsed(creditsUsed);
+            workspaceRepository.save(workspace);
+
+            // Create billing transaction at organization level
+            double minutes = durationInSeconds / 60.0;
+            String description = String.format("VM Usage - Workspace: %s, Project: %s, VM: %s, Duration: %.2f min (%.0f seconds) @ %.2f credits/min = %.2f credits. Session: %s", 
+                    workspaceId, projectId, vmType, minutes, durationInSeconds, creditsPerMinute, creditsUsed, sessionId);
+
+            BillingTransaction transaction = new BillingTransaction();
+            transaction.setId(UUID.randomUUID().toString());
+            transaction.setOrganizationId(workspace.getOrganizationId());
+            transaction.setWorkspaceId(workspaceId);
+            transaction.setType(TransactionType.USAGE);
+            transaction.setAmount(-creditsUsed);
+            transaction.setResultingBalance(workspace.getCurrentBalance());
+            transaction.setDescription(description);
+            transaction.setReference(sessionId);
+            transaction.setVmType(vmType);
+            transaction.setDurationSeconds(durationInSeconds);
+            transaction.setCreditsPerMinute(creditsPerMinute);
+            transaction.setDate(LocalDateTime.now());
+            transaction.setStatus("completed");
+
+            transaction = billingTransactionRepository.save(transaction);
+            return convertToTransactionDto(transaction);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to record VM usage for workspace: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Get workspace credit balance
+     */
+    public Double getWorkspaceBalance(String workspaceId) {
+        Optional<Workspace> workspaceOpt = workspaceRepository.findById(workspaceId);
+        if (workspaceOpt.isEmpty()) {
+            throw new RuntimeException("Workspace not found: " + workspaceId);
+        }
+        return workspaceOpt.get().getCurrentBalance();
+    }
+
+    /**
+     * Check if workspace has sufficient credits for VM usage
+     */
+    public boolean hasWorkspaceSufficientCredits(String workspaceId, String vmType, Double durationInSeconds) {
+        Double requiredCredits = pricingService.calculateVmUsageCredits(vmType, durationInSeconds);
+        Double currentBalance = getWorkspaceBalance(workspaceId);
+        return currentBalance >= requiredCredits;
     }
 }

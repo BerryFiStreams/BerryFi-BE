@@ -114,6 +114,33 @@
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>2.7.0</version>
 		</dependency>
+		
+		<!-- Azure SDK for VM management -->
+		<dependency>
+			<groupId>com.azure.resourcemanager</groupId>
+			<artifactId>azure-resourcemanager</artifactId>
+			<version>2.54.0</version>
+		</dependency>
+		
+		<!-- Azure Identity for authentication -->
+		<dependency>
+			<groupId>com.azure</groupId>
+			<artifactId>azure-identity</artifactId>
+			<version>1.15.0</version>
+		</dependency>
+		
+		<!-- HTTP client for Azure -->
+		<dependency>
+			<groupId>com.azure</groupId>
+			<artifactId>azure-core-http-okhttp</artifactId>
+			<version>1.12.9</version>
+		</dependency>
+		
+		<!-- Task scheduling -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-quartz</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
