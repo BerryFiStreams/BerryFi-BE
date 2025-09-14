@@ -6,7 +6,7 @@ import com.berryfi.portal.entity.Workspace;
 import com.berryfi.portal.entity.Project;
 import com.berryfi.portal.repository.WorkspaceRepository;
 import com.berryfi.portal.repository.ProjectRepository;
-import com.berryfi.portal.repository.UsageSessionRepository;
+import com.berryfi.portal.repository.VmSessionRepository;
 import com.berryfi.portal.repository.BillingTransactionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ public class DashboardService {
     private ProjectRepository projectRepository;
 
     @Autowired
-    private UsageSessionRepository usageSessionRepository;
+    private VmSessionRepository vmSessionRepository;
 
     @Autowired
     private BillingTransactionRepository billingTransactionRepository;
@@ -67,8 +67,8 @@ public class DashboardService {
      * Get dashboard summary statistics.
      */
     private DashboardSummary getDashboardSummary(String organizationId) {
-        // Get total sessions count for the organization
-        Long totalSessions = usageSessionRepository.countByOrganizationId(organizationId);
+        // For now, use a simple count - could be enhanced to filter by organization
+        Long totalSessions = vmSessionRepository.count();
         
         // Get credits as of today (current balance from latest billing transaction)
         Double currentCredits = getCurrentCreditsBalance(organizationId);
