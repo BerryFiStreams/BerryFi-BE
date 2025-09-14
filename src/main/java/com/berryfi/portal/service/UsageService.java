@@ -95,9 +95,13 @@ public class UsageService {
      */
     public Page<UsageSessionDto> getUsageSessionsForUser(User currentUser, String workspaceId, 
                                                        String projectId, String userId, 
-                                                       LocalDateTime startDate, LocalDateTime endDate,
+                                                       LocalDate startDate, LocalDate endDate,
                                                        int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
+        
+        // Convert LocalDate to LocalDateTime for database queries
+        LocalDateTime startDateTime = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = endDate != null ? endDate.atTime(23, 59, 59, 999_999_999) : null;
         
         // Get user's entitled workspace IDs
         List<String> entitledWorkspaces = getUserEntitledWorkspaces(currentUser);
@@ -120,12 +124,12 @@ public class UsageService {
                 return Page.empty(pageable);
             }
             vmSessions = vmSessionRepository.findByProjectIdOrderByStartTimeDesc(projectId, pageable);
-        } else if (userId != null && startDate != null && endDate != null) {
+        } else if (userId != null && startDateTime != null && endDateTime != null) {
             // Get sessions for specific user in date range, filtered by entitled workspaces
             vmSessions = vmSessionRepository.findByUserIdOrderByStartTimeDesc(userId, pageable);
-        } else if (startDate != null && endDate != null) {
+        } else if (startDateTime != null && endDateTime != null) {
             // Get sessions in date range for entitled workspaces
-            vmSessions = vmSessionRepository.findSessionsByDateRange(startDate, endDate, pageable);
+            vmSessions = vmSessionRepository.findSessionsByDateRange(startDateTime, endDateTime, pageable);
         } else {
             // Get all sessions for entitled workspaces
             if (entitledWorkspaces.isEmpty()) {
