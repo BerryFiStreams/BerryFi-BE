@@ -1,6 +1,7 @@
 package com.berryfi.portal.dto.billing;
 
 import com.berryfi.portal.enums.InvoiceStatus;
+import com.berryfi.portal.util.NumberFormatUtil;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -88,7 +89,7 @@ public class BillingInvoiceDto {
     }
 
     public Double getAmount() {
-        return amount;
+        return NumberFormatUtil.formatCurrency(amount);
     }
 
     public void setAmount(Double amount) {
@@ -96,7 +97,7 @@ public class BillingInvoiceDto {
     }
 
     public Double getTaxAmount() {
-        return taxAmount;
+        return NumberFormatUtil.formatCurrency(taxAmount);
     }
 
     public void setTaxAmount(Double taxAmount) {
@@ -104,7 +105,7 @@ public class BillingInvoiceDto {
     }
 
     public Double getTotalAmount() {
-        return totalAmount;
+        return NumberFormatUtil.formatCurrency(totalAmount);
     }
 
     public void setTotalAmount(Double totalAmount) {
@@ -235,7 +236,7 @@ public class BillingInvoiceDto {
         }
 
         public Double getUnitPrice() {
-            return unitPrice;
+            return NumberFormatUtil.formatCurrency(unitPrice);
         }
 
         public void setUnitPrice(Double unitPrice) {
@@ -243,7 +244,7 @@ public class BillingInvoiceDto {
         }
 
         public Double getAmount() {
-            return amount;
+            return NumberFormatUtil.formatCurrency(amount);
         }
 
         public void setAmount(Double amount) {
