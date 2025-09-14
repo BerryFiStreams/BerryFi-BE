@@ -42,7 +42,7 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
     /**
      * Find active sessions
      */
-    @Query("SELECT s FROM VmSession s WHERE s.status IN ('REQUESTED', 'STARTING', 'ACTIVE') ORDER BY s.startTime DESC")
+    @Query("SELECT s FROM VmSession s JOIN FETCH s.vmInstance WHERE s.status IN ('REQUESTED', 'STARTING', 'ACTIVE') ORDER BY s.startTime DESC")
     List<VmSession> findActiveSessions();
 
     /**
@@ -160,6 +160,6 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
     /**
      * Find active sessions that need Azure status synchronization
      */
-    @Query("SELECT s FROM VmSession s WHERE s.status IN ('ACTIVE', 'STARTING') ORDER BY s.lastHeartbeat ASC")
+    @Query("SELECT s FROM VmSession s JOIN FETCH s.vmInstance WHERE s.status IN ('ACTIVE', 'STARTING') ORDER BY s.lastHeartbeat ASC")
     List<VmSession> findActiveSessionsForSync();
 }

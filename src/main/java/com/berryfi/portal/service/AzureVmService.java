@@ -63,8 +63,9 @@ public class AzureVmService {
             PowerState currentState = virtualMachine.powerState();
             logger.debug("Current Azure VM power state: {}", currentState);
             
-            if (currentState == PowerState.RUNNING) {
-                logger.info("VM {} is already running in Azure", vm.getVmName());
+            String powerStateStr = currentState.toString();
+            if ("PowerState/running".equals(powerStateStr)) {
+                logger.info("VM {} is already running in Azure (state: {})", vm.getVmName(), powerStateStr);
                 return true;
             }
             
@@ -106,8 +107,11 @@ public class AzureVmService {
             PowerState currentState = virtualMachine.powerState();
             logger.debug("Current Azure VM power state: {}", currentState);
             
-            if (currentState == PowerState.STOPPED || currentState == PowerState.DEALLOCATED) {
-                logger.info("VM {} is already stopped in Azure", vm.getVmName());
+            String powerStateStr = currentState.toString();
+            if ("PowerState/stopped".equals(powerStateStr) || 
+                "PowerState/deallocated".equals(powerStateStr) || 
+                "PowerState/deallocating".equals(powerStateStr)) {
+                logger.info("VM {} is already stopped/deallocated in Azure (state: {})", vm.getVmName(), powerStateStr);
                 return true;
             }
             
