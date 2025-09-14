@@ -197,7 +197,7 @@ public class WorkspaceResponse {
     }
 
     public Double getBudgetUsagePercentage() {
-        return budgetUsagePercentage;
+        return NumberFormatUtil.formatPercentage(budgetUsagePercentage);
     }
 
     public void setBudgetUsagePercentage(Double budgetUsagePercentage) {

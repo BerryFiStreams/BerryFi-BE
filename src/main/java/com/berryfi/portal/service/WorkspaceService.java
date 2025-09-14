@@ -4,9 +4,11 @@ import com.berryfi.portal.dto.workspace.*;
 import com.berryfi.portal.entity.Project;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.entity.Workspace;
+import com.berryfi.portal.enums.SessionStatus;
 import com.berryfi.portal.enums.WorkspaceStatus;
 import com.berryfi.portal.exception.ResourceNotFoundException;
 import com.berryfi.portal.repository.ProjectRepository;
+import com.berryfi.portal.repository.VmSessionRepository;
 import com.berryfi.portal.repository.WorkspaceRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -17,6 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 
 /**
@@ -33,6 +37,9 @@ public class WorkspaceService {
 
     @Autowired
     private ProjectRepository projectRepository;
+
+    @Autowired
+    private VmSessionRepository vmSessionRepository;
 
     /**
      * Create a new workspace.
@@ -255,6 +262,20 @@ public class WorkspaceService {
     }
 
     /**
+     * Calculate sessions this month from VM sessions table.
+     */
+    private int calculateSessionsThisMonth(String workspaceId) {
+        // Get the start and end of current month
+        YearMonth currentMonth = YearMonth.now();
+        LocalDateTime startOfMonth = currentMonth.atDay(1).atStartOfDay();
+        LocalDateTime endOfMonth = currentMonth.atEndOfMonth().atTime(23, 59, 59);
+        
+        // Count COMPLETED sessions in the current month for this workspace
+        return vmSessionRepository.countByWorkspaceIdAndStatusAndStartTimeBetween(
+            workspaceId, SessionStatus.COMPLETED, startOfMonth, endOfMonth);
+    }
+
+    /**
      * Create WorkspaceResponse with project name lookup.
      */
     private WorkspaceResponse createWorkspaceResponseWithProjectName(Workspace workspace) {
@@ -267,6 +288,10 @@ public class WorkspaceService {
                     .orElse("Unknown Project");
             response.setProjectName(projectName);
         }
+        
+        // Calculate real-time sessions this month from VM sessions table
+        int sessionsThisMonth = calculateSessionsThisMonth(workspace.getId());
+        response.setSessionsThisMonth(sessionsThisMonth);
         
         return response;
     }

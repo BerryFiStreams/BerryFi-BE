@@ -104,6 +104,15 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
     long countByWorkspaceIdAndStatus(@Param("workspaceId") String workspaceId, @Param("status") SessionStatus status);
 
     /**
+     * Count sessions by status in workspace within date range
+     */
+    @Query("SELECT CAST(COUNT(s) as int) FROM VmSession s WHERE s.workspaceId = :workspaceId AND s.status = :status AND s.startTime BETWEEN :startDate AND :endDate")
+    int countByWorkspaceIdAndStatusAndStartTimeBetween(@Param("workspaceId") String workspaceId, 
+                                                      @Param("status") SessionStatus status,
+                                                      @Param("startDate") LocalDateTime startDate,
+                                                      @Param("endDate") LocalDateTime endDate);
+
+    /**
      * Count total sessions in workspace
      */
     long countByWorkspaceId(String workspaceId);
