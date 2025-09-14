@@ -63,6 +63,17 @@ public class VmSessionService {
         try {
             logger.info("Starting VM session for project: {}, user: {}, vmType: {}, clientIP: {}", 
                        projectId, userId, vmType, clientIpAddress);
+            
+            // Validate input parameters
+            if (projectId == null || projectId.isEmpty()) {
+                return VmSessionResult.error("Project ID cannot be null or empty");
+            }
+            if (userId == null || userId.isEmpty()) {
+                return VmSessionResult.error("User ID cannot be null or empty");
+            }
+            if (vmType == null || vmType.isEmpty()) {
+                return VmSessionResult.error("VM type cannot be null or empty");
+            }
 
             // Get project and validate
             Optional<Project> projectOpt = projectRepository.findById(projectId);
@@ -73,6 +84,16 @@ public class VmSessionService {
             Project project = projectOpt.get();
             String workspaceId = project.getWorkspaceId();
             String organizationId = project.getOrganizationId();
+            
+            // Validate project data
+            if (workspaceId == null || workspaceId.isEmpty()) {
+                logger.error("Project {} has null or empty workspace ID", projectId);
+                return VmSessionResult.error("Project has invalid workspace ID");
+            }
+            if (organizationId == null || organizationId.isEmpty()) {
+                logger.error("Project {} has null or empty organization ID", projectId);
+                return VmSessionResult.error("Project has invalid organization ID");
+            }
 
             // Check if user already has an active session
             Optional<VmSession> existingSession = vmSessionRepository.findUserActiveSession(userId);
@@ -87,6 +108,12 @@ public class VmSessionService {
             }
 
             VmInstance vm = availableVms.get(0); // Take the first available VM
+
+            // Validate VM has proper ID
+            if (vm.getId() == null || vm.getId().isEmpty()) {
+                logger.error("VM instance has null or empty ID: {}", vm);
+                return VmSessionResult.error("VM instance has invalid ID");
+            }
 
             // Check workspace has sufficient credits (estimate for 1 minute initially)
             if (!billingService.hasWorkspaceSufficientCredits(workspaceId, vmType, 60.0)) {

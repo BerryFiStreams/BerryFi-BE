@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -21,6 +23,17 @@ public class VmMonitoringService {
 
     @Autowired
     private VmSessionService vmSessionService;
+    
+    @Autowired
+    private AzureStatusSyncService azureStatusSyncService;
+
+    @PostConstruct
+    public void init() {
+        logger.info("VM Monitoring Service initialized - starting session monitoring schedulers");
+        logger.info("  - Timed-out sessions check: every 10 seconds");
+        logger.info("  - Long-running sessions check: every 10 minutes");
+        logger.info("  - Health statistics: every 1 hour");
+    }
 
     /**
      * Monitor for sessions that have timed out (no heartbeat)
@@ -104,8 +117,30 @@ public class VmMonitoringService {
     @Scheduled(fixedRate = 3600000) // 1 hour
     public void logVmSessionStatistics() {
         try {
-            // TODO: Add statistics gathering and logging
-            logger.info("VM monitoring service is running");
+            logger.info("=== VM Monitoring Service Health Check ===");
+            
+            // Get timed-out sessions
+            List<VmSession> timedOutSessions = vmSessionService.getTimedOutSessions();
+            logger.info("Current timed-out sessions: {}", timedOutSessions.size());
+            
+            // Get long-running sessions
+            List<VmSession> longRunningSessions = vmSessionService.getLongRunningSessions();
+            logger.info("Current long-running sessions: {}", longRunningSessions.size());
+            
+            // Get Azure sync stats if available
+            try {
+                AzureStatusSyncService.SyncStats syncStats = azureStatusSyncService.getSyncStats();
+                logger.info("Azure Status Sync: enabled={}, active_sync_runs={}, full_sync_runs={}, last_active_sync={}, last_full_sync={}", 
+                    syncStats.isEnabled(), 
+                    syncStats.getActiveSyncRuns(), 
+                    syncStats.getFullSyncRuns(),
+                    syncStats.getLastActiveSync(),
+                    syncStats.getLastFullSync());
+            } catch (Exception e) {
+                logger.warn("Could not get Azure sync statistics: {}", e.getMessage());
+            }
+            
+            logger.info("VM monitoring service is running normally");
             
         } catch (Exception e) {
             logger.error("Error logging VM session statistics: " + e.getMessage(), e);
