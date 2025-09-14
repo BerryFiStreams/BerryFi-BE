@@ -22,7 +22,10 @@ public class WorkspaceResponse {
     private Double monthlyBudget;
     private BudgetAction budgetAction;
     private String projectId;
+    
+    // Computed field - not stored in entity
     private String projectName;
+    
     private Integer teamMemberCount;
     private Integer sessionsThisMonth;
     private Double creditsUsedThisMonth;
@@ -51,7 +54,6 @@ public class WorkspaceResponse {
         this.monthlyBudget = workspace.getMonthlyBudget();
         this.budgetAction = workspace.getBudgetAction();
         this.projectId = workspace.getProjectId();
-        this.projectName = workspace.getProjectName();
         this.teamMemberCount = workspace.getTeamMemberCount();
         this.sessionsThisMonth = workspace.getSessionsThisMonth();
         this.creditsUsedThisMonth = workspace.getCreditsUsedThisMonth();

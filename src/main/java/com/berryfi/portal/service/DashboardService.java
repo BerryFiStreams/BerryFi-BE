@@ -123,12 +123,20 @@ public class DashboardService {
         // Calculate available credits (gifted + purchased - used)
         Double creditsAvailable = calculateAvailableCredits(workspace);
 
+        // Get project name if projectId exists
+        String projectName = null;
+        if (workspace.getProjectId() != null) {
+            projectName = projectRepository.findById(workspace.getProjectId())
+                    .map(Project::getName)
+                    .orElse("Unknown Project");
+        }
+
         return new RecentWorkspace(
             workspace.getId(),
             workspace.getName(),
             workspace.getDescription(),
             creditsAvailable,
-            workspace.getProjectName(),
+            projectName,
             workspace.getTeamMemberCount(),
             workspace.getStatus(),
             workspace.getCreatedAt(),

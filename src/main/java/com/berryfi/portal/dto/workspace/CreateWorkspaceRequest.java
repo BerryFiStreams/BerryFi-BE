@@ -31,6 +31,9 @@ public class CreateWorkspaceRequest {
     @PositiveOrZero(message = "Purchased credits must be positive or zero")
     private Double purchasedCredits;
 
+    @NotBlank(message = "Project ID is required")
+    private String projectId;
+
     public CreateWorkspaceRequest() {}
 
     public CreateWorkspaceRequest(String name, String description) {
@@ -101,5 +104,13 @@ public class CreateWorkspaceRequest {
 
     public void setPurchasedCredits(Double purchasedCredits) {
         this.purchasedCredits = purchasedCredits;
+    }
+
+    public String getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
     }
 }

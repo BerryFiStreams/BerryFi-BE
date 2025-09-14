@@ -57,16 +57,19 @@ public class VmSessionService {
     /**
      * Start a VM session for a project with client tracking information
      */
-    public VmSessionResult startVmSession(String projectId, String userId, String userEmail, String vmType,
+    public VmSessionResult startVmSession(String projectId, String workspaceId, String userId, String userEmail, String vmType,
                                          String username, String clientIpAddress, String clientCountry, 
                                          String clientCity, String userAgent) {
         try {
-            logger.info("Starting VM session for project: {}, user: {}, vmType: {}, clientIP: {}", 
-                       projectId, userId, vmType, clientIpAddress);
+            logger.info("Starting VM session for project: {}, workspace: {}, user: {}, vmType: {}, clientIP: {}", 
+                       projectId, workspaceId, userId, vmType, clientIpAddress);
             
             // Validate input parameters
             if (projectId == null || projectId.isEmpty()) {
                 return VmSessionResult.error("Project ID cannot be null or empty");
+            }
+            if (workspaceId == null || workspaceId.isEmpty()) {
+                return VmSessionResult.error("Workspace ID cannot be null or empty");
             }
             if (userId == null || userId.isEmpty()) {
                 return VmSessionResult.error("User ID cannot be null or empty");
@@ -82,17 +85,23 @@ public class VmSessionService {
             }
 
             Project project = projectOpt.get();
-            String workspaceId = project.getWorkspaceId();
+            String projectWorkspaceId = project.getWorkspaceId();
             String organizationId = project.getOrganizationId();
             
             // Validate project data
-            if (workspaceId == null || workspaceId.isEmpty()) {
+            if (projectWorkspaceId == null || projectWorkspaceId.isEmpty()) {
                 logger.error("Project {} has null or empty workspace ID", projectId);
                 return VmSessionResult.error("Project has invalid workspace ID");
             }
             if (organizationId == null || organizationId.isEmpty()) {
                 logger.error("Project {} has null or empty organization ID", projectId);
                 return VmSessionResult.error("Project has invalid organization ID");
+            }
+            
+            // Validate that the provided workspaceId matches the project's workspace
+            if (!workspaceId.equals(projectWorkspaceId)) {
+                logger.error("Provided workspace ID {} does not match project's workspace ID {}", workspaceId, projectWorkspaceId);
+                return VmSessionResult.error("Workspace ID does not match the project's workspace");
             }
 
             // Check if user already has an active session
@@ -167,7 +176,20 @@ public class VmSessionService {
      * Start a VM session for a project (backward compatibility)
      */
     public VmSessionResult startVmSession(String projectId, String userId, String userEmail, String vmType) {
-        return startVmSession(projectId, userId, userEmail, vmType, null, null, null, null, null);
+        // For backward compatibility, fetch workspaceId from project
+        Optional<Project> projectOpt = projectRepository.findById(projectId);
+        if (projectOpt.isEmpty()) {
+            return VmSessionResult.error("Project not found: " + projectId);
+        }
+        
+        Project project = projectOpt.get();
+        String workspaceId = project.getWorkspaceId();
+        
+        if (workspaceId == null || workspaceId.isEmpty()) {
+            return VmSessionResult.error("Project has invalid workspace ID");
+        }
+        
+        return startVmSession(projectId, workspaceId, userId, userEmail, vmType, null, null, null, null, null);
     }
 
     /**

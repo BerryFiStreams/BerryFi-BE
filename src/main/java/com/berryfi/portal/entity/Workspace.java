@@ -59,11 +59,9 @@ public class Workspace {
     @Column(name = "budget_action", nullable = false)
     private BudgetAction budgetAction = BudgetAction.ALERT;
 
-    @Column(name = "project_id")
+    @NotBlank(message = "Project ID is required")
+    @Column(name = "project_id", nullable = false)
     private String projectId;
-
-    @Column(name = "project_name")
-    private String projectName;
 
     @Column(name = "team_member_count")
     private Integer teamMemberCount = 0;
@@ -110,13 +108,15 @@ public class Workspace {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public Workspace(String name, String description, String organizationId, String adminEmail, String adminName, String createdBy) {
+    public Workspace(String name, String description, String organizationId, String adminEmail, String adminName, 
+                    String projectId, String createdBy) {
         this();
         this.name = name;
         this.description = description;
         this.organizationId = organizationId;
         this.adminEmail = adminEmail;
         this.adminName = adminName;
+        this.projectId = projectId;
         this.createdBy = createdBy;
     }
 
@@ -276,14 +276,6 @@ public class Workspace {
 
     public void setProjectId(String projectId) {
         this.projectId = projectId;
-    }
-
-    public String getProjectName() {
-        return projectName;
-    }
-
-    public void setProjectName(String projectName) {
-        this.projectName = projectName;
     }
 
     public Integer getTeamMemberCount() {

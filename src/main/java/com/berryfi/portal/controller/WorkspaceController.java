@@ -127,9 +127,8 @@ public class WorkspaceController {
         logger.info("Updating workspace {} with project", workspaceId);
 
         String projectId = projectRequest.get("projectId");
-        String projectName = projectRequest.get("projectName");
 
-        workspaceService.updateWorkspaceProject(workspaceId, projectId, projectName, currentUser);
+        workspaceService.updateWorkspaceProject(workspaceId, projectId, currentUser);
 
         return ResponseEntity.ok(new ApiResponse<>(true, "Project association updated successfully"));
     }

@@ -1,10 +1,12 @@
 package com.berryfi.portal.service;
 
 import com.berryfi.portal.dto.workspace.*;
+import com.berryfi.portal.entity.Project;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.entity.Workspace;
 import com.berryfi.portal.enums.WorkspaceStatus;
 import com.berryfi.portal.exception.ResourceNotFoundException;
+import com.berryfi.portal.repository.ProjectRepository;
 import com.berryfi.portal.repository.WorkspaceRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -29,6 +31,9 @@ public class WorkspaceService {
     @Autowired
     private WorkspaceRepository workspaceRepository;
 
+    @Autowired
+    private ProjectRepository projectRepository;
+
     /**
      * Create a new workspace.
      */
@@ -41,12 +46,22 @@ public class WorkspaceService {
             throw new IllegalArgumentException("Workspace with name '" + request.getName() + "' already exists in this organization");
         }
 
+        // Validate and fetch project information
+        Project project = projectRepository.findById(request.getProjectId())
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + request.getProjectId()));
+        
+        // Validate project belongs to the same organization
+        if (!project.getOrganizationId().equals(currentUser.getOrganizationId())) {
+            throw new IllegalArgumentException("Project does not belong to your organization");
+        }
+
         Workspace workspace = new Workspace(
             request.getName(),
             request.getDescription(),
             currentUser.getOrganizationId(),
             request.getAdminEmail() != null ? request.getAdminEmail() : currentUser.getEmail(),
             request.getAdminName() != null ? request.getAdminName() : currentUser.getName(),
+            request.getProjectId(),
             currentUser.getId()
         );
 
@@ -76,9 +91,15 @@ public class WorkspaceService {
         workspace.setCurrentBalance(giftedBalance + purchasedBalance);
 
         Workspace savedWorkspace = workspaceRepository.save(workspace);
-        logger.info("Created workspace: {} with ID: {}", savedWorkspace.getName(), savedWorkspace.getId());
+        
+        // Set workspace ID on the project to complete the bidirectional relationship
+        project.setWorkspaceId(savedWorkspace.getId());
+        projectRepository.save(project);
+        
+        logger.info("Created workspace: {} with ID: {} and linked to project: {}", 
+                   savedWorkspace.getName(), savedWorkspace.getId(), project.getName());
 
-        return WorkspaceResponse.from(savedWorkspace);
+        return createWorkspaceResponse(savedWorkspace, project.getName());
     }
 
     /**
@@ -92,7 +113,7 @@ public class WorkspaceService {
             currentUser.getOrganizationId(), Pageable.unpaged()).getContent();
 
         return workspaces.stream()
-                .map(WorkspaceResponse::from)
+                .map(this::createWorkspaceResponseWithProjectName)
                 .toList();
     }
 
@@ -104,7 +125,7 @@ public class WorkspaceService {
         logger.debug("Fetching workspace: {}", workspaceId);
 
         Workspace workspace = findWorkspaceWithAccess(workspaceId, currentUser);
-        return WorkspaceResponse.from(workspace);
+        return createWorkspaceResponseWithProjectName(workspace);
     }
 
     /**
@@ -152,12 +173,11 @@ public class WorkspaceService {
      * Update workspace-project association.
      */
     @PreAuthorize("hasPermission('workspace', 'update')")
-    public void updateWorkspaceProject(String workspaceId, String projectId, String projectName, User currentUser) {
-        logger.info("Updating workspace {} with project: {} ({})", workspaceId, projectId, projectName);
+    public void updateWorkspaceProject(String workspaceId, String projectId, User currentUser) {
+        logger.info("Updating workspace {} with project: {}", workspaceId, projectId);
 
         Workspace workspace = findWorkspaceWithAccess(workspaceId, currentUser);
         workspace.setProjectId(projectId);
-        workspace.setProjectName(projectName);
 
         workspaceRepository.save(workspace);
         logger.info("Updated workspace {} with project association", workspaceId);
@@ -182,7 +202,7 @@ public class WorkspaceService {
         Workspace savedWorkspace = workspaceRepository.save(workspace);
         logger.info("Added credits to workspace {}", workspaceId);
 
-        return WorkspaceResponse.from(savedWorkspace);
+        return createWorkspaceResponseWithProjectName(savedWorkspace);
     }
 
     /**
@@ -236,6 +256,32 @@ public class WorkspaceService {
             return 0.0;
         }
         return (workspaceUsage / totalUsage) * 100.0;
+    }
+
+    /**
+     * Create WorkspaceResponse with project name lookup.
+     */
+    private WorkspaceResponse createWorkspaceResponseWithProjectName(Workspace workspace) {
+        WorkspaceResponse response = WorkspaceResponse.from(workspace);
+        
+        // Fetch project name if projectId exists
+        if (workspace.getProjectId() != null) {
+            String projectName = projectRepository.findById(workspace.getProjectId())
+                    .map(Project::getName)
+                    .orElse("Unknown Project");
+            response.setProjectName(projectName);
+        }
+        
+        return response;
+    }
+
+    /**
+     * Create WorkspaceResponse with known project name.
+     */
+    private WorkspaceResponse createWorkspaceResponse(Workspace workspace, String projectName) {
+        WorkspaceResponse response = WorkspaceResponse.from(workspace);
+        response.setProjectName(projectName);
+        return response;
     }
 
     /**
