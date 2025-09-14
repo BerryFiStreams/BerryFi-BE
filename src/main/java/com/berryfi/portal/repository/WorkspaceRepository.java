@@ -41,6 +41,11 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, String> {
     boolean existsByIdAndOrganizationId(String id, String organizationId);
 
     /**
+     * Find workspace by project ID.
+     */
+    Optional<Workspace> findByProjectId(String projectId);
+
+    /**
      * Check if workspace name exists in organization.
      */
     boolean existsByNameAndOrganizationId(String name, String organizationId);

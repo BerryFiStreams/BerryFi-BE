@@ -85,23 +85,26 @@ public class VmSessionService {
             }
 
             Project project = projectOpt.get();
-            String projectWorkspaceId = project.getWorkspaceId();
             String organizationId = project.getOrganizationId();
             
             // Validate project data
-            if (projectWorkspaceId == null || projectWorkspaceId.isEmpty()) {
-                logger.error("Project {} has null or empty workspace ID", projectId);
-                return VmSessionResult.error("Project has invalid workspace ID");
-            }
             if (organizationId == null || organizationId.isEmpty()) {
                 logger.error("Project {} has null or empty organization ID", projectId);
                 return VmSessionResult.error("Project has invalid organization ID");
             }
             
-            // Validate that the provided workspaceId matches the project's workspace
-            if (!workspaceId.equals(projectWorkspaceId)) {
-                logger.error("Provided workspace ID {} does not match project's workspace ID {}", workspaceId, projectWorkspaceId);
-                return VmSessionResult.error("Workspace ID does not match the project's workspace");
+            // Get workspace and validate
+            Optional<Workspace> workspaceOpt = workspaceRepository.findById(workspaceId);
+            if (workspaceOpt.isEmpty()) {
+                return VmSessionResult.error("Workspace not found: " + workspaceId);
+            }
+            
+            Workspace workspace = workspaceOpt.get();
+            
+            // Validate that the workspace belongs to the specified project
+            if (!projectId.equals(workspace.getProjectId())) {
+                logger.error("Workspace {} does not belong to project {}", workspaceId, projectId);
+                return VmSessionResult.error("Workspace does not belong to the specified project");
             }
 
             // Check if user already has an active session
@@ -176,18 +179,14 @@ public class VmSessionService {
      * Start a VM session for a project (backward compatibility)
      */
     public VmSessionResult startVmSession(String projectId, String userId, String userEmail, String vmType) {
-        // For backward compatibility, fetch workspaceId from project
-        Optional<Project> projectOpt = projectRepository.findById(projectId);
-        if (projectOpt.isEmpty()) {
-            return VmSessionResult.error("Project not found: " + projectId);
+        // For backward compatibility, fetch workspaceId from workspace that belongs to this project
+        Optional<Workspace> workspaceOpt = workspaceRepository.findByProjectId(projectId);
+        if (workspaceOpt.isEmpty()) {
+            return VmSessionResult.error("No workspace found for project: " + projectId);
         }
         
-        Project project = projectOpt.get();
-        String workspaceId = project.getWorkspaceId();
-        
-        if (workspaceId == null || workspaceId.isEmpty()) {
-            return VmSessionResult.error("Project has invalid workspace ID");
-        }
+        Workspace workspace = workspaceOpt.get();
+        String workspaceId = workspace.getId();
         
         return startVmSession(projectId, workspaceId, userId, userEmail, vmType, null, null, null, null, null);
     }

@@ -3,19 +3,24 @@ package com.berryfi.portal.service;
 import com.berryfi.portal.dto.project.*;
 import com.berryfi.portal.entity.Project;
 import com.berryfi.portal.entity.User;
+import com.berryfi.portal.entity.Workspace;
 import com.berryfi.portal.enums.ProjectStatus;
 import com.berryfi.portal.exception.ResourceNotFoundException;
 import com.berryfi.portal.repository.ProjectRepository;
+import com.berryfi.portal.repository.WorkspaceRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -29,6 +34,9 @@ public class ProjectService {
 
     @Autowired
     private ProjectRepository projectRepository;
+
+    @Autowired
+    private WorkspaceRepository workspaceRepository;
 
     @Autowired
     private WorkspaceService workspaceService;
@@ -96,8 +104,16 @@ public class ProjectService {
     public Page<ProjectSummary> getProjectsByWorkspace(String workspaceId, Pageable pageable, User currentUser) {
         logger.debug("Fetching projects for workspace: {}", workspaceId);
 
-        return projectRepository.findByWorkspaceId(workspaceId, pageable)
-                .map(ProjectSummary::from);
+        // Since workspace has projectId, we get the project assigned to this workspace
+        Optional<Project> projectOpt = projectRepository.findByWorkspaceId(workspaceId);
+        if (projectOpt.isEmpty()) {
+            // Return empty page if no project is assigned to this workspace
+            return Page.empty(pageable);
+        }
+        
+        Project project = projectOpt.get();
+        List<ProjectSummary> projectList = List.of(ProjectSummary.from(project));
+        return new PageImpl<>(projectList, pageable, 1);
     }
 
     /**
@@ -342,19 +358,23 @@ public class ProjectService {
      * Track project usage in workspace.
      */
     private void trackProjectUsageInWorkspace(Project project, double credits) {
-        if (project.getWorkspaceId() != null && !project.getWorkspaceId().trim().isEmpty()) {
-            try {
+        try {
+            // Find workspace that belongs to this project
+            Workspace workspace = workspaceRepository.findByProjectId(project.getId()).orElse(null);
+            if (workspace != null) {
                 // Create a system user for workspace operations
                 User systemUser = new User();
                 systemUser.setId("system");
                 systemUser.setOrganizationId(project.getOrganizationId());
                 
-                workspaceService.useCreditsFromWorkspace(project.getWorkspaceId(), credits, systemUser);
+                workspaceService.useCreditsFromWorkspace(workspace.getId(), credits, systemUser);
                 logger.debug("Tracked {} credits usage for project {} in workspace {}", 
-                           credits, project.getId(), project.getWorkspaceId());
-            } catch (Exception e) {
-                logger.warn("Failed to track usage in workspace: {}", e.getMessage());
+                           credits, project.getId(), workspace.getId());
+            } else {
+                logger.debug("No workspace found for project {}", project.getId());
             }
+        } catch (Exception e) {
+            logger.warn("Failed to track usage in workspace: {}", e.getMessage());
         }
     }
 
@@ -362,18 +382,22 @@ public class ProjectService {
      * Increment session count in workspace.
      */
     private void incrementWorkspaceSession(Project project) {
-        if (project.getWorkspaceId() != null && !project.getWorkspaceId().trim().isEmpty()) {
-            try {
+        try {
+            // Find workspace that belongs to this project
+            Workspace workspace = workspaceRepository.findByProjectId(project.getId()).orElse(null);
+            if (workspace != null) {
                 // Create a system user for workspace operations
                 User systemUser = new User();
                 systemUser.setId("system");
                 systemUser.setOrganizationId(project.getOrganizationId());
                 
-                workspaceService.incrementWorkspaceSession(project.getWorkspaceId(), systemUser);
-                logger.debug("Incremented session count for workspace {}", project.getWorkspaceId());
-            } catch (Exception e) {
-                logger.warn("Failed to increment workspace session: {}", e.getMessage());
+                workspaceService.incrementWorkspaceSession(workspace.getId(), systemUser);
+                logger.debug("Incremented session count for workspace {}", workspace.getId());
+            } else {
+                logger.debug("No workspace found for project {}", project.getId());
             }
+        } catch (Exception e) {
+            logger.warn("Failed to increment workspace session: {}", e.getMessage());
         }
     }
     /**

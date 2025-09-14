@@ -17,6 +17,9 @@ public class CreateCampaignRequest {
     @NotBlank(message = "Project ID is required")
     private String projectId;
     
+    @NotBlank(message = "Workspace ID is required")
+    private String workspaceId;
+    
     @NotNull(message = "Access type is required")
     private AccessType accessType;
     
@@ -48,6 +51,9 @@ public class CreateCampaignRequest {
     
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
+    
+    public String getWorkspaceId() { return workspaceId; }
+    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
     
     public AccessType getAccessType() { return accessType; }
     public void setAccessType(AccessType accessType) { this.accessType = accessType; }

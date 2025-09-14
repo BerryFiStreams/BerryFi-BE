@@ -16,7 +16,6 @@ public class ProjectResponse {
     private String description;
     private ProjectStatus status;
     private String productionUrl;
-    private String workspaceId;
     private String organizationId;
     private AccountType accountType;
     private Double totalCreditsUsed;
@@ -40,7 +39,6 @@ public class ProjectResponse {
         this.description = project.getDescription();
         this.status = project.getStatus();
         this.productionUrl = project.getProductionUrl();
-        this.workspaceId = project.getWorkspaceId();
         this.organizationId = project.getOrganizationId();
         this.accountType = project.getAccountType();
         this.totalCreditsUsed = project.getTotalCreditsUsed();
@@ -101,14 +99,6 @@ public class ProjectResponse {
 
     public void setProductionUrl(String productionUrl) {
         this.productionUrl = productionUrl;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
     }
 
     public String getOrganizationId() {

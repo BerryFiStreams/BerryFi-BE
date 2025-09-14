@@ -15,7 +15,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "projects", indexes = {
     @Index(name = "idx_project_organization", columnList = "organizationId"),
-    @Index(name = "idx_project_workspace", columnList = "workspaceId"),
     @Index(name = "idx_project_status", columnList = "status")
 })
 public class Project {
@@ -38,9 +37,6 @@ public class Project {
 
     @Column(name = "production_url")
     private String productionUrl;
-
-    @Column(name = "workspace_id")
-    private String workspaceId;
 
     @NotBlank(message = "Organization ID is required")
     @Column(name = "organization_id", nullable = false)
@@ -185,14 +181,6 @@ public class Project {
 
     public void setProductionUrl(String productionUrl) {
         this.productionUrl = productionUrl;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
     }
 
     public String getOrganizationId() {

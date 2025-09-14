@@ -157,19 +157,20 @@ public class DashboardService {
      * Convert Project entity to RecentProject DTO.
      */
     private RecentProject convertToRecentProject(Project project) {
-        // Get workspace name if project is associated with a workspace
+        // Get workspace that belongs to this project
+        String workspaceId = null;
         String workspaceName = null;
-        if (project.getWorkspaceId() != null) {
-            workspaceName = workspaceRepository.findById(project.getWorkspaceId())
-                    .map(Workspace::getName)
-                    .orElse(null);
+        Workspace workspace = workspaceRepository.findByProjectId(project.getId()).orElse(null);
+        if (workspace != null) {
+            workspaceId = workspace.getId();
+            workspaceName = workspace.getName();
         }
 
         return new RecentProject(
             project.getId(),
             project.getName(),
             project.getDescription(),
-            project.getWorkspaceId(),
+            workspaceId,
             workspaceName,
             project.getTotalCreditsUsed(),
             project.getSessionsCount(),

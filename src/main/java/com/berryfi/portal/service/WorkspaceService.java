@@ -92,10 +92,6 @@ public class WorkspaceService {
 
         Workspace savedWorkspace = workspaceRepository.save(workspace);
         
-        // Set workspace ID on the project to complete the bidirectional relationship
-        project.setWorkspaceId(savedWorkspace.getId());
-        projectRepository.save(project);
-        
         logger.info("Created workspace: {} with ID: {} and linked to project: {}", 
                    savedWorkspace.getName(), savedWorkspace.getId(), project.getName());
 

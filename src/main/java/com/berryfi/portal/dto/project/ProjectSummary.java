@@ -17,7 +17,6 @@ public class ProjectSummary {
     private ProjectStatus status;
     private String productionUrl;
     private String trackingUrl; // User-specific tracking URL
-    private String workspaceId;
     private String organizationId;
     private AccountType accountType;
     private Double totalCreditsUsed;
@@ -38,7 +37,6 @@ public class ProjectSummary {
         this.status = project.getStatus();
         this.productionUrl = project.getLinks(); // Return links as productionUrl
         this.trackingUrl = null; // Will be set by service layer for user-specific URLs
-        this.workspaceId = project.getWorkspaceId();
         this.organizationId = project.getOrganizationId();
         this.accountType = project.getAccountType();
         this.totalCreditsUsed = project.getTotalCreditsUsed();
@@ -103,14 +101,6 @@ public class ProjectSummary {
 
     public void setTrackingUrl(String trackingUrl) {
         this.trackingUrl = trackingUrl;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
     }
 
     public String getOrganizationId() {

@@ -5,10 +5,12 @@ import com.berryfi.portal.dto.team.CreateCampaignRequest;
 import com.berryfi.portal.dto.team.UpdateCampaignRequest;
 import com.berryfi.portal.entity.Campaign;
 import com.berryfi.portal.entity.Project;
+import com.berryfi.portal.entity.Workspace;
 import com.berryfi.portal.enums.AccessType;
 import com.berryfi.portal.enums.CampaignStatus;
 import com.berryfi.portal.repository.CampaignRepository;
 import com.berryfi.portal.repository.ProjectRepository;
+import com.berryfi.portal.repository.WorkspaceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,13 +31,28 @@ public class CampaignService {
     @Autowired
     private ProjectRepository projectRepository;
     
+    @Autowired
+    private WorkspaceRepository workspaceRepository;
+    
     /**
      * Create a new campaign.
      */
     public CampaignResponse createCampaign(CreateCampaignRequest request, String userId, String organizationId) {
         // Validate project exists
-        Project project = projectRepository.findById(request.getProjectId())
-            .orElseThrow(() -> new RuntimeException("Project not found"));
+        Project project = projectRepository.findById(request.getProjectId()).orElse(null);
+        if (project == null) {
+            throw new IllegalArgumentException("Project not found: " + request.getProjectId());
+        }
+        
+        // Validate that the workspace exists and belongs to the project
+        Workspace workspace = workspaceRepository.findById(request.getWorkspaceId()).orElse(null);
+        if (workspace == null) {
+            throw new IllegalArgumentException("Workspace not found: " + request.getWorkspaceId());
+        }
+        
+        if (!request.getProjectId().equals(workspace.getProjectId())) {
+            throw new IllegalArgumentException("Workspace " + request.getWorkspaceId() + " does not belong to project " + request.getProjectId());
+        }
         
         // Check if campaign name already exists
         if (campaignRepository.existsByOrganizationIdAndName(organizationId, request.getName())) {
@@ -52,7 +69,7 @@ public class CampaignService {
         campaign.setStatus(CampaignStatus.ACTIVE);
         campaign.setDescription(request.getDescription());
         campaign.setOrganizationId(organizationId);
-        campaign.setWorkspaceId(project.getWorkspaceId());
+        campaign.setWorkspaceId(request.getWorkspaceId());
         campaign.setCreatedBy(userId);
         
         // Set lead capture settings
