@@ -1,5 +1,6 @@
 package com.berryfi.portal.dto.usage;
 
+import com.berryfi.portal.util.NumberFormatUtil;
 import java.time.LocalDateTime;
 
 /**
@@ -124,7 +125,7 @@ public class UsageSessionDto {
     }
 
     public Double getCreditsUsed() {
-        return creditsUsed;
+        return NumberFormatUtil.formatCredits(creditsUsed);
     }
 
     public void setCreditsUsed(Double creditsUsed) {

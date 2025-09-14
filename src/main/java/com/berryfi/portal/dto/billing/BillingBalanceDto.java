@@ -1,5 +1,6 @@
 package com.berryfi.portal.dto.billing;
 
+import com.berryfi.portal.util.NumberFormatUtil;
 /**
  * DTO for organization billing balance information.
  */
@@ -46,7 +47,7 @@ public class BillingBalanceDto {
     }
 
     public Double getCurrentBalance() {
-        return currentBalance;
+        return NumberFormatUtil.formatCredits(currentBalance);
     }
 
     public void setCurrentBalance(Double currentBalance) {
@@ -54,7 +55,7 @@ public class BillingBalanceDto {
     }
 
     public Double getTotalCredits() {
-        return totalCredits;
+        return NumberFormatUtil.formatCredits(totalCredits);
     }
 
     public void setTotalCredits(Double totalCredits) {
@@ -62,7 +63,7 @@ public class BillingBalanceDto {
     }
 
     public Double getUsedCredits() {
-        return usedCredits;
+        return NumberFormatUtil.formatCredits(usedCredits);
     }
 
     public void setUsedCredits(Double usedCredits) {
@@ -70,7 +71,7 @@ public class BillingBalanceDto {
     }
 
     public Double getRemainingCredits() {
-        return remainingCredits;
+        return NumberFormatUtil.formatCredits(remainingCredits);
     }
 
     public void setRemainingCredits(Double remainingCredits) {
@@ -78,7 +79,7 @@ public class BillingBalanceDto {
     }
 
     public Double getMonthlySpend() {
-        return monthlySpend;
+        return NumberFormatUtil.formatCredits(monthlySpend);
     }
 
     public void setMonthlySpend(Double monthlySpend) {
@@ -86,7 +87,7 @@ public class BillingBalanceDto {
     }
 
     public Double getLastTransactionAmount() {
-        return lastTransactionAmount;
+        return NumberFormatUtil.formatCredits(lastTransactionAmount);
     }
 
     public void setLastTransactionAmount(Double lastTransactionAmount) {
@@ -126,7 +127,7 @@ public class BillingBalanceDto {
     }
 
     public Double getOverageAmount() {
-        return overageAmount;
+        return NumberFormatUtil.formatCredits(overageAmount);
     }
 
     public void setOverageAmount(Double overageAmount) {

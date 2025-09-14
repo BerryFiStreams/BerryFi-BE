@@ -3,6 +3,7 @@ package com.berryfi.portal.dto.workspace;
 import com.berryfi.portal.entity.Workspace;
 import com.berryfi.portal.enums.WorkspaceStatus;
 import com.berryfi.portal.enums.BudgetAction;
+import com.berryfi.portal.util.NumberFormatUtil;
 
 import java.time.LocalDateTime;
 
@@ -132,7 +133,7 @@ public class WorkspaceResponse {
     }
 
     public Double getCurrentBalance() {
-        return currentBalance;
+        return NumberFormatUtil.formatCredits(currentBalance);
     }
 
     public void setCurrentBalance(Double currentBalance) {
@@ -188,7 +189,7 @@ public class WorkspaceResponse {
     }
 
     public Double getCreditsUsedThisMonth() {
-        return creditsUsedThisMonth;
+        return NumberFormatUtil.formatCredits(creditsUsedThisMonth);
     }
 
     public void setCreditsUsedThisMonth(Double creditsUsedThisMonth) {
@@ -212,7 +213,7 @@ public class WorkspaceResponse {
     }
 
     public Double getGiftedCredits() {
-        return giftedCredits;
+        return NumberFormatUtil.formatCredits(giftedCredits);
     }
 
     public void setGiftedCredits(Double giftedCredits) {
@@ -220,7 +221,7 @@ public class WorkspaceResponse {
     }
 
     public Double getPurchasedCredits() {
-        return purchasedCredits;
+        return NumberFormatUtil.formatCredits(purchasedCredits);
     }
 
     public void setPurchasedCredits(Double purchasedCredits) {
@@ -228,7 +229,7 @@ public class WorkspaceResponse {
     }
 
     public Double getTotalCreditsUsed() {
-        return totalCreditsUsed;
+        return NumberFormatUtil.formatCredits(totalCreditsUsed);
     }
 
     public void setTotalCreditsUsed(Double totalCreditsUsed) {
@@ -236,7 +237,7 @@ public class WorkspaceResponse {
     }
 
     public Double getRemainingGiftedCredits() {
-        return remainingGiftedCredits;
+        return NumberFormatUtil.formatCredits(remainingGiftedCredits);
     }
 
     public void setRemainingGiftedCredits(Double remainingGiftedCredits) {
@@ -244,7 +245,7 @@ public class WorkspaceResponse {
     }
 
     public Double getRemainingPurchasedCredits() {
-        return remainingPurchasedCredits;
+        return NumberFormatUtil.formatCredits(remainingPurchasedCredits);
     }
 
     public void setRemainingPurchasedCredits(Double remainingPurchasedCredits) {

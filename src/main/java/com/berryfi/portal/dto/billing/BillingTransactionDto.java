@@ -1,6 +1,7 @@
 package com.berryfi.portal.dto.billing;
 
 import com.berryfi.portal.enums.TransactionType;
+import com.berryfi.portal.util.NumberFormatUtil;
 import java.time.LocalDateTime;
 
 /**
@@ -69,7 +70,7 @@ public class BillingTransactionDto {
     }
 
     public Double getAmount() {
-        return amount;
+        return NumberFormatUtil.formatCurrency(amount);
     }
 
     public void setAmount(Double amount) {
@@ -77,7 +78,7 @@ public class BillingTransactionDto {
     }
 
     public Double getCreditsAmount() {
-        return creditsAmount;
+        return NumberFormatUtil.formatCredits(creditsAmount);
     }
 
     public void setCreditsAmount(Double creditsAmount) {

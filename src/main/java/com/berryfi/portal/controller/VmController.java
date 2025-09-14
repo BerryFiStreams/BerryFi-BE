@@ -7,6 +7,7 @@ import com.berryfi.portal.service.VmSessionService;
 import com.berryfi.portal.service.VmSessionService.VmSessionResult;
 import com.berryfi.portal.service.IpGeolocationService;
 import com.berryfi.portal.util.ClientInfoExtractor;
+import com.berryfi.portal.util.NumberFormatUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -353,7 +354,7 @@ public class VmController {
             this.startedAt = session.getStartTime();
             this.lastHeartbeat = session.getLastHeartbeat();
             this.durationSeconds = session.getDurationInSeconds();
-            this.creditsUsed = session.getCreditsUsed();
+            this.creditsUsed = NumberFormatUtil.formatCredits(session.getCreditsUsed());
             
             // Client tracking information
             this.username = session.getUsername();
