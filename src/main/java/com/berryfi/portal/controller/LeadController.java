@@ -3,6 +3,8 @@ package com.berryfi.portal.controller;
 import com.berryfi.portal.dto.team.CreateLeadRequest;
 import com.berryfi.portal.dto.team.LeadResponse;
 import com.berryfi.portal.dto.team.UpdateLeadRequest;
+import com.berryfi.portal.dto.team.AddLeadNoteRequest;
+import com.berryfi.portal.dto.team.LeadNoteResponse;
 import com.berryfi.portal.enums.LeadStatus;
 import com.berryfi.portal.service.LeadService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -194,6 +196,32 @@ public class LeadController {
             @RequestParam(defaultValue = "7") int daysSinceContact) {
         List<LeadResponse> leads = leadService.getLeadsNeedingFollowUp(organizationId, daysSinceContact);
         return ResponseEntity.ok(leads);
+    }
+    
+    /**
+     * Add a note to a lead.
+     * POST /team/leads/{leadId}/notes
+     */
+    @PostMapping("/{leadId}/notes")
+    public ResponseEntity<LeadNoteResponse> addLeadNote(
+            @PathVariable String leadId,
+            @Valid @RequestBody AddLeadNoteRequest request,
+            @RequestHeader("X-Organization-ID") String organizationId,
+            @RequestHeader("X-User-ID") String userId) {
+        try {
+            leadService.addLeadNote(leadId, request.getNote(), organizationId, userId);
+            
+            // Create a simple response
+            LeadNoteResponse response = new LeadNoteResponse();
+            response.setId("note_" + System.currentTimeMillis());
+            response.setNote(request.getNote());
+            response.setCreatedAt(java.time.LocalDateTime.now());
+            response.setAddedBy(userId);
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
     
     /**

@@ -301,6 +301,25 @@ public class LeadService {
     }
     
     /**
+     * Add a note to a lead.
+     */
+    public void addLeadNote(String leadId, String note, String organizationId, String addedBy) {
+        Lead lead = leadRepository.findById(leadId)
+            .orElseThrow(() -> new RuntimeException("Lead not found"));
+        
+        if (!lead.getOrganizationId().equals(organizationId)) {
+            throw new RuntimeException("Lead not found in organization");
+        }
+        
+        // Add timestamp and user info to the note
+        String timestampedNote = String.format("[%s by %s] %s", 
+            LocalDateTime.now().toString(), addedBy, note);
+        
+        lead.addNote(timestampedNote);
+        leadRepository.save(lead);
+    }
+    
+    /**
      * Inner class for lead analytics data.
      */
     public static class LeadAnalytics {

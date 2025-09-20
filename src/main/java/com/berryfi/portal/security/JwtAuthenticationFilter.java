@@ -49,6 +49,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Extract JWT token
         jwt = authHeader.substring(7);
 
+        // Create a wrapper for the request
+        JwtRequestWrapper requestWrapper = new JwtRequestWrapper(request);
+
         try {
             // Extract username from JWT
             userEmail = jwtService.extractUsername(jwt);
@@ -62,6 +65,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // Validate token
                 if (jwtService.validateToken(jwt, userDetails)) {
                     
+                    // Extract additional claims from JWT
+                    String organizationId = jwtService.getOrganizationIdFromToken(jwt);
+                    String workspaceId = jwtService.getWorkspaceIdFromToken(jwt);
+                    String userId = jwtService.getUserIdFromToken(jwt);
+                    
+                    // Add claims as headers to the wrapper
+                    if (organizationId != null) {
+                        requestWrapper.putHeader("X-Organization-ID", organizationId);
+                    }
+                    if (workspaceId != null) {
+                        requestWrapper.putHeader("X-Workspace-ID", workspaceId);
+                    }
+                    if (userId != null) {
+                        requestWrapper.putHeader("X-User-ID", userId);
+                    }
+                    
                     // Create authentication token
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
@@ -70,7 +89,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     
                     // Set authentication details
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(requestWrapper));
                     
                     // Set authentication in security context
                     SecurityContextHolder.getContext().setAuthentication(authToken);
@@ -81,6 +100,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             logger.error("Cannot set user authentication: " + e.getMessage());
         }
 
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(requestWrapper, response);
     }
 }
