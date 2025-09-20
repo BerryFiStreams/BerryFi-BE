@@ -74,10 +74,9 @@ public class DataInitializer implements CommandLineRunner {
             workspaceAdmin.setName("Workspace Admin");
             workspaceAdmin.setEmail("workspace.admin@apexmarketing.com");
             workspaceAdmin.setPassword(passwordEncoder.encode("password123"));
-            workspaceAdmin.setRole(Role.WORKSPACE_ADMIN);
+            workspaceAdmin.setRole(Role.ORG_ADMIN);
             workspaceAdmin.setAccountType(AccountType.WORKSPACE);
             workspaceAdmin.setOrganizationId("ravgroup");
-            workspaceAdmin.setWorkspaceId("apexmarketing");
             workspaceAdmin.setStatus(UserStatus.ACTIVE);
             userRepository.save(workspaceAdmin);
         }
@@ -101,10 +100,9 @@ public class DataInitializer implements CommandLineRunner {
             workspaceMember.setName("Workspace Member");
             workspaceMember.setEmail("member@apexmarketing.com");
             workspaceMember.setPassword(passwordEncoder.encode("password123"));
-            workspaceMember.setRole(Role.WORKSPACE_MEMBER);
+            workspaceMember.setRole(Role.ORG_MEMBER);
             workspaceMember.setAccountType(AccountType.WORKSPACE);
             workspaceMember.setOrganizationId("ravgroup");
-            workspaceMember.setWorkspaceId("apexmarketing");
             workspaceMember.setStatus(UserStatus.ACTIVE);
             userRepository.save(workspaceMember);
         }

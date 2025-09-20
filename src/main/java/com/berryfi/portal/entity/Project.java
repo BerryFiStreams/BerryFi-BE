@@ -62,6 +62,39 @@ public class Project {
     @Column(name = "uptime")
     private Double uptime = 0.0;
 
+    // Sharing settings
+    @Column(name = "is_shareable")
+    private Boolean isShareable = true;
+
+    @Column(name = "is_shared_project")
+    private Boolean isSharedProject = false;
+
+    @Column(name = "original_organization_id")
+    private String originalOrganizationId;
+
+    @Column(name = "shared_count")
+    private Integer sharedCount = 0;
+
+    @Column(name = "max_shares_allowed")
+    private Integer maxSharesAllowed = 10;
+
+    // Resource limits
+    @Column(name = "max_concurrent_sessions")
+    private Integer maxConcurrentSessions = 5;
+
+    @Column(name = "max_session_duration_hours")
+    private Integer maxSessionDurationHours = 8;
+
+    // Project metadata
+    @Column(name = "tags", columnDefinition = "TEXT")
+    private String tags;
+
+    @Column(name = "category")
+    private String category;
+
+    @Column(name = "visibility")
+    private String visibility = "PRIVATE"; // PRIVATE, ORGANIZATION, PUBLIC
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -293,5 +326,108 @@ public class Project {
 
     public void setErrors(String errors) {
         this.errors = errors;
+    }
+
+    public Boolean getIsShareable() {
+        return isShareable;
+    }
+
+    public void setIsShareable(Boolean isShareable) {
+        this.isShareable = isShareable;
+    }
+
+    public Boolean getIsSharedProject() {
+        return isSharedProject;
+    }
+
+    public void setIsSharedProject(Boolean isSharedProject) {
+        this.isSharedProject = isSharedProject;
+    }
+
+    public String getOriginalOrganizationId() {
+        return originalOrganizationId;
+    }
+
+    public void setOriginalOrganizationId(String originalOrganizationId) {
+        this.originalOrganizationId = originalOrganizationId;
+    }
+
+    public Integer getSharedCount() {
+        return sharedCount;
+    }
+
+    public void setSharedCount(Integer sharedCount) {
+        this.sharedCount = sharedCount;
+    }
+
+    public Integer getMaxSharesAllowed() {
+        return maxSharesAllowed;
+    }
+
+    public void setMaxSharesAllowed(Integer maxSharesAllowed) {
+        this.maxSharesAllowed = maxSharesAllowed;
+    }
+
+    public Integer getMaxConcurrentSessions() {
+        return maxConcurrentSessions;
+    }
+
+    public void setMaxConcurrentSessions(Integer maxConcurrentSessions) {
+        this.maxConcurrentSessions = maxConcurrentSessions;
+    }
+
+    public Integer getMaxSessionDurationHours() {
+        return maxSessionDurationHours;
+    }
+
+    public void setMaxSessionDurationHours(Integer maxSessionDurationHours) {
+        this.maxSessionDurationHours = maxSessionDurationHours;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(String visibility) {
+        this.visibility = visibility;
+    }
+
+    // Helper methods for sharing
+    public void incrementSharedCount() {
+        this.sharedCount = (this.sharedCount == null ? 0 : this.sharedCount) + 1;
+    }
+
+    public void decrementSharedCount() {
+        this.sharedCount = Math.max(0, (this.sharedCount == null ? 0 : this.sharedCount) - 1);
+    }
+
+    public boolean canBeSharedMore() {
+        return this.isShareable && 
+               (this.maxSharesAllowed == null || this.maxSharesAllowed <= 0 || 
+                (this.sharedCount != null && this.sharedCount < this.maxSharesAllowed));
+    }
+
+    public boolean isOwnedBy(String organizationId) {
+        return this.organizationId.equals(organizationId) && !this.isSharedProject;
+    }
+
+    public boolean isSharedWith(String organizationId) {
+        return this.organizationId.equals(organizationId) && this.isSharedProject;
     }
 }

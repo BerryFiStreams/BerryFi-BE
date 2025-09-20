@@ -22,8 +22,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "users", indexes = {
     @Index(name = "idx_user_email", columnList = "email", unique = true),
-    @Index(name = "idx_user_organization", columnList = "organizationId"),
-    @Index(name = "idx_user_workspace", columnList = "workspaceId")
+    @Index(name = "idx_user_organization", columnList = "organizationId")
 })
 public class User implements UserDetails {
 
@@ -57,9 +56,6 @@ public class User implements UserDetails {
 
     @Column(name = "organization_id")
     private String organizationId;
-
-    @Column(name = "workspace_id")
-    private String workspaceId;
 
     @NotNull(message = "Status is required")
     @Enumerated(EnumType.STRING)
@@ -197,14 +193,6 @@ public class User implements UserDetails {
         this.organizationId = organizationId;
     }
 
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
-    }
-
     public UserStatus getStatus() {
         return status;
     }
@@ -266,7 +254,7 @@ public class User implements UserDetails {
         return role.isOrganizationLevel();
     }
 
-    public boolean isWorkspaceLevel() {
-        return role.isWorkspaceLevel();
+    public boolean isProjectLevel() {
+        return role.isProjectLevel();
     }
 }

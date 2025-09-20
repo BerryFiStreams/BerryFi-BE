@@ -34,11 +34,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     List<User> findByOrganizationId(String organizationId);
 
     /**
-     * Find users by workspace ID.
-     */
-    List<User> findByWorkspaceId(String workspaceId);
-
-    /**
      * Find users by role.
      */
     List<User> findByRole(Role role);
@@ -54,19 +49,9 @@ public interface UserRepository extends JpaRepository<User, String> {
     List<User> findByOrganizationIdAndRole(String organizationId, Role role);
 
     /**
-     * Find users by workspace and role.
-     */
-    List<User> findByWorkspaceIdAndRole(String workspaceId, Role role);
-
-    /**
      * Find users by organization and status.
      */
     List<User> findByOrganizationIdAndStatus(String organizationId, UserStatus status);
-
-    /**
-     * Find users by workspace and status.
-     */
-    List<User> findByWorkspaceIdAndStatus(String workspaceId, UserStatus status);
 
     /**
      * Check if email exists.
@@ -79,19 +64,9 @@ public interface UserRepository extends JpaRepository<User, String> {
     long countByOrganizationId(String organizationId);
 
     /**
-     * Count users by workspace.
-     */
-    long countByWorkspaceId(String workspaceId);
-
-    /**
      * Count active users by organization.
      */
     long countByOrganizationIdAndStatus(String organizationId, UserStatus status);
-
-    /**
-     * Count active users by workspace.
-     */
-    long countByWorkspaceIdAndStatus(String workspaceId, UserStatus status);
 
     /**
      * Update refresh token for user.

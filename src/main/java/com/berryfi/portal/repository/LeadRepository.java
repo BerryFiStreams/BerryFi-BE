@@ -24,9 +24,6 @@ public interface LeadRepository extends JpaRepository<Lead, String> {
     // Find leads by organization
     Page<Lead> findByOrganizationIdOrderByCreatedAtDesc(String organizationId, Pageable pageable);
     
-    // Find leads by workspace
-    Page<Lead> findByWorkspaceIdOrderByCreatedAtDesc(String workspaceId, Pageable pageable);
-    
     // Find leads by status
     Page<Lead> findByOrganizationIdAndStatusOrderByCreatedAtDesc(String organizationId, LeadStatus status, Pageable pageable);
     

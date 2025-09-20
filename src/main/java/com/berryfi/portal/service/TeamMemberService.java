@@ -65,7 +65,6 @@ public class TeamMemberService {
         teamMember.setUserId(user.getId());
         teamMember.setUserName(user.getUsername());
         teamMember.setOrganizationId(organizationId);
-        teamMember.setWorkspaceId(workspaceId);
         teamMember.setRole(role);
         teamMember.setStatus(UserStatus.INVITED);
         teamMember.setInvitedBy(invitedBy);
@@ -219,7 +218,7 @@ public class TeamMemberService {
         analytics.setTotalMembers(teamMemberRepository.countByOrganizationId(organizationId));
         analytics.setActiveMembers(teamMemberRepository.countByOrganizationIdAndStatus(organizationId, UserStatus.ACTIVE));
         analytics.setAdminMembers(teamMemberRepository.countByOrganizationIdAndRole(organizationId, Role.ORG_ADMIN));
-        analytics.setManagerMembers(teamMemberRepository.countByOrganizationIdAndRole(organizationId, Role.WORKSPACE_ADMIN));
+        analytics.setManagerMembers(teamMemberRepository.countByOrganizationIdAndRole(organizationId, Role.ORG_ADMIN));
         analytics.setMemberMembers(teamMemberRepository.countByOrganizationIdAndRole(organizationId, Role.ORG_MEMBER));
         
         // Recently active members (last 7 days)
@@ -273,7 +272,6 @@ public class TeamMemberService {
         }
         
         response.setOrganizationId(teamMember.getOrganizationId());
-        response.setWorkspaceId(teamMember.getWorkspaceId());
         response.setRole(teamMember.getRole());
         response.setStatus(teamMember.getStatus());
         response.setInvitedBy(teamMember.getInvitedBy());
@@ -286,8 +284,8 @@ public class TeamMemberService {
         
         // Set permissions based on role
         response.setCanManageTeam(teamMember.getRole() == Role.ORG_ADMIN || teamMember.getRole() == Role.ORG_OWNER);
-        response.setCanManageProjects(teamMember.getRole() != Role.ORG_MEMBER && teamMember.getRole() != Role.WORKSPACE_MEMBER);
-        response.setCanManageCampaigns(teamMember.getRole() != Role.ORG_MEMBER && teamMember.getRole() != Role.WORKSPACE_MEMBER);
+        response.setCanManageProjects(teamMember.getRole() != Role.ORG_MEMBER);
+        response.setCanManageCampaigns(teamMember.getRole() != Role.ORG_MEMBER);
         response.setCanViewAnalytics(true); // All members can view analytics
         
         return response;

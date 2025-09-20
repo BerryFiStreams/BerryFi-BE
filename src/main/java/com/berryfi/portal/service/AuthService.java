@@ -108,9 +108,9 @@ public class AuthService {
             user.setOrganizationId(registerRequest.getOrganizationId());
         }
 
-        // Set workspaceId if provided
+        // Set organizationId if provided
         if (registerRequest.getWorkspaceId() != null && !registerRequest.getWorkspaceId().trim().isEmpty()) {
-            user.setWorkspaceId(registerRequest.getWorkspaceId());
+            user.setOrganizationId(registerRequest.getWorkspaceId());
         }
 
         // Save user
@@ -219,8 +219,8 @@ public class AuthService {
      * Check if user can access workspace.
      */
     public boolean canAccessWorkspace(User user, String workspaceId) {
-        if (user.getRole().isWorkspaceLevel()) {
-            return workspaceId.equals(user.getWorkspaceId());
+        if (user.getRole().isProjectLevel()) {
+            return workspaceId.equals(user.getOrganizationId());
         }
         if (user.getRole().isOrganizationLevel()) {
             // Organization users can access workspaces in their organization

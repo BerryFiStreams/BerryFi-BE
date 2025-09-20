@@ -16,12 +16,10 @@ public enum Role {
     ORG_BILLING("org_billing", "Organization Billing"),
     ORG_MEMBER("org_member", "Organization Member"),
     
-    // Workspace level roles
-    WORKSPACE_ADMIN("workspace_admin", "Workspace Admin"),
-    WORKSPACE_AUDITOR("workspace_auditor", "Workspace Auditor"),
-    WORKSPACE_REPORTER("workspace_reporter", "Workspace Reporter"),
-    WORKSPACE_BILLING("workspace_billing", "Workspace Billing"),
-    WORKSPACE_MEMBER("workspace_member", "Workspace Member");
+    // Project level roles (for shared projects)
+    PROJECT_ADMIN("project_admin", "Project Admin"),
+    PROJECT_COLLABORATOR("project_collaborator", "Project Collaborator"),
+    PROJECT_VIEWER("project_viewer", "Project Viewer");
 
     private final String value;
     private final String displayName;
@@ -58,42 +56,50 @@ public enum Role {
                this == ORG_MEMBER;
     }
 
-    public boolean isWorkspaceLevel() {
-        return this == WORKSPACE_ADMIN || 
-               this == WORKSPACE_AUDITOR || 
-               this == WORKSPACE_REPORTER || 
-               this == WORKSPACE_BILLING || 
-               this == WORKSPACE_MEMBER;
+    public boolean isProjectLevel() {
+        return this == PROJECT_ADMIN || 
+               this == PROJECT_COLLABORATOR || 
+               this == PROJECT_VIEWER;
     }
 
     public boolean hasAdminPrivileges() {
         return this == SUPER_ADMIN || 
                this == ORG_OWNER || 
                this == ORG_ADMIN || 
-               this == WORKSPACE_ADMIN;
+               this == PROJECT_ADMIN;
     }
 
     public boolean canAccessBilling() {
         return this == SUPER_ADMIN || 
                this == ORG_OWNER || 
                this == ORG_ADMIN || 
-               this == ORG_BILLING || 
-               this == WORKSPACE_BILLING;
+               this == ORG_BILLING;
     }
 
     public boolean canAccessAudit() {
         return this == SUPER_ADMIN || 
                this == ORG_OWNER || 
                this == ORG_ADMIN || 
-               this == ORG_AUDITOR || 
-               this == WORKSPACE_AUDITOR;
+               this == ORG_AUDITOR;
     }
 
     public boolean canAccessReports() {
         return this == SUPER_ADMIN || 
                this == ORG_OWNER || 
                this == ORG_ADMIN || 
-               this == ORG_REPORTER || 
-               this == WORKSPACE_REPORTER;
+               this == ORG_REPORTER;
+    }
+
+    public boolean canManageProjects() {
+        return this == SUPER_ADMIN || 
+               this == ORG_OWNER || 
+               this == ORG_ADMIN || 
+               this == PROJECT_ADMIN;
+    }
+
+    public boolean canShareProjects() {
+        return this == SUPER_ADMIN || 
+               this == ORG_OWNER || 
+               this == ORG_ADMIN;
     }
 }

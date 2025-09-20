@@ -1,0 +1,265 @@
+-- Migration script to transform from workspace-based architecture to organization-based architecture
+-- This script should be run in a maintenance window
+
+-- V021__Transform_to_organization_architecture.sql
+
+-- Step 1: Create the new organizations table
+CREATE TABLE organizations (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    owner_id VARCHAR(50) NOT NULL,
+    owner_email VARCHAR(255) NOT NULL,
+    owner_name VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    
+    -- Credit management
+    total_credits DOUBLE PRECISION DEFAULT 0.0,
+    used_credits DOUBLE PRECISION DEFAULT 0.0,
+    remaining_credits DOUBLE PRECISION DEFAULT 0.0,
+    purchased_credits DOUBLE PRECISION DEFAULT 0.0,
+    gifted_credits DOUBLE PRECISION DEFAULT 0.0,
+    
+    -- Budget and limits
+    monthly_budget DOUBLE PRECISION DEFAULT 0.0,
+    monthly_credits_used DOUBLE PRECISION DEFAULT 0.0,
+    
+    -- Organization settings
+    can_share_projects BOOLEAN DEFAULT TRUE,
+    can_receive_shared_projects BOOLEAN DEFAULT TRUE,
+    max_projects INTEGER DEFAULT 10,
+    max_members INTEGER DEFAULT 50,
+    
+    -- Statistics
+    active_projects INTEGER DEFAULT 0,
+    total_members INTEGER DEFAULT 1,
+    total_sessions INTEGER DEFAULT 0,
+    
+    -- Audit fields
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50) NOT NULL
+);
+
+-- Create indexes for organizations
+CREATE INDEX idx_organization_status ON organizations(status);
+CREATE INDEX idx_organization_owner ON organizations(owner_id);
+CREATE INDEX idx_organization_name ON organizations(name);
+
+-- Step 2: Create project_shares table
+CREATE TABLE project_shares (
+    id VARCHAR(50) PRIMARY KEY,
+    project_id VARCHAR(50) NOT NULL,
+    owner_organization_id VARCHAR(50) NOT NULL,
+    shared_with_organization_id VARCHAR(50) NOT NULL,
+    share_type VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    
+    -- Credit allocation
+    allocated_credits DOUBLE PRECISION DEFAULT 0.0,
+    used_credits DOUBLE PRECISION DEFAULT 0.0,
+    remaining_credits DOUBLE PRECISION DEFAULT 0.0,
+    
+    -- Recurring credit settings
+    recurring_credits DOUBLE PRECISION DEFAULT 0.0,
+    recurring_interval_days INTEGER DEFAULT 0,
+    next_credit_gift_date TIMESTAMP,
+    last_credit_gift_date TIMESTAMP,
+    
+    -- One-time credit settings
+    one_time_credits DOUBLE PRECISION DEFAULT 0.0,
+    one_time_credit_used BOOLEAN DEFAULT FALSE,
+    
+    -- Permission settings
+    can_modify_project BOOLEAN DEFAULT FALSE,
+    can_view_analytics BOOLEAN DEFAULT TRUE,
+    can_manage_sessions BOOLEAN DEFAULT TRUE,
+    can_share_further BOOLEAN DEFAULT FALSE,
+    
+    -- Expiry settings
+    expires_at TIMESTAMP,
+    is_permanent BOOLEAN DEFAULT FALSE,
+    
+    -- Notes
+    share_message TEXT,
+    terms_conditions TEXT,
+    
+    -- Audit fields
+    shared_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    accepted_at TIMESTAMP,
+    rejected_at TIMESTAMP,
+    revoked_at TIMESTAMP,
+    created_by VARCHAR(50) NOT NULL,
+    accepted_by VARCHAR(50),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for project_shares
+CREATE INDEX idx_project_share_project ON project_shares(project_id);
+CREATE INDEX idx_project_share_owner ON project_shares(owner_organization_id);
+CREATE INDEX idx_project_share_shared ON project_shares(shared_with_organization_id);
+CREATE INDEX idx_project_share_status ON project_shares(status);
+
+-- Step 3: Create project_credits table
+CREATE TABLE project_credits (
+    id VARCHAR(50) PRIMARY KEY,
+    organization_id VARCHAR(50) NOT NULL,
+    project_id VARCHAR(50) NOT NULL,
+    credit_type VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    
+    -- Credit amounts
+    allocated_credits DOUBLE PRECISION DEFAULT 0.0,
+    used_credits DOUBLE PRECISION DEFAULT 0.0,
+    remaining_credits DOUBLE PRECISION DEFAULT 0.0,
+    
+    -- Budget limits
+    monthly_limit DOUBLE PRECISION DEFAULT 0.0,
+    monthly_used DOUBLE PRECISION DEFAULT 0.0,
+    daily_limit DOUBLE PRECISION DEFAULT 0.0,
+    daily_used DOUBLE PRECISION DEFAULT 0.0,
+    
+    -- Auto-refill settings
+    auto_refill_enabled BOOLEAN DEFAULT FALSE,
+    refill_threshold DOUBLE PRECISION DEFAULT 0.0,
+    refill_amount DOUBLE PRECISION DEFAULT 0.0,
+    max_refills_per_month INTEGER DEFAULT 0,
+    refills_used_this_month INTEGER DEFAULT 0,
+    last_refill_date TIMESTAMP,
+    
+    -- Expiry settings
+    expires_at TIMESTAMP,
+    is_permanent BOOLEAN DEFAULT TRUE,
+    
+    -- Alert settings
+    low_credit_alert_threshold DOUBLE PRECISION DEFAULT 10.0,
+    alert_sent BOOLEAN DEFAULT FALSE,
+    last_alert_sent TIMESTAMP,
+    
+    -- Priority and policies
+    priority INTEGER DEFAULT 0,
+    can_overdraft BOOLEAN DEFAULT FALSE,
+    overdraft_limit DOUBLE PRECISION DEFAULT 0.0,
+    overdraft_used DOUBLE PRECISION DEFAULT 0.0,
+    
+    -- Notes
+    description VARCHAR(255),
+    allocation_notes TEXT,
+    
+    -- Reset tracking
+    last_monthly_reset TIMESTAMP,
+    last_daily_reset TIMESTAMP,
+    
+    -- Audit fields
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50) NOT NULL,
+    last_modified_by VARCHAR(50)
+);
+
+-- Create indexes for project_credits
+CREATE INDEX idx_project_credit_org ON project_credits(organization_id);
+CREATE INDEX idx_project_credit_project ON project_credits(project_id);
+CREATE INDEX idx_project_credit_type ON project_credits(credit_type);
+CREATE INDEX idx_project_credit_status ON project_credits(status);
+
+-- Step 4: Data Migration - Transform workspaces to organizations
+INSERT INTO organizations (
+    id, name, description, owner_id, owner_email, owner_name,
+    status, total_credits, used_credits, remaining_credits,
+    purchased_credits, gifted_credits, monthly_budget,
+    monthly_credits_used, active_projects, total_members,
+    total_sessions, created_at, updated_at, created_by
+)
+SELECT 
+    REPLACE(w.id, 'workspace_', 'org_') as id,
+    w.name,
+    w.description,
+    w.admin_email as owner_id,  -- We'll use email as owner_id temporarily
+    w.admin_email,
+    w.admin_name,
+    CASE 
+        WHEN w.status = 'ACTIVE' THEN 'ACTIVE'
+        WHEN w.status = 'SUSPENDED' THEN 'SUSPENDED'
+        ELSE 'DELETED'
+    END as status,
+    COALESCE(w.gifted_credits, 0) + COALESCE(w.purchased_credits, 0) as total_credits,
+    COALESCE(w.total_credits_used, 0) as used_credits,
+    COALESCE(w.remaining_gifted_credits, 0) + COALESCE(w.remaining_purchased_credits, 0) as remaining_credits,
+    COALESCE(w.purchased_credits, 0) as purchased_credits,
+    COALESCE(w.gifted_credits, 0) as gifted_credits,
+    COALESCE(w.monthly_budget, 0) as monthly_budget,
+    COALESCE(w.credits_used_this_month, 0) as monthly_credits_used,
+    1 as active_projects, -- Each workspace becomes 1 project initially
+    COALESCE(w.team_member_count, 1) as total_members,
+    COALESCE(w.sessions_this_month, 0) as total_sessions,
+    w.created_at,
+    w.updated_at,
+    w.created_by
+FROM workspaces w
+WHERE w.status != 'DELETED';
+
+-- Step 5: Update projects table with new fields
+ALTER TABLE projects ADD COLUMN is_shareable BOOLEAN DEFAULT TRUE;
+ALTER TABLE projects ADD COLUMN is_shared_project BOOLEAN DEFAULT FALSE;
+ALTER TABLE projects ADD COLUMN original_organization_id VARCHAR(50);
+ALTER TABLE projects ADD COLUMN shared_count INTEGER DEFAULT 0;
+ALTER TABLE projects ADD COLUMN max_shares_allowed INTEGER DEFAULT 10;
+ALTER TABLE projects ADD COLUMN max_concurrent_sessions INTEGER DEFAULT 5;
+ALTER TABLE projects ADD COLUMN max_session_duration_hours INTEGER DEFAULT 8;
+ALTER TABLE projects ADD COLUMN tags TEXT;
+ALTER TABLE projects ADD COLUMN category VARCHAR(100);
+ALTER TABLE projects ADD COLUMN visibility VARCHAR(50) DEFAULT 'PRIVATE';
+
+-- Step 6: Create default project credits for each organization
+INSERT INTO project_credits (
+    id, organization_id, project_id, credit_type, status,
+    allocated_credits, remaining_credits, is_permanent,
+    created_at, created_by
+)
+SELECT 
+    CONCAT('pcredit_', SUBSTRING(MD5(CONCAT(o.id, p.id)), 1, 12)) as id,
+    o.id as organization_id,
+    p.id as project_id,
+    'PURCHASED' as credit_type,
+    'ACTIVE' as status,
+    o.remaining_credits as allocated_credits,
+    o.remaining_credits as remaining_credits,
+    TRUE as is_permanent,
+    CURRENT_TIMESTAMP as created_at,
+    o.created_by
+FROM organizations o
+JOIN projects p ON p.organization_id = o.id;
+
+-- Step 7: Update users table - remove workspace_id references
+ALTER TABLE users DROP COLUMN workspace_id;
+DROP INDEX IF EXISTS idx_user_workspace;
+
+-- Step 8: Update team_members table
+ALTER TABLE team_members DROP COLUMN workspace_id;
+ALTER TABLE team_members ADD COLUMN project_id VARCHAR(50);
+DROP INDEX IF EXISTS idx_team_workspace;
+
+-- Step 9: Update other tables to remove workspace references
+ALTER TABLE leads DROP COLUMN workspace_id;
+ALTER TABLE campaigns DROP COLUMN workspace_id;
+ALTER TABLE vm_sessions DROP COLUMN workspace_id;
+ALTER TABLE usage_analytics DROP COLUMN workspace_id;
+ALTER TABLE support_requests DROP COLUMN workspace_id;
+
+-- Drop workspace indexes that are no longer needed
+DROP INDEX IF EXISTS idx_lead_workspace;
+DROP INDEX IF EXISTS idx_campaign_workspace;
+DROP INDEX IF EXISTS idx_session_workspace;
+
+-- Step 10: Update vm_sessions to only reference organization and project
+-- (vm_sessions should already have organization_id and project_id)
+
+-- Step 11: Create a stored procedure to clean up old workspace table (optional)
+-- This can be run after verification that the migration was successful
+-- DROP TABLE workspaces;
+
+-- Step 12: Update sequences and constraints
+-- Update any foreign key constraints that referenced workspaces
+
+COMMIT;

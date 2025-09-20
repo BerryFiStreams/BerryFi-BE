@@ -37,20 +37,6 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
     Page<Project> findByOrganizationIdAndAccountType(String organizationId, AccountType accountType, Pageable pageable);
 
     /**
-     * Find a project assigned to a specific workspace.
-     * Since workspaces have projectId, we need to join through workspace to get the project.
-     */
-    @Query("SELECT p FROM Project p JOIN Workspace w ON p.id = w.projectId WHERE w.id = :workspaceId")
-    Optional<Project> findByWorkspaceId(@Param("workspaceId") String workspaceId);
-
-    /**
-     * Find all projects that are assigned to workspaces (with pagination).
-     * Returns projects that have at least one workspace assigned to them.
-     */
-    @Query("SELECT DISTINCT p FROM Project p JOIN Workspace w ON p.id = w.projectId WHERE w.id = :workspaceId")
-    Page<Project> findProjectsInWorkspace(@Param("workspaceId") String workspaceId, Pageable pageable);
-
-    /**
      * Find a project by ID and organization (for security).
      */
     Optional<Project> findByIdAndOrganizationId(String id, String organizationId);

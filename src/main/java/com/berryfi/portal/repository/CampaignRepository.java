@@ -22,9 +22,6 @@ public interface CampaignRepository extends JpaRepository<Campaign, String> {
     // Find campaigns by organization
     Page<Campaign> findByOrganizationIdOrderByCreatedAtDesc(String organizationId, Pageable pageable);
     
-    // Find campaigns by workspace
-    Page<Campaign> findByWorkspaceIdOrderByCreatedAtDesc(String workspaceId, Pageable pageable);
-    
     // Find campaigns by project
     Page<Campaign> findByProjectIdOrderByCreatedAtDesc(String projectId, Pageable pageable);
     

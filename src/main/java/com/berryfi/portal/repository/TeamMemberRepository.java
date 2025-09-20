@@ -23,14 +23,8 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, String> 
     // Find team members by organization
     Page<TeamMember> findByOrganizationIdOrderByJoinedAtDesc(String organizationId, Pageable pageable);
     
-    // Find team members by workspace
-    Page<TeamMember> findByWorkspaceIdOrderByJoinedAtDesc(String workspaceId, Pageable pageable);
-    
     // Find team member by user and organization
     Optional<TeamMember> findByUserIdAndOrganizationId(String userId, String organizationId);
-    
-    // Find team member by user and workspace
-    Optional<TeamMember> findByUserIdAndWorkspaceId(String userId, String workspaceId);
     
     // Find team members by role
     List<TeamMember> findByOrganizationIdAndRole(String organizationId, Role role);
@@ -87,9 +81,6 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, String> 
     // Check if user is member of organization
     boolean existsByUserIdAndOrganizationId(String userId, String organizationId);
     
-    // Check if user is member of workspace
-    boolean existsByUserIdAndWorkspaceId(String userId, String workspaceId);
-    
     // Find team members by multiple criteria
     @Query("SELECT tm FROM TeamMember tm WHERE tm.organizationId = :organizationId " +
            "AND (:role IS NULL OR tm.role = :role) " +
@@ -105,10 +96,7 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, String> 
     Long countActiveMembers(@Param("organizationId") String organizationId, 
                            @Param("sinceDate") LocalDateTime sinceDate);
     
-    // Find team members by workspace and role
-    List<TeamMember> findByWorkspaceIdAndRole(String workspaceId, Role role);
-    
-    // Find all workspaces for a user
+    // Find active organizations for a user
     @Query("SELECT tm FROM TeamMember tm WHERE tm.userId = :userId AND tm.status = 'ACTIVE'")
-    List<TeamMember> findActiveWorkspacesForUser(@Param("userId") String userId);
+    List<TeamMember> findActiveOrganizationsForUser(@Param("userId") String userId);
 }

@@ -63,7 +63,6 @@ public class LeadService {
         lead.setProjectId(campaign.getProjectId());
         lead.setProjectName(campaign.getProjectName());
         lead.setOrganizationId(organizationId);
-        lead.setWorkspaceId(campaign.getWorkspaceId());
         lead.setStatus(request.getStatus() != null ? request.getStatus() : LeadStatus.NEW);
         lead.setCreatedBy(userId);
         
@@ -291,7 +290,6 @@ public class LeadService {
         response.setReferrer(lead.getReferrer());
         response.setScore(lead.getLeadScore());
         response.setOrganizationId(lead.getOrganizationId());
-        response.setWorkspaceId(lead.getWorkspaceId());
         response.setAssignedTo(lead.getAssignedTo());
         response.setCreatedBy(lead.getCreatedBy());
         response.setCreatedAt(lead.getCreatedAt());

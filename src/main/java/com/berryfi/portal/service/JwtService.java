@@ -69,7 +69,6 @@ public class JwtService {
             claims.put("role", user.getRole().getValue());
             claims.put("accountType", user.getAccountType().getValue());
             claims.put("organizationId", user.getOrganizationId());
-            claims.put("workspaceId", user.getWorkspaceId());
         }
         return createToken(claims, userDetails.getUsername(), jwtExpiration);
     }

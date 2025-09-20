@@ -26,11 +26,9 @@ public class PermissionService {
             case ORG_REPORTER -> getOrganizationReporterPermissions();
             case ORG_BILLING -> getOrganizationBillingPermissions();
             case ORG_MEMBER -> getOrganizationMemberPermissions();
-            case WORKSPACE_ADMIN -> getWorkspaceAdminPermissions();
-            case WORKSPACE_AUDITOR -> getWorkspaceAuditorPermissions();
-            case WORKSPACE_REPORTER -> getWorkspaceReporterPermissions();
-            case WORKSPACE_BILLING -> getWorkspaceBillingPermissions();
-            case WORKSPACE_MEMBER -> getWorkspaceMemberPermissions();
+            case PROJECT_ADMIN -> getProjectAdminPermissions();
+            case PROJECT_COLLABORATOR -> getProjectCollaboratorPermissions();
+            case PROJECT_VIEWER -> getProjectViewerPermissions();
         };
     }
 
@@ -223,36 +221,44 @@ public class PermissionService {
         );
     }
 
-    private Set<Permission> getWorkspaceAdminPermissions() {
+    private Set<Permission> getProjectAdminPermissions() {
         return EnumSet.of(
             // Authentication
             Permission.AUTH_LOGIN, Permission.AUTH_LOGOUT, Permission.AUTH_REFRESH, Permission.AUTH_VIEW_PROFILE,
             
-            // User management (workspace only)
-            Permission.USER_VIEW,
-            
-            // Projects (full within workspace)
-            Permission.PROJECT_VIEW, Permission.PROJECT_CREATE, Permission.PROJECT_UPDATE,
+            // Projects (full management)
+            Permission.PROJECT_VIEW, Permission.PROJECT_UPDATE,
             Permission.PROJECT_DEPLOY, Permission.PROJECT_STOP, Permission.PROJECT_MANAGE_CONFIG,
             Permission.PROJECT_MANAGE_BRANDING, Permission.PROJECT_MANAGE_LINKS, Permission.PROJECT_VIEW_STATUS,
             
-            // Team (full within workspace)
-            Permission.TEAM_VIEW_MEMBERS, Permission.TEAM_MANAGE_MEMBERS, Permission.TEAM_VIEW_CAMPAIGNS,
-            Permission.TEAM_CREATE_CAMPAIGNS, Permission.TEAM_UPDATE_CAMPAIGNS, Permission.TEAM_DELETE_CAMPAIGNS,
-            Permission.TEAM_MANAGE_CAMPAIGNS, Permission.TEAM_VIEW_LEADS, Permission.TEAM_CREATE_LEADS,
-            Permission.TEAM_UPDATE_LEADS, Permission.TEAM_MANAGE_LEADS, Permission.TEAM_VIEW_STATS,
+            // Team (project level)
+            Permission.TEAM_VIEW_MEMBERS, Permission.TEAM_VIEW_CAMPAIGNS,
+            Permission.TEAM_VIEW_LEADS, Permission.TEAM_VIEW_STATS,
             
-            // Workspace (limited)
-            Permission.WORKSPACE_VIEW, Permission.WORKSPACE_VIEW_STATS, Permission.WORKSPACE_MANAGE_MEMBERS,
-            
-            // Analytics (workspace only)
+            // Analytics (project only)
             Permission.ANALYTICS_VIEW_USAGE, Permission.ANALYTICS_VIEW_LEADS, Permission.ANALYTICS_VIEW_GEOGRAPHIC,
             Permission.ANALYTICS_VIEW_DEVICES, Permission.ANALYTICS_VIEW_NETWORK, Permission.ANALYTICS_VIEW_PROJECT_USAGE,
             Permission.ANALYTICS_EXPORT_LEADS, Permission.ANALYTICS_VIEW_JOURNEY
         );
     }
 
-    private Set<Permission> getWorkspaceAuditorPermissions() {
+    private Set<Permission> getProjectCollaboratorPermissions() {
+        return EnumSet.of(
+            // Authentication
+            Permission.AUTH_LOGIN, Permission.AUTH_LOGOUT, Permission.AUTH_REFRESH, Permission.AUTH_VIEW_PROFILE,
+            
+            // Projects (limited)
+            Permission.PROJECT_VIEW, Permission.PROJECT_VIEW_STATUS,
+            
+            // Team (view only)
+            Permission.TEAM_VIEW_CAMPAIGNS, Permission.TEAM_VIEW_LEADS, Permission.TEAM_VIEW_STATS,
+            
+            // Analytics (limited)
+            Permission.ANALYTICS_VIEW_USAGE, Permission.ANALYTICS_VIEW_LEADS, Permission.ANALYTICS_VIEW_PROJECT_USAGE
+        );
+    }
+
+    private Set<Permission> getProjectViewerPermissions() {
         return EnumSet.of(
             // Authentication
             Permission.AUTH_LOGIN, Permission.AUTH_LOGOUT, Permission.AUTH_REFRESH, Permission.AUTH_VIEW_PROFILE,
@@ -260,54 +266,8 @@ public class PermissionService {
             // Projects (view only)
             Permission.PROJECT_VIEW, Permission.PROJECT_VIEW_STATUS,
             
-            // Audit (workspace only)
-            Permission.AUDIT_VIEW_LOGS, Permission.AUDIT_VIEW_STATS, Permission.AUDIT_VIEW_USERS,
-            Permission.AUDIT_VIEW_ACTIONS, Permission.AUDIT_EXPORT,
-            
-            // Usage (workspace only)
-            Permission.USAGE_VIEW_SESSIONS, Permission.USAGE_VIEW_STATS, Permission.USAGE_VIEW_MEMBERS, Permission.USAGE_EXPORT
-        );
-    }
-
-    private Set<Permission> getWorkspaceReporterPermissions() {
-        return EnumSet.of(
-            // Authentication
-            Permission.AUTH_LOGIN, Permission.AUTH_LOGOUT, Permission.AUTH_REFRESH, Permission.AUTH_VIEW_PROFILE,
-            
-            // Projects (view only)
-            Permission.PROJECT_VIEW, Permission.PROJECT_VIEW_STATUS,
-            
-            // Analytics (workspace only)
-            Permission.ANALYTICS_VIEW_USAGE, Permission.ANALYTICS_VIEW_LEADS, Permission.ANALYTICS_VIEW_GEOGRAPHIC,
-            Permission.ANALYTICS_VIEW_DEVICES, Permission.ANALYTICS_VIEW_NETWORK, Permission.ANALYTICS_VIEW_PROJECT_USAGE,
-            Permission.ANALYTICS_EXPORT_LEADS, Permission.ANALYTICS_VIEW_JOURNEY,
-            
-            // Reports (workspace only)
-            Permission.REPORTS_VIEW_DASHBOARD, Permission.REPORTS_VIEW_ANALYTICS, Permission.REPORTS_EXPORT
-        );
-    }
-
-    private Set<Permission> getWorkspaceBillingPermissions() {
-        return EnumSet.of(
-            // Authentication
-            Permission.AUTH_LOGIN, Permission.AUTH_LOGOUT, Permission.AUTH_REFRESH, Permission.AUTH_VIEW_PROFILE,
-            
-            // Billing (workspace only)
-            Permission.BILLING_VIEW_BALANCE, Permission.BILLING_VIEW_USAGE, Permission.BILLING_VIEW_TRANSACTIONS,
-            Permission.BILLING_VIEW_PLANS, Permission.BILLING_VIEW_INVOICES, Permission.BILLING_MANAGE_SUPPORT
-        );
-    }
-
-    private Set<Permission> getWorkspaceMemberPermissions() {
-        return EnumSet.of(
-            // Authentication
-            Permission.AUTH_LOGIN, Permission.AUTH_LOGOUT, Permission.AUTH_REFRESH, Permission.AUTH_VIEW_PROFILE,
-            
-            // Projects (view only)
-            Permission.PROJECT_VIEW, Permission.PROJECT_VIEW_STATUS,
-            
-            // Team (limited)
-            Permission.TEAM_VIEW_CAMPAIGNS, Permission.TEAM_VIEW_LEADS, Permission.TEAM_VIEW_STATS
+            // Team (basic view)
+            Permission.TEAM_VIEW_CAMPAIGNS, Permission.TEAM_VIEW_STATS
         );
     }
 }

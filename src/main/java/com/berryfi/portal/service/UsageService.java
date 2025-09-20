@@ -30,9 +30,6 @@ public class UsageService {
     
     @Autowired
     private TeamMemberRepository teamMemberRepository;
-    
-    @Autowired
-    private WorkspaceRepository workspaceRepository;
 
 
 
@@ -255,27 +252,17 @@ public class UsageService {
     }
 
     /**
-     * Generate daily analytics for user's entitled workspaces
+     * Generate daily analytics for user's entitled organizations
      */
     public List<UsageAnalyticsDto> generateDailyAnalyticsForUser(User currentUser, LocalDate date) {
-        // Get user's entitled workspace IDs
-        List<String> entitledWorkspaces = getUserEntitledWorkspaces(currentUser);
-        if (entitledWorkspaces.isEmpty()) {
+        // Get user's organization ID directly
+        if (currentUser.getOrganizationId() == null) {
             return List.of();
         }
 
-        List<UsageAnalyticsDto> results = List.of();
-        for (String workspaceId : entitledWorkspaces) {
-            // For each workspace, generate analytics
-            Optional<Workspace> workspace = workspaceRepository.findById(workspaceId);
-            if (workspace.isPresent()) {
-                UsageAnalyticsDto analytics = generateDailyAnalytics(workspace.get().getOrganizationId(), date);
-                analytics.setWorkspaceId(workspaceId);
-                results.add(analytics);
-            }
-        }
-        
-        return results;
+        // Generate analytics for the user's organization
+        UsageAnalyticsDto analytics = generateDailyAnalytics(currentUser.getOrganizationId(), date);
+        return List.of(analytics);
     }
 
     /**
@@ -285,7 +272,6 @@ public class UsageService {
         UsageSessionDto dto = new UsageSessionDto();
         dto.setId(vmSession.getId());
         dto.setOrganizationId(vmSession.getOrganizationId());
-        dto.setWorkspaceId(vmSession.getWorkspaceId());
         dto.setProjectId(vmSession.getProjectId());
         dto.setProjectName(null); // Will be set separately if needed
         dto.setUserId(vmSession.getUserId());
@@ -346,69 +332,36 @@ public class UsageService {
      * Get list of workspace IDs the user is entitled to
      */
     private List<String> getUserEntitledWorkspaces(User user) {
-        // Get workspaces through team membership
+        // Get organizations through team membership
         List<TeamMember> teamMembers = teamMemberRepository.findActiveWorkspacesForUser(user.getId());
-        List<String> memberWorkspaces = teamMembers.stream()
-                .map(TeamMember::getWorkspaceId)
-                .filter(workspaceId -> workspaceId != null)
+        List<String> memberOrganizations = teamMembers.stream()
+                .map(TeamMember::getOrganizationId)
+                .filter(organizationId -> organizationId != null)
                 .collect(Collectors.toList());
         
-        // Get workspaces where user is the admin/creator
-        List<Workspace> adminWorkspaces = workspaceRepository.findByAdminEmailAndOrganizationId(
-            user.getEmail(), user.getOrganizationId());
-        List<String> adminWorkspaceIds = adminWorkspaces.stream()
-                .map(Workspace::getId)
-                .collect(Collectors.toList());
+        // Combine and deduplicate organizations
+        Set<String> allOrganizations = new HashSet<>();
+        allOrganizations.addAll(memberOrganizations);
         
-        // Get workspaces created by the user
-        List<Workspace> createdWorkspaces = workspaceRepository.findByCreatedByAndOrganizationId(
-            user.getId(), user.getOrganizationId());
-        List<String> createdWorkspaceIds = createdWorkspaces.stream()
-                .map(Workspace::getId)
-                .collect(Collectors.toList());
-        
-        // Combine and deduplicate
-        Set<String> allWorkspaces = new HashSet<>();
-        allWorkspaces.addAll(memberWorkspaces);
-        allWorkspaces.addAll(adminWorkspaceIds);
-        allWorkspaces.addAll(createdWorkspaceIds);
-        
-        return new ArrayList<>(allWorkspaces);
+        return new ArrayList<>(allOrganizations);
     }
 
     /**
-     * Check if user has access to workspace
+     * Check if user has access to organization (simplified for organization-based architecture)
      */
     private boolean isUserEntitledToWorkspace(User user, String workspaceId) {
-        if (workspaceId == null) return false;
-        
-        // Check team membership
-        if (teamMemberRepository.existsByUserIdAndWorkspaceId(user.getId(), workspaceId)) {
-            return true;
-        }
-        
-        // Check workspace ownership/creation
-        Optional<Workspace> workspace = workspaceRepository.findById(workspaceId);
-        if (workspace.isPresent()) {
-            Workspace ws = workspace.get();
-            // Check if user is admin or creator of the workspace in the same organization
-            return user.getOrganizationId().equals(ws.getOrganizationId()) && 
-                   (user.getEmail().equals(ws.getAdminEmail()) || user.getId().equals(ws.getCreatedBy()));
-        }
-        
-        return false;
+        // In organization-based architecture, users have access to their organization's resources
+        return user.getOrganizationId() != null;
     }
 
     /**
      * Check if user has access to project through workspace membership
      */
+    /**
+     * Check if user has access to project (organization-based)
+     */
     private boolean isUserEntitledToProject(User user, String projectId) {
-        if (projectId == null) return false;
-        
-        // Find workspace that contains this project
-        Optional<Workspace> workspace = workspaceRepository.findByProjectId(projectId);
-        if (workspace.isEmpty()) return false;
-        
-        return isUserEntitledToWorkspace(user, workspace.get().getId());
+        // In organization-based architecture, users have access to projects in their organization
+        return user.getOrganizationId() != null && projectId != null;
     }
 }

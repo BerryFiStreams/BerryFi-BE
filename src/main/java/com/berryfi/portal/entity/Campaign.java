@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "campaigns", indexes = {
     @Index(name = "idx_campaign_organization", columnList = "organizationId"),
-    @Index(name = "idx_campaign_workspace", columnList = "workspaceId"),
     @Index(name = "idx_campaign_project", columnList = "projectId"),
     @Index(name = "idx_campaign_status", columnList = "status"),
     @Index(name = "idx_campaign_custom_name", columnList = "customName")
@@ -46,8 +45,6 @@ public class Campaign {
     @NotBlank(message = "Organization ID is required")
     @Column(nullable = false)
     private String organizationId;
-    
-    private String workspaceId;
     
     @NotNull(message = "Access type is required")
     @Enumerated(EnumType.STRING)
@@ -144,10 +141,7 @@ public class Campaign {
     
     public String getOrganizationId() { return organizationId; }
     public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
-    
-    public String getWorkspaceId() { return workspaceId; }
-    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
-    
+
     public AccessType getAccessType() { return accessType; }
     public void setAccessType(AccessType accessType) { this.accessType = accessType; }
     

@@ -12,12 +12,11 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 /**
- * Entity representing a team member relationship between users and workspaces/organizations.
+ * Entity representing a team member relationship between users and organizations.
  */
 @Entity
 @Table(name = "team_members", indexes = {
     @Index(name = "idx_team_organization", columnList = "organizationId"),
-    @Index(name = "idx_team_workspace", columnList = "workspaceId"),
     @Index(name = "idx_team_user", columnList = "userId"),
     @Index(name = "idx_team_role", columnList = "role")
 })
@@ -49,7 +48,8 @@ public class TeamMember {
     @Column(nullable = false)
     private String organizationId;
     
-    private String workspaceId;
+    // Optional project-specific access (for shared project members)
+    private String projectId;
     
     @NotNull(message = "Status is required")
     @Enumerated(EnumType.STRING)
@@ -106,8 +106,8 @@ public class TeamMember {
     public String getOrganizationId() { return organizationId; }
     public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
     
-    public String getWorkspaceId() { return workspaceId; }
-    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
+    public String getProjectId() { return projectId; }
+    public void setProjectId(String projectId) { this.projectId = projectId; }
     
     public UserStatus getStatus() { return status; }
     public void setStatus(UserStatus status) { this.status = status; }
@@ -146,5 +146,30 @@ public class TeamMember {
     
     public void updateLastActive() {
         this.lastActiveAt = LocalDateTime.now();
+    }
+
+    // Helper methods for role and project access
+    public boolean isOrganizationMember() {
+        return this.projectId == null;
+    }
+
+    public boolean isProjectMember() {
+        return this.projectId != null;
+    }
+
+    public boolean hasOrganizationAccess() {
+        return isOrganizationMember() && role.isOrganizationLevel();
+    }
+
+    public boolean hasProjectAccess() {
+        return isProjectMember() && role.isProjectLevel();
+    }
+
+    public boolean canManageProjects() {
+        return role.canManageProjects() && isOrganizationMember();
+    }
+
+    public boolean canShareProjects() {
+        return role.canShareProjects() && isOrganizationMember();
     }
 }

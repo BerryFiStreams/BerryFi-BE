@@ -18,7 +18,6 @@ import java.util.List;
 @Entity
 @Table(name = "leads", indexes = {
     @Index(name = "idx_lead_campaign", columnList = "campaignId"),
-    @Index(name = "idx_lead_workspace", columnList = "workspaceId"),
     @Index(name = "idx_lead_organization", columnList = "organizationId"),
     @Index(name = "idx_lead_status", columnList = "status"),
     @Index(name = "idx_lead_email", columnList = "email"),
@@ -64,9 +63,7 @@ public class Lead {
     @NotBlank(message = "Organization ID is required")
     @Column(nullable = false)
     private String organizationId;
-    
-    private String workspaceId;
-    
+
     @NotNull(message = "Lead status is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -198,10 +195,7 @@ public class Lead {
     
     public String getOrganizationId() { return organizationId; }
     public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
-    
-    public String getWorkspaceId() { return workspaceId; }
-    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
-    
+
     public LeadStatus getStatus() { return status; }
     public void setStatus(LeadStatus status) { this.status = status; }
     

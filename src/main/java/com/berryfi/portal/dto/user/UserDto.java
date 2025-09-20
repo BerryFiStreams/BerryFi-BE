@@ -31,7 +31,6 @@ public class UserDto {
         this.role = user.getRole();
         this.accountType = user.getAccountType();
         this.organizationId = user.getOrganizationId();
-        this.workspaceId = user.getWorkspaceId();
         this.status = user.getStatus();
         this.lastLogin = user.getLastLogin();
     }
