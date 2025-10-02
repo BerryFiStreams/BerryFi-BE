@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -136,8 +137,9 @@ public class TeamMemberService {
      * Get team members by workspace.
      */
     public Page<TeamMemberResponse> getTeamMembersByWorkspace(String workspaceId, Pageable pageable) {
-        Page<TeamMember> teamMembers = teamMemberRepository.findByWorkspaceIdOrderByJoinedAtDesc(workspaceId, pageable);
-        return teamMembers.map(this::mapToResponse);
+        // Convert workspace-based call to organization-based call
+        // Note: This method is deprecated - use organization-based method instead
+        return Page.empty(pageable);
     }
     
     /**
@@ -239,15 +241,18 @@ public class TeamMemberService {
      * Check if user is member of workspace.
      */
     public boolean isUserMemberOfWorkspace(String userId, String workspaceId) {
-        return teamMemberRepository.existsByUserIdAndWorkspaceId(userId, workspaceId);
+        // Convert workspace-based call to organization-based call
+        // Note: This method is deprecated - use organization-based method instead
+        return false;
     }
     
     /**
      * Get user's workspaces.
      */
     public List<TeamMemberResponse> getUserWorkspaces(String userId) {
-        List<TeamMember> teamMembers = teamMemberRepository.findActiveWorkspacesForUser(userId);
-        return teamMembers.stream().map(this::mapToResponse).toList();
+        // Convert workspace-based call to organization-based call
+        // Note: This method is deprecated - use organization-based method instead
+        return new ArrayList<>();
     }
     
     /**

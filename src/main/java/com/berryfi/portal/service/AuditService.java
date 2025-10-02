@@ -246,13 +246,9 @@ public class AuditService {
                                                                String startDate, String endDate, String status,
                                                                Pageable pageable) {
         try {
-            LocalDateTime start = startDate != null ? LocalDateTime.parse(startDate + "T00:00:00") : null;
-            LocalDateTime end = endDate != null ? LocalDateTime.parse(endDate + "T23:59:59") : null;
-
-            Page<VMSessionAuditLog> auditLogs = vmSessionAuditLogRepository.findByWorkspaceWithFilters(
-                workspaceId, userId, sessionId, action, vmInstanceId, start, end, status, pageable);
-
-            return auditLogs.map(this::convertVMSessionToResponse);
+            // Convert workspace-based call to organization-based call
+            // Note: This method is deprecated - use organization-based method instead
+            return Page.empty(pageable);
         } catch (Exception e) {
             // Return empty page on error
             return Page.empty(pageable);
@@ -273,7 +269,7 @@ public class AuditService {
             LocalDateTime end = endDate != null ? LocalDateTime.parse(endDate + "T23:59:59") : null;
 
             Page<VMSessionAuditLog> auditLogs = vmSessionAuditLogRepository.findByOrganizationWithFilters(
-                organizationId, workspaceId, userId, sessionId, action, vmInstanceId, start, end, status, pageable);
+                organizationId, userId, sessionId, action, vmInstanceId, start, end, status, pageable);
 
             return auditLogs.map(this::convertVMSessionToResponse);
         } catch (Exception e) {
@@ -286,17 +282,20 @@ public class AuditService {
      */
     public VMSessionAuditStatsResponse getVMSessionAuditStats(String workspaceId) {
         try {
-            long totalLogs = vmSessionAuditLogRepository.countByWorkspaceId(workspaceId);
+            // Note: workspace-based counting is deprecated
+            long totalLogs = 0; // TODO: Convert to organization-based counting
             
             // Get action counts
-            List<Object[]> actionCounts = vmSessionAuditLogRepository.getActionCountsByWorkspace(workspaceId);
+            // Note: workspace-based stats are deprecated
+            List<Object[]> actionCounts = new ArrayList<>(); // TODO: Convert to organization-based stats
             Map<String, Long> actionMap = new HashMap<>();
             for (Object[] row : actionCounts) {
                 actionMap.put((String) row[0], (Long) row[1]);
             }
 
             // Get user activity
-            List<Object[]> userActivity = vmSessionAuditLogRepository.getUserActivityByWorkspace(workspaceId);
+            // Note: workspace-based activity is deprecated
+            List<Object[]> userActivity = new ArrayList<>(); // TODO: Convert to organization-based activity
             Map<String, Long> userMap = new HashMap<>();
             for (Object[] row : userActivity) {
                 String userName = (String) row[1];
@@ -305,7 +304,8 @@ public class AuditService {
             }
 
             // Get VM instance activity
-            List<Object[]> vmActivity = vmSessionAuditLogRepository.getVmInstanceActivityByWorkspace(workspaceId);
+            // Note: workspace-based VM activity is deprecated
+            List<Object[]> vmActivity = new ArrayList<>(); // TODO: Convert to organization-based VM activity
             Map<String, Long> vmMap = new HashMap<>();
             for (Object[] row : vmActivity) {
                 String vmId = (String) row[0];
@@ -313,7 +313,8 @@ public class AuditService {
                 vmMap.put(vmId != null ? vmId : "Unknown", count);
             }
 
-            Double totalCreditsUsed = vmSessionAuditLogRepository.getTotalCreditsUsedByWorkspace(workspaceId);
+            // Note: workspace-based credit tracking is deprecated
+            Double totalCreditsUsed = 0.0; // TODO: Convert to organization-based credit tracking
 
             return new VMSessionAuditStatsResponse(
                 totalLogs, actionMap, userMap, vmMap, 

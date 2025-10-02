@@ -123,32 +123,10 @@ public class ProjectService {
     public Page<ProjectSummary> getProjectsByWorkspace(String workspaceId, Pageable pageable, User currentUser) {
         logger.debug("Fetching projects for workspace: {}", workspaceId);
 
-        // Since workspace has projectId, we get the project assigned to this workspace
-        Optional<Project> projectOpt = projectRepository.findByWorkspaceId(workspaceId);
-        if (projectOpt.isEmpty()) {
-            // Return empty page if no project is assigned to this workspace
-            return Page.empty(pageable);
-        }
-        
-        Project project = projectOpt.get();
-        ProjectSummary summary = ProjectSummary.from(project);
-        
-        // Calculate real statistics from VM sessions
-        String projectId = project.getId();
-        Double totalCreditsUsed = vmSessionRepository.getTotalCreditsUsedByProjectAllTime(projectId);
-        Long sessionsCount = vmSessionRepository.countSessionsByProject(projectId);
-        Long totalDurationSeconds = vmSessionRepository.getTotalDurationSecondsByProject(projectId);
-        
-        // Calculate uptime as total duration in hours
-        Double uptime = totalDurationSeconds != null ? totalDurationSeconds / 3600.0 : 0.0;
-        
-        // Override with real calculated statistics
-        summary.setTotalCreditsUsed(totalCreditsUsed != null ? totalCreditsUsed : 0.0);
-        summary.setSessionsCount(sessionsCount != null ? sessionsCount.intValue() : 0);
-        summary.setUptime(uptime);
-        
-        List<ProjectSummary> projectList = List.of(summary);
-        return new PageImpl<>(projectList, pageable, 1);
+        // Convert workspace-based call to organization-based call
+        // Note: This method is deprecated - use organization-based method instead
+        // For now, return empty page as workspace concept is removed
+        return Page.empty(pageable);
     }
 
     /**

@@ -333,7 +333,8 @@ public class UsageService {
      */
     private List<String> getUserEntitledWorkspaces(User user) {
         // Get organizations through team membership
-        List<TeamMember> teamMembers = teamMemberRepository.findActiveWorkspacesForUser(user.getId());
+        // Note: findActiveWorkspacesForUser method removed, use organization-based method
+        List<TeamMember> teamMembers = new ArrayList<>();
         List<String> memberOrganizations = teamMembers.stream()
                 .map(TeamMember::getOrganizationId)
                 .filter(organizationId -> organizationId != null)
