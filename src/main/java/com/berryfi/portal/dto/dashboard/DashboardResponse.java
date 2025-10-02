@@ -8,15 +8,14 @@ import java.util.List;
 public class DashboardResponse {
     
     private DashboardSummary summary;
-    private List<RecentWorkspace> recentWorkspaces;
     private List<RecentProject> recentProjects;
     
     public DashboardResponse() {}
     
-    public DashboardResponse(DashboardSummary summary, List<RecentWorkspace> recentWorkspaces, 
+    public DashboardResponse(DashboardSummary summary, List<Object> recentWorkspaces, 
                            List<RecentProject> recentProjects) {
         this.summary = summary;
-        this.recentWorkspaces = recentWorkspaces;
+        // recentWorkspaces ignored since workspaces are removed
         this.recentProjects = recentProjects;
     }
     
@@ -29,13 +28,7 @@ public class DashboardResponse {
         this.summary = summary;
     }
     
-    public List<RecentWorkspace> getRecentWorkspaces() {
-        return recentWorkspaces;
-    }
-    
-    public void setRecentWorkspaces(List<RecentWorkspace> recentWorkspaces) {
-        this.recentWorkspaces = recentWorkspaces;
-    }
+
     
     public List<RecentProject> getRecentProjects() {
         return recentProjects;

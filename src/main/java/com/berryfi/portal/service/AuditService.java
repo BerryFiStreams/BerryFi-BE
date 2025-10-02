@@ -347,7 +347,7 @@ public class AuditService {
             auditLog.getUserName(),
             auditLog.getUserEmail(),
             auditLog.getOrganizationId(),
-            auditLog.getWorkspaceId(),
+            null, // workspaceId - removed
             auditLog.getWorkspaceName(),
             auditLog.getProjectId(),
             auditLog.getProjectName(),
@@ -434,7 +434,7 @@ public class AuditService {
         try {
             VMSessionAuditLog auditLog = new VMSessionAuditLog(
                 session.getUserId(), userName, userEmail, session.getOrganizationId(),
-                session.getWorkspaceId(), workspaceName, action
+                null, workspaceName, action
             );
             
             auditLog.setSessionId(session.getId());

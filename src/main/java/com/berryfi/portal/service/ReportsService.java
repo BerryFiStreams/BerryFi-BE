@@ -53,7 +53,7 @@ public class ReportsService {
         // Convert DashboardResponse to DashboardReportResponse
         return new DashboardReportResponse(
             dashboardData.getSummary(),
-            dashboardData.getRecentWorkspaces(),
+            Collections.emptyList(), // No workspaces since concept is removed
             dashboardData.getRecentProjects()
         );
     }

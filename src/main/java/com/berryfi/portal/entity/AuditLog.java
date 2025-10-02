@@ -14,10 +14,8 @@ import java.util.UUID;
 @Table(name = "audit_logs", indexes = {
     @Index(name = "idx_audit_user", columnList = "userId"),
     @Index(name = "idx_audit_organization", columnList = "organizationId"),
-    @Index(name = "idx_audit_workspace", columnList = "workspaceId"),
     @Index(name = "idx_audit_timestamp", columnList = "timestamp"),
-    @Index(name = "idx_audit_action", columnList = "action"),
-    @Index(name = "idx_audit_resource", columnList = "resource")
+    @Index(name = "idx_audit_action", columnList = "action")
 })
 public class AuditLog {
 

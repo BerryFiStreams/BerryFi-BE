@@ -2,7 +2,6 @@ package com.berryfi.portal.dto.reports;
 
 import com.berryfi.portal.dto.dashboard.DashboardSummary;
 import com.berryfi.portal.dto.dashboard.RecentProject;
-import com.berryfi.portal.dto.dashboard.RecentWorkspace;
 
 import java.util.List;
 
@@ -11,15 +10,14 @@ import java.util.List;
  */
 public class DashboardReportResponse {
     private DashboardSummary summary;
-    private List<RecentWorkspace> recentWorkspaces;
     private List<RecentProject> recentProjects;
 
     public DashboardReportResponse() {}
 
-    public DashboardReportResponse(DashboardSummary summary, List<RecentWorkspace> recentWorkspaces,
+    public DashboardReportResponse(DashboardSummary summary, List<Object> recentWorkspaces,
                                   List<RecentProject> recentProjects) {
         this.summary = summary;
-        this.recentWorkspaces = recentWorkspaces;
+        // recentWorkspaces ignored since workspaces are removed
         this.recentProjects = recentProjects;
     }
 
@@ -27,8 +25,7 @@ public class DashboardReportResponse {
     public DashboardSummary getSummary() { return summary; }
     public void setSummary(DashboardSummary summary) { this.summary = summary; }
 
-    public List<RecentWorkspace> getRecentWorkspaces() { return recentWorkspaces; }
-    public void setRecentWorkspaces(List<RecentWorkspace> recentWorkspaces) { this.recentWorkspaces = recentWorkspaces; }
+
 
     public List<RecentProject> getRecentProjects() { return recentProjects; }
     public void setRecentProjects(List<RecentProject> recentProjects) { this.recentProjects = recentProjects; }

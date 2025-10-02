@@ -1,7 +1,6 @@
 package com.berryfi.portal.aspect;
 
 import com.berryfi.portal.annotation.OrganizationAudit;
-import com.berryfi.portal.annotation.WorkspaceAudit;
 import com.berryfi.portal.annotation.VMSessionAudit;
 import com.berryfi.portal.entity.VmSession;
 import com.berryfi.portal.service.AuditService;
@@ -56,11 +55,7 @@ public class AuditAspect {
     @Pointcut("@annotation(com.berryfi.portal.annotation.OrganizationAudit)")
     public void organizationAuditPointcut() {}
 
-    /**
-     * Pointcut for workspace-level audit methods.
-     */
-    @Pointcut("@annotation(com.berryfi.portal.annotation.WorkspaceAudit)")
-    public void workspaceAuditPointcut() {}
+
 
     /**
      * Pointcut for VM session audit methods.
@@ -98,35 +93,7 @@ public class AuditAspect {
         }
     }
 
-    /**
-     * Around advice for workspace audit.
-     */
-    @Around("workspaceAuditPointcut() && @annotation(workspaceAudit)")
-    public Object auditWorkspaceAction(ProceedingJoinPoint joinPoint, WorkspaceAudit workspaceAudit) throws Throwable {
-        String status = "SUCCESS";
-        String errorMessage = null;
-        Object result = null;
-        long startTime = System.currentTimeMillis();
 
-        try {
-            result = joinPoint.proceed();
-            return result;
-        } catch (Exception e) {
-            status = "FAILED";
-            errorMessage = e.getMessage();
-            if (workspaceAudit.auditOnFailure()) {
-                throw e;
-            } else {
-                throw e;
-            }
-        } finally {
-            try {
-                logWorkspaceAudit(joinPoint, workspaceAudit, result, status, errorMessage, startTime);
-            } catch (Exception e) {
-                logger.error("Failed to log workspace audit: {}", e.getMessage(), e);
-            }
-        }
-    }
 
     /**
      * Around advice for VM session audit.
@@ -192,46 +159,7 @@ public class AuditAspect {
         }
     }
 
-    /**
-     * Log workspace-level audit.
-     */
-    private void logWorkspaceAudit(ProceedingJoinPoint joinPoint, WorkspaceAudit workspaceAudit,
-                                 Object result, String status, String errorMessage, long startTime) {
-        try {
-            User currentUser = getCurrentUser();
-            if (currentUser == null) {
-                logger.warn("No current user found for workspace audit logging");
-                return;
-            }
 
-            String workspaceId = extractParameterValue(joinPoint, workspaceAudit.workspaceIdParam());
-            if (workspaceId == null) {
-                logger.warn("Could not extract workspace ID for workspace audit");
-                return;
-            }
-
-            String resourceId = extractResourceId(joinPoint, result);
-            String details = buildAuditDetails(joinPoint, workspaceAudit.includeRequestParams(),
-                                             workspaceAudit.includeResponse(), result, errorMessage, startTime);
-
-            HttpServletRequest request = getCurrentRequest();
-
-            auditService.logWorkspaceAction(
-                currentUser.getId(),
-                currentUser.getName(),
-                currentUser.getOrganizationId(),
-                workspaceId,
-                workspaceAudit.action(),
-                workspaceAudit.resource(),
-                resourceId,
-                details,
-                request
-            );
-
-        } catch (Exception e) {
-            logger.error("Error in workspace audit logging: {}", e.getMessage(), e);
-        }
-    }
 
     /**
      * Log VM session audit.
@@ -258,18 +186,8 @@ public class AuditAspect {
                 return;
             }
 
-            // Get workspace and project names
-            User currentUser2 = getCurrentUser(); // Temporary workaround for workspace service
-            String workspaceName = "Unknown Workspace";
-            try {
-                if (currentUser2 != null) {
-                    // WorkspaceService.getWorkspace requires User parameter
-                    // For now, we'll skip getting the workspace name to avoid complexity
-                    workspaceName = session.getWorkspaceId(); // Use ID as fallback
-                }
-            } catch (Exception e) {
-                logger.debug("Could not get workspace name: {}", e.getMessage());
-            }
+            // Get project name
+            String workspaceName = "Unknown Workspace"; // Default workspace name since workspace is removed
             String projectName = "Unknown Project"; // TODO: Get project name from project service
 
             String details = buildVMSessionAuditDetails(joinPoint, vmSessionAudit, session, 

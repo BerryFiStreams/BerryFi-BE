@@ -3,6 +3,7 @@ package com.berryfi.portal.service;
 import com.berryfi.portal.entity.*;
 import com.berryfi.portal.repository.*;
 import com.berryfi.portal.dto.billing.BillingTransactionDto;
+import com.berryfi.portal.dto.billing.BillingBalanceDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,8 +37,7 @@ public class VmSessionService {
     @Autowired
     private ProjectRepository projectRepository;
 
-    @Autowired
-    private WorkspaceRepository workspaceRepository;
+
 
     @Autowired
     private BillingService billingService;
@@ -57,20 +57,18 @@ public class VmSessionService {
     /**
      * Start a VM session for a project with client tracking information
      */
-    public VmSessionResult startVmSession(String projectId, String workspaceId, String userId, String userEmail, String vmType,
+    public VmSessionResult startVmSession(String projectId, String userId, String userEmail, String vmType,
                                          String username, String clientIpAddress, String clientCountry, 
                                          String clientCity, String userAgent) {
         try {
-            logger.info("Starting VM session for project: {}, workspace: {}, user: {}, vmType: {}, clientIP: {}", 
-                       projectId, workspaceId, userId, vmType, clientIpAddress);
+            logger.info("Starting VM session for project: {}, user: {}, vmType: {}, clientIP: {}", 
+                       projectId, userId, vmType, clientIpAddress);
             
             // Validate input parameters
             if (projectId == null || projectId.isEmpty()) {
                 return VmSessionResult.error("Project ID cannot be null or empty");
             }
-            if (workspaceId == null || workspaceId.isEmpty()) {
-                return VmSessionResult.error("Workspace ID cannot be null or empty");
-            }
+
             if (userId == null || userId.isEmpty()) {
                 return VmSessionResult.error("User ID cannot be null or empty");
             }
@@ -93,19 +91,7 @@ public class VmSessionService {
                 return VmSessionResult.error("Project has invalid organization ID");
             }
             
-            // Get workspace and validate
-            Optional<Workspace> workspaceOpt = workspaceRepository.findById(workspaceId);
-            if (workspaceOpt.isEmpty()) {
-                return VmSessionResult.error("Workspace not found: " + workspaceId);
-            }
-            
-            Workspace workspace = workspaceOpt.get();
-            
-            // Validate that the workspace belongs to the specified project
-            if (!projectId.equals(workspace.getProjectId())) {
-                logger.error("Workspace {} does not belong to project {}", workspaceId, projectId);
-                return VmSessionResult.error("Workspace does not belong to the specified project");
-            }
+
 
             // Check if user already has an active session
             Optional<VmSession> existingSession = vmSessionRepository.findUserActiveSession(userId);
@@ -146,13 +132,17 @@ public class VmSessionService {
                 }
             }
 
-            // Check workspace has sufficient credits (estimate for 1 minute initially)
-            if (!billingService.hasWorkspaceSufficientCredits(workspaceId, vmType, 60.0)) {
-                return VmSessionResult.error("Insufficient credits in workspace for VM session");
+            // Check organization has sufficient credits (estimate for 1 minute initially)
+            Double estimatedCredits = pricingService.calculateVmUsageCredits(vmType, 60.0);
+            BillingBalanceDto balance = billingService.getBillingBalance(organizationId);
+            if (balance.getCurrentBalance() < estimatedCredits) {
+                return VmSessionResult.error("Insufficient credits in organization for VM session");
             }
 
             // Create session with client information
-            VmSession session = new VmSession(vm.getId(), projectId, workspaceId, organizationId, userId, userEmail);
+            VmSession session = new VmSession(vm.getId(), projectId, userId);
+            session.setOrganizationId(organizationId);
+            session.setUserEmail(userEmail);
             session.setCreditsPerMinute(pricingService.getCurrentCreditsPerMinuteForVm(vmType));
             
             // Set client tracking information
@@ -198,16 +188,7 @@ public class VmSessionService {
      * Start a VM session for a project (backward compatibility)
      */
     public VmSessionResult startVmSession(String projectId, String userId, String userEmail, String vmType) {
-        // For backward compatibility, fetch workspaceId from workspace that belongs to this project
-        Optional<Workspace> workspaceOpt = workspaceRepository.findByProjectId(projectId);
-        if (workspaceOpt.isEmpty()) {
-            return VmSessionResult.error("No workspace found for project: " + projectId);
-        }
-        
-        Workspace workspace = workspaceOpt.get();
-        String workspaceId = workspace.getId();
-        
-        return startVmSession(projectId, workspaceId, userId, userEmail, vmType, null, null, null, null, null);
+        return startVmSession(projectId, userId, userEmail, vmType, null, null, null, null, null);
     }
 
     /**
@@ -274,9 +255,8 @@ public class VmSessionService {
             Double creditsUsed = pricingService.calculateVmUsageCredits(vm.getVmType(), durationSeconds.doubleValue());
 
             // Create billing transaction
-            BillingTransactionDto billing = billingService.recordVmUsageForWorkspace(
-                session.getWorkspaceId(), 
-                session.getProjectId(), 
+            BillingTransactionDto billing = billingService.recordVmUsage(
+                session.getOrganizationId(), 
                 vm.getVmType(), 
                 durationSeconds.doubleValue(), 
                 session.getId()

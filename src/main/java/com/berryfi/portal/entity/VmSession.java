@@ -8,15 +8,13 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Entity representing a VM session.
+/**    public String getUserId() {y representing a VM session.
  * Tracks the usage of a VM by a user for a specific project.
  */
 @Entity
 @Table(name = "vm_sessions", indexes = {
     @Index(name = "idx_session_vm", columnList = "vmInstanceId"),
     @Index(name = "idx_session_project", columnList = "projectId"),
-    @Index(name = "idx_session_workspace", columnList = "workspaceId"),
     @Index(name = "idx_session_user", columnList = "userId"),
     @Index(name = "idx_session_status", columnList = "status"),
     @Index(name = "idx_session_start", columnList = "startTime")
@@ -127,15 +125,15 @@ public class VmSession {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public VmSession(String vmInstanceId, String projectId, String workspaceId, 
-                    String organizationId, String userId, String userEmail) {
-        this();
+    public VmSession(String vmInstanceId, String projectId, String userId) {
+        this.id = generateSessionId();
         this.vmInstanceId = vmInstanceId;
         this.projectId = projectId;
-        this.workspaceId = workspaceId;
-        this.organizationId = organizationId;
         this.userId = userId;
-        this.userEmail = userEmail;
+        this.status = SessionStatus.STARTING;
+        this.startTime = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
@@ -264,14 +262,6 @@ public class VmSession {
 
     public void setProjectId(String projectId) {
         this.projectId = projectId;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
     }
 
     public String getOrganizationId() {

@@ -56,29 +56,7 @@ public class ProjectController {
         return ResponseEntity.ok(projects);
     }
 
-    /**
-     * Get projects by workspace.
-     * GET /api/projects/workspace/{workspaceId}
-     */
-    @GetMapping("/workspace/{workspaceId}")
-    public ResponseEntity<Page<ProjectSummary>> getProjectsByWorkspace(
-            @PathVariable String workspaceId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir,
-            @AuthenticationPrincipal User currentUser) {
 
-        logger.info("Getting projects for workspace: {} (page: {}, size: {})", workspaceId, page, size);
-
-        Sort sort = sortDir.equalsIgnoreCase("desc") ? 
-            Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Page<ProjectSummary> projects = projectService.getProjectsByWorkspace(workspaceId, pageable, currentUser);
-
-        return ResponseEntity.ok(projects);
-    }
 
     /**
      * Create a new project.

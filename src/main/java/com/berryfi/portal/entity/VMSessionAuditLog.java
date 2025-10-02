@@ -165,7 +165,7 @@ public class VMSessionAuditLog {
                                                          String workspaceName, String projectName) {
         VMSessionAuditLog log = new VMSessionAuditLog(
             session.getUserId(), userName, userEmail, session.getOrganizationId(),
-            session.getWorkspaceId(), workspaceName, "VM_SESSION_START"
+            null, workspaceName, "VM_SESSION_START"
         );
         log.setSessionId(session.getId());
         log.setVmInstanceId(session.getVmInstanceId());
@@ -184,7 +184,7 @@ public class VMSessionAuditLog {
                                                         String workspaceName, String projectName, String reason) {
         VMSessionAuditLog log = new VMSessionAuditLog(
             session.getUserId(), userName, userEmail, session.getOrganizationId(),
-            session.getWorkspaceId(), workspaceName, "VM_SESSION_STOP"
+            null, workspaceName, "VM_SESSION_STOP"
         );
         log.setSessionId(session.getId());
         log.setVmInstanceId(session.getVmInstanceId());
@@ -203,7 +203,7 @@ public class VMSessionAuditLog {
                                                             String workspaceName, String projectName) {
         VMSessionAuditLog log = new VMSessionAuditLog(
             session.getUserId(), userName, userEmail, session.getOrganizationId(),
-            session.getWorkspaceId(), workspaceName, "VM_SESSION_HEARTBEAT"
+            null, workspaceName, "VM_SESSION_HEARTBEAT"
         );
         log.setSessionId(session.getId());
         log.setVmInstanceId(session.getVmInstanceId());

@@ -1,10 +1,11 @@
 package com.berryfi.portal.service;
 
 import com.berryfi.portal.dto.dashboard.*;
+import java.util.Collections;
 import com.berryfi.portal.entity.User;
-import com.berryfi.portal.entity.Workspace;
+
 import com.berryfi.portal.entity.Project;
-import com.berryfi.portal.repository.WorkspaceRepository;
+
 import com.berryfi.portal.repository.ProjectRepository;
 import com.berryfi.portal.repository.VmSessionRepository;
 import com.berryfi.portal.repository.BillingTransactionRepository;
@@ -29,8 +30,7 @@ public class DashboardService {
 
     private static final Logger logger = LoggerFactory.getLogger(DashboardService.class);
 
-    @Autowired
-    private WorkspaceRepository workspaceRepository;
+
 
     @Autowired
     private ProjectRepository projectRepository;
@@ -54,13 +54,10 @@ public class DashboardService {
         // Get dashboard summary
         DashboardSummary summary = getDashboardSummary(organizationId);
 
-        // Get recent 3 workspaces
-        List<RecentWorkspace> recentWorkspaces = getRecentWorkspaces(organizationId);
-
-        // Get recent 3 projects
+                // Get recent 5 projects
         List<RecentProject> recentProjects = getRecentProjects(organizationId);
-
-        return new DashboardResponse(summary, recentWorkspaces, recentProjects);
+        
+        return new DashboardResponse(summary, Collections.emptyList(), recentProjects);
     }
 
     /**
@@ -73,13 +70,10 @@ public class DashboardService {
         // Get credits as of today (current balance from latest billing transaction)
         Double currentCredits = getCurrentCreditsBalance(organizationId);
         
-        // Get total workspaces count for the organization
-        Long totalWorkspaces = workspaceRepository.countByOrganizationId(organizationId);
-
         return new DashboardSummary(
             totalSessions != null ? totalSessions.intValue() : 0,
             currentCredits != null ? currentCredits : 0.0,
-            totalWorkspaces != null ? totalWorkspaces.intValue() : 0
+            0 // No workspaces since concept is removed
         );
     }
 
@@ -92,17 +86,7 @@ public class DashboardService {
                 .orElse(0.0);
     }
 
-    /**
-     * Get recent 3 workspaces with details.
-     */
-    private List<RecentWorkspace> getRecentWorkspaces(String organizationId) {
-        Pageable pageable = PageRequest.of(0, 3);
-        List<Workspace> workspaces = workspaceRepository.findByOrganizationIdOrderByUpdatedAtDesc(organizationId, pageable);
 
-        return workspaces.stream()
-                .map(this::convertToRecentWorkspace)
-                .collect(Collectors.toList());
-    }
 
     /**
      * Get recent 3 projects with details.
@@ -116,62 +100,20 @@ public class DashboardService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Convert Workspace entity to RecentWorkspace DTO.
-     */
-    private RecentWorkspace convertToRecentWorkspace(Workspace workspace) {
-        // Calculate available credits (gifted + purchased - used)
-        Double creditsAvailable = calculateAvailableCredits(workspace);
 
-        // Get project name if projectId exists
-        String projectName = null;
-        if (workspace.getProjectId() != null) {
-            projectName = projectRepository.findById(workspace.getProjectId())
-                    .map(Project::getName)
-                    .orElse("Unknown Project");
-        }
 
-        return new RecentWorkspace(
-            workspace.getId(),
-            workspace.getName(),
-            workspace.getDescription(),
-            creditsAvailable,
-            projectName,
-            workspace.getTeamMemberCount(),
-            workspace.getStatus(),
-            workspace.getCreatedAt(),
-            workspace.getUpdatedAt()
-        );
-    }
 
-    /**
-     * Calculate available credits for a workspace.
-     */
-    private Double calculateAvailableCredits(Workspace workspace) {
-        Double remainingGifted = workspace.getRemainingGiftedCredits() != null ? workspace.getRemainingGiftedCredits() : 0.0;
-        Double remainingPurchased = workspace.getRemainingPurchasedCredits() != null ? workspace.getRemainingPurchasedCredits() : 0.0;
-        return remainingGifted + remainingPurchased;
-    }
 
     /**
      * Convert Project entity to RecentProject DTO.
      */
     private RecentProject convertToRecentProject(Project project) {
-        // Get workspace that belongs to this project
-        String workspaceId = null;
-        String workspaceName = null;
-        Workspace workspace = workspaceRepository.findByProjectId(project.getId()).orElse(null);
-        if (workspace != null) {
-            workspaceId = workspace.getId();
-            workspaceName = workspace.getName();
-        }
-
         return new RecentProject(
             project.getId(),
             project.getName(),
             project.getDescription(),
-            workspaceId,
-            workspaceName,
+            null, // workspaceId - removed
+            null, // workspaceName - removed
             project.getTotalCreditsUsed(),
             project.getSessionsCount(),
             project.getStatus(),

@@ -75,7 +75,6 @@ public class VmController {
 
             VmSessionResult result = vmSessionService.startVmSession(
                 request.getProjectId(),
-                request.getWorkspaceId(), 
                 userId, 
                 userEmail, 
                 request.getVmType(),

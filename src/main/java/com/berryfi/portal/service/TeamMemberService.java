@@ -3,12 +3,12 @@ package com.berryfi.portal.service;
 import com.berryfi.portal.dto.team.TeamMemberResponse;
 import com.berryfi.portal.entity.TeamMember;
 import com.berryfi.portal.entity.User;
-import com.berryfi.portal.entity.Workspace;
+
 import com.berryfi.portal.enums.Role;
 import com.berryfi.portal.enums.UserStatus;
 import com.berryfi.portal.repository.TeamMemberRepository;
 import com.berryfi.portal.repository.UserRepository;
-import com.berryfi.portal.repository.WorkspaceRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,8 +32,7 @@ public class TeamMemberService {
     @Autowired
     private UserRepository userRepository;
     
-    @Autowired
-    private WorkspaceRepository workspaceRepository;
+
     
     /**
      * Invite a user to join the team.
@@ -50,16 +49,7 @@ public class TeamMemberService {
             throw new RuntimeException("User is already a team member");
         }
         
-        // Validate workspace if provided
-        Workspace workspace = null;
-        if (workspaceId != null) {
-            workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new RuntimeException("Workspace not found"));
-            
-            if (!workspace.getOrganizationId().equals(organizationId)) {
-                throw new RuntimeException("Workspace not found in organization");
-            }
-        }
+        // No workspace validation needed since workspace concept is removed
         
         TeamMember teamMember = new TeamMember();
         teamMember.setId(UUID.randomUUID().toString());
