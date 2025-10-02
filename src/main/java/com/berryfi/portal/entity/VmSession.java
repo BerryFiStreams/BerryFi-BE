@@ -37,9 +37,7 @@ public class VmSession {
     @Column(name = "project_id", nullable = false)
     private String projectId;
     
-    @NotBlank(message = "Workspace ID is required")
-    @Column(name = "workspace_id", nullable = false)
-    private String workspaceId;
+
     
     @NotBlank(message = "Organization ID is required")
     @Column(name = "organization_id", nullable = false)

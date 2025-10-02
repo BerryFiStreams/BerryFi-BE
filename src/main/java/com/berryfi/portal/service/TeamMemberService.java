@@ -15,7 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,7 +37,7 @@ public class TeamMemberService {
     /**
      * Invite a user to join the team.
      */
-    public TeamMemberResponse inviteTeamMember(String userEmail, String organizationId, String workspaceId, 
+    public TeamMemberResponse inviteTeamMember(String userEmail, String organizationId, 
                                               Role role, String invitedBy) {
         // Check if user exists
         User user = userRepository.findByEmail(userEmail)
@@ -49,7 +49,7 @@ public class TeamMemberService {
             throw new RuntimeException("User is already a team member");
         }
         
-        // No workspace validation needed since workspace concept is removed
+
         
         TeamMember teamMember = new TeamMember();
         teamMember.setId(UUID.randomUUID().toString());
@@ -123,14 +123,7 @@ public class TeamMemberService {
         return teamMembers.map(this::mapToResponse);
     }
     
-    /**
-     * Get team members by workspace.
-     */
-    public Page<TeamMemberResponse> getTeamMembersByWorkspace(String workspaceId, Pageable pageable) {
-        // Convert workspace-based call to organization-based call
-        // Note: This method is deprecated - use organization-based method instead
-        return Page.empty(pageable);
-    }
+
     
     /**
      * Search team members.
@@ -227,23 +220,9 @@ public class TeamMemberService {
         return teamMemberRepository.existsByUserIdAndOrganizationId(userId, organizationId);
     }
     
-    /**
-     * Check if user is member of workspace.
-     */
-    public boolean isUserMemberOfWorkspace(String userId, String workspaceId) {
-        // Convert workspace-based call to organization-based call
-        // Note: This method is deprecated - use organization-based method instead
-        return false;
-    }
+
     
-    /**
-     * Get user's workspaces.
-     */
-    public List<TeamMemberResponse> getUserWorkspaces(String userId) {
-        // Convert workspace-based call to organization-based call
-        // Note: This method is deprecated - use organization-based method instead
-        return new ArrayList<>();
-    }
+
     
     /**
      * Map TeamMember entity to TeamMemberResponse DTO.

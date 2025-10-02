@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Service for managing usage sessions and analytics based on VM sessions and workspace entitlements.
+ * Service for managing usage sessions and analytics based on VM sessions.
  */
 @Service
 @Transactional
@@ -90,7 +90,7 @@ public class UsageService {
     /**
      * Get usage sessions for user's entitled workspaces - based on VM sessions
      */
-    public Page<UsageSessionDto> getUsageSessionsForUser(User currentUser, String workspaceId, 
+    public Page<UsageSessionDto> getUsageSessionsForUser(User currentUser, 
                                                        String projectId, String userId, 
                                                        LocalDate startDate, LocalDate endDate,
                                                        int page, int size) {
@@ -100,60 +100,43 @@ public class UsageService {
         LocalDateTime startDateTime = startDate != null ? startDate.atStartOfDay() : null;
         LocalDateTime endDateTime = endDate != null ? endDate.atTime(23, 59, 59, 999_999_999) : null;
         
-        // Get user's entitled workspace IDs
-        List<String> entitledWorkspaces = getUserEntitledWorkspaces(currentUser);
-        if (entitledWorkspaces.isEmpty()) {
-            // Return empty page if user has no entitled workspaces
+        // Check organization access
+        if (currentUser.getOrganizationId() == null) {
             return Page.empty(pageable);
         }
 
-        Page<VmSession> vmSessions;
+        Page<VmSession> vmSessions = Page.empty(pageable);
         
-        if (workspaceId != null) {
-            // Validate access to specified workspace
-            if (!isUserEntitledToWorkspace(currentUser, workspaceId)) {
-                return Page.empty(pageable);
-            }
-            vmSessions = vmSessionRepository.findByWorkspaceIdOrderByStartTimeDesc(workspaceId, pageable);
-        } else if (projectId != null) {
+        if (projectId != null) {
             // Validate access to specified project
             if (!isUserEntitledToProject(currentUser, projectId)) {
                 return Page.empty(pageable);
             }
             vmSessions = vmSessionRepository.findByProjectIdOrderByStartTimeDesc(projectId, pageable);
         } else if (userId != null && startDateTime != null && endDateTime != null) {
-            // Get sessions for specific user in date range, filtered by entitled workspaces
+            // Get sessions for specific user in date range
             vmSessions = vmSessionRepository.findByUserIdOrderByStartTimeDesc(userId, pageable);
         } else if (startDateTime != null && endDateTime != null) {
-            // Get sessions in date range for entitled workspaces
+            // Get sessions in date range for organization
             vmSessions = vmSessionRepository.findSessionsByDateRange(startDateTime, endDateTime, pageable);
         } else {
-            // Get all sessions for entitled workspaces
-            if (entitledWorkspaces.isEmpty()) {
-                vmSessions = Page.empty(pageable);
-            } else {
-                vmSessions = vmSessionRepository.findByWorkspaceIdsOrderByStartTimeDesc(entitledWorkspaces, pageable);
-            }
+            // Get all sessions for user (organization-based filtering will be added later)\n            vmSessions = vmSessionRepository.findByUserIdOrderByStartTimeDesc(currentUser.getId(), pageable);
         }
 
         return vmSessions.map(this::convertVmSessionToDto);
     }
 
     /**
-     * Get active sessions for user's entitled workspaces - based on VM sessions
+     * Get active sessions for user's organization - based on VM sessions
      */
     public List<UsageSessionDto> getActiveSessionsForUser(User currentUser) {
-        // Get user's entitled workspace IDs
-        List<String> entitledWorkspaces = getUserEntitledWorkspaces(currentUser);
-        if (entitledWorkspaces.isEmpty()) {
+        // Check organization access
+        if (currentUser.getOrganizationId() == null) {
             return List.of();
         }
 
-        // Get active VM sessions from all entitled workspaces
-        List<VmSession> activeSessions = List.of();
-        for (String workspaceId : entitledWorkspaces) {
-            activeSessions.addAll(vmSessionRepository.findActiveSessionsInWorkspace(workspaceId));
-        }
+        // Get active VM sessions (simplified - use all active sessions for now)
+        List<VmSession> activeSessions = vmSessionRepository.findByStatusOrderByStartTimeDesc(com.berryfi.portal.enums.SessionStatus.ACTIVE);
 
         return activeSessions.stream()
                 .map(this::convertVmSessionToDto)
@@ -161,15 +144,13 @@ public class UsageService {
     }
 
     /**
-     * Get usage statistics for user's entitled workspaces within date range - based on VM sessions
+     * Get usage statistics for user's organization within date range - based on VM sessions
      */
     public UsageAnalyticsDto getUsageStatisticsForUser(User currentUser, LocalDate startDate, LocalDate endDate) {
-        // Get user's entitled workspace IDs
-        List<String> entitledWorkspaces = getUserEntitledWorkspaces(currentUser);
-        if (entitledWorkspaces.isEmpty()) {
+        // Check organization access
+        if (currentUser.getOrganizationId() == null) {
             // Return empty analytics
             UsageAnalyticsDto analytics = new UsageAnalyticsDto();
-            analytics.setOrganizationId(currentUser.getOrganizationId());
             analytics.setDate(startDate);
             analytics.setTotalSessions(0);
             analytics.setTotalDurationSeconds(0L);
@@ -179,25 +160,11 @@ public class UsageService {
             return analytics;
         }
 
-        LocalDateTime startDateTime = startDate.atStartOfDay();
-        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
-
-        // Calculate aggregated statistics across all entitled workspaces
+        // Calculate basic statistics (organization-specific methods will be added later)
+        // For now, return minimal stats
         long totalSessions = 0;
+        Double totalCredits = 0.0;
         long totalDuration = 0;
-        double totalCredits = 0.0;
-        long uniqueUsers = 0;
-
-        for (String workspaceId : entitledWorkspaces) {
-            totalSessions += vmSessionRepository.countByWorkspaceIdAndStatusAndStartTimeBetween(
-                    workspaceId, com.berryfi.portal.enums.SessionStatus.COMPLETED, startDateTime, endDateTime);
-                    
-            Double workspaceCredits = vmSessionRepository.getTotalCreditsUsedInWorkspace(
-                    workspaceId, startDateTime, endDateTime);
-            if (workspaceCredits != null) {
-                totalCredits += workspaceCredits;
-            }
-        }
 
         // Calculate average duration
         Double avgDuration = totalSessions > 0 ? (double) totalDuration / totalSessions : 0.0;
@@ -207,8 +174,8 @@ public class UsageService {
         analytics.setDate(startDate);
         analytics.setTotalSessions((int) totalSessions);
         analytics.setTotalDurationSeconds(totalDuration);
-        analytics.setTotalCreditsUsed(totalCredits);
-        analytics.setUniqueUsers((int) uniqueUsers);
+        analytics.setTotalCreditsUsed(totalCredits != null ? totalCredits : 0.0);
+        analytics.setUniqueUsers(0); // TODO: Add method to count unique users in organization
         analytics.setAvgSessionDuration(avgDuration);
 
         return analytics;
@@ -217,33 +184,26 @@ public class UsageService {
     /**
      * Get usage analytics for user's entitled workspaces
      */
-    public Page<UsageAnalyticsDto> getUsageAnalyticsForUser(User currentUser, String workspaceId, 
+    public Page<UsageAnalyticsDto> getUsageAnalyticsForUser(User currentUser, 
                                                           String projectId, LocalDate startDate, 
                                                           LocalDate endDate, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         
-        // Get user's entitled workspace IDs
-        List<String> entitledWorkspaces = getUserEntitledWorkspaces(currentUser);
-        if (entitledWorkspaces.isEmpty()) {
+        // Check organization access
+        if (currentUser.getOrganizationId() == null) {
             return Page.empty(pageable);
         }
 
         Page<UsageAnalytics> analytics;
 
-        if (workspaceId != null) {
-            // Validate access to specified workspace
-            if (!isUserEntitledToWorkspace(currentUser, workspaceId)) {
-                return Page.empty(pageable);
-            }
-            analytics = usageAnalyticsRepository.findByWorkspaceIdOrderByDateDesc(workspaceId, pageable);
-        } else if (projectId != null) {
+        if (projectId != null) {
             // Validate access to specified project
             if (!isUserEntitledToProject(currentUser, projectId)) {
                 return Page.empty(pageable);
             }
             analytics = usageAnalyticsRepository.findByProjectIdOrderByDateDesc(projectId, pageable);
         } else {
-            // Get analytics for all entitled workspaces (this might need a custom query)
+            // Get analytics for organization
             analytics = usageAnalyticsRepository.findByOrganizationIdOrderByDateDesc(
                     currentUser.getOrganizationId(), pageable);
         }
@@ -328,36 +288,6 @@ public class UsageService {
         return dto;
     }
 
-    /**
-     * Get list of workspace IDs the user is entitled to
-     */
-    private List<String> getUserEntitledWorkspaces(User user) {
-        // Get organizations through team membership
-        // Note: findActiveWorkspacesForUser method removed, use organization-based method
-        List<TeamMember> teamMembers = new ArrayList<>();
-        List<String> memberOrganizations = teamMembers.stream()
-                .map(TeamMember::getOrganizationId)
-                .filter(organizationId -> organizationId != null)
-                .collect(Collectors.toList());
-        
-        // Combine and deduplicate organizations
-        Set<String> allOrganizations = new HashSet<>();
-        allOrganizations.addAll(memberOrganizations);
-        
-        return new ArrayList<>(allOrganizations);
-    }
-
-    /**
-     * Check if user has access to organization (simplified for organization-based architecture)
-     */
-    private boolean isUserEntitledToWorkspace(User user, String workspaceId) {
-        // In organization-based architecture, users have access to their organization's resources
-        return user.getOrganizationId() != null;
-    }
-
-    /**
-     * Check if user has access to project through workspace membership
-     */
     /**
      * Check if user has access to project (organization-based)
      */

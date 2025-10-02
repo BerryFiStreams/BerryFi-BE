@@ -31,12 +31,11 @@ public class TeamMemberController {
     public ResponseEntity<TeamMemberResponse> inviteTeamMember(
             @RequestParam String userEmail,
             @RequestHeader("X-Organization-ID") String organizationId,
-            @RequestParam(required = false) String workspaceId,
             @RequestParam Role role,
             @RequestHeader("X-User-ID") String invitedBy) {
         try {
             TeamMemberResponse response = teamMemberService.inviteTeamMember(
-                userEmail, organizationId, workspaceId, role, invitedBy);
+                userEmail, organizationId, role, invitedBy);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
@@ -86,18 +85,7 @@ public class TeamMemberController {
         return ResponseEntity.ok(teamMembers);
     }
     
-    /**
-     * Get team members by workspace.
-     */
-    @GetMapping("/workspace/{workspaceId}")
-    public ResponseEntity<Page<TeamMemberResponse>> getTeamMembersByWorkspace(
-            @PathVariable String workspaceId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<TeamMemberResponse> teamMembers = teamMemberService.getTeamMembersByWorkspace(workspaceId, pageable);
-        return ResponseEntity.ok(teamMembers);
-    }
+
     
     /**
      * Search team members.
@@ -198,14 +186,7 @@ public class TeamMemberController {
         }
     }
     
-    /**
-     * Get user's workspaces.
-     */
-    @GetMapping("/user/{userId}/workspaces")
-    public ResponseEntity<List<TeamMemberResponse>> getUserWorkspaces(@PathVariable String userId) {
-        List<TeamMemberResponse> workspaces = teamMemberService.getUserWorkspaces(userId);
-        return ResponseEntity.ok(workspaces);
-    }
+
     
     /**
      * Check if user is member of organization.
@@ -218,16 +199,7 @@ public class TeamMemberController {
         return ResponseEntity.ok(isMember);
     }
     
-    /**
-     * Check if user is member of workspace.
-     */
-    @GetMapping("/check/workspace/{userId}")
-    public ResponseEntity<Boolean> isUserMemberOfWorkspace(
-            @PathVariable String userId,
-            @RequestParam String workspaceId) {
-        boolean isMember = teamMemberService.isUserMemberOfWorkspace(userId, workspaceId);
-        return ResponseEntity.ok(isMember);
-    }
+
     
     /**
      * Get team analytics.

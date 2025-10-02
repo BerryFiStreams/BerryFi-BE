@@ -25,8 +25,7 @@ public class SupportRequest {
     @Column(name = "organization_id", nullable = false)
     private String organizationId;
     
-    @Column(name = "workspace_id")
-    private String workspaceId;
+
     
     @Column(nullable = false)
     private String subject;
@@ -100,13 +99,9 @@ public class SupportRequest {
         this.organizationId = organizationId;
     }
 
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
 
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
-    }
+
+
 
     public String getSubject() {
         return subject;

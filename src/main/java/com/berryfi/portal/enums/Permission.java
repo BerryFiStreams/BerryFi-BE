@@ -52,15 +52,6 @@ public enum Permission {
     TEAM_MANAGE_LEADS("team:manage_leads", "Manage lead notes and status"),
     TEAM_VIEW_STATS("team:view_stats", "View team statistics"),
     
-    // Workspace permissions
-    WORKSPACE_VIEW("workspace:view", "View workspaces"),
-    WORKSPACE_CREATE("workspace:create", "Create new workspaces"),
-    WORKSPACE_UPDATE("workspace:update", "Update workspace settings"),
-    WORKSPACE_DELETE("workspace:delete", "Delete workspaces"),
-    WORKSPACE_MANAGE_CREDITS("workspace:manage_credits", "Manage workspace credits"),
-    WORKSPACE_VIEW_STATS("workspace:view_stats", "View workspace statistics"),
-    WORKSPACE_MANAGE_MEMBERS("workspace:manage_members", "Manage workspace members"),
-    
     // Analytics permissions
     ANALYTICS_VIEW_USAGE("analytics:view_usage", "View usage analytics"),
     ANALYTICS_VIEW_LEADS("analytics:view_leads", "View lead analytics"),
@@ -81,7 +72,6 @@ public enum Permission {
     // Usage permissions
     USAGE_VIEW_SESSIONS("usage:view_sessions", "View usage session logs"),
     USAGE_VIEW_STATS("usage:view_stats", "View usage statistics"),
-    USAGE_VIEW_WORKSPACES("usage:view_workspaces", "View usage by workspaces"),
     USAGE_VIEW_MEMBERS("usage:view_members", "View usage by members"),
     USAGE_EXPORT("usage:export", "Export usage data"),
     

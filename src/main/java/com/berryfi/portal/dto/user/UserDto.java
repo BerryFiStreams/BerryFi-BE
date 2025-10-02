@@ -18,7 +18,7 @@ public class UserDto {
     private Role role;
     private AccountType accountType;
     private String organizationId;
-    private String workspaceId;
+
     private UserStatus status;
     private LocalDateTime lastLogin;
 
@@ -88,13 +88,9 @@ public class UserDto {
         this.organizationId = organizationId;
     }
 
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
 
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
-    }
+
+
 
     public UserStatus getStatus() {
         return status;

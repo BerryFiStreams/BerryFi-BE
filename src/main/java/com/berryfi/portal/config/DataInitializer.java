@@ -68,18 +68,7 @@ public class DataInitializer implements CommandLineRunner {
             userRepository.save(orgAdmin);
         }
 
-        // Create Workspace Admin
-        if (!userRepository.existsByEmail("workspace.admin@apexmarketing.com")) {
-            User workspaceAdmin = new User();
-            workspaceAdmin.setName("Workspace Admin");
-            workspaceAdmin.setEmail("workspace.admin@apexmarketing.com");
-            workspaceAdmin.setPassword(passwordEncoder.encode("password123"));
-            workspaceAdmin.setRole(Role.ORG_ADMIN);
-            workspaceAdmin.setAccountType(AccountType.WORKSPACE);
-            workspaceAdmin.setOrganizationId("ravgroup");
-            workspaceAdmin.setStatus(UserStatus.ACTIVE);
-            userRepository.save(workspaceAdmin);
-        }
+
 
         // Create Organization Member
         if (!userRepository.existsByEmail("member@ravgroup.org")) {
@@ -94,26 +83,13 @@ public class DataInitializer implements CommandLineRunner {
             userRepository.save(orgMember);
         }
 
-        // Create Workspace Member
-        if (!userRepository.existsByEmail("member@apexmarketing.com")) {
-            User workspaceMember = new User();
-            workspaceMember.setName("Workspace Member");
-            workspaceMember.setEmail("member@apexmarketing.com");
-            workspaceMember.setPassword(passwordEncoder.encode("password123"));
-            workspaceMember.setRole(Role.ORG_MEMBER);
-            workspaceMember.setAccountType(AccountType.WORKSPACE);
-            workspaceMember.setOrganizationId("ravgroup");
-            workspaceMember.setStatus(UserStatus.ACTIVE);
-            userRepository.save(workspaceMember);
-        }
+
 
         System.out.println("Sample users created successfully!");
         System.out.println("Available test users:");
         System.out.println("1. Super Admin: admin@berryfi.com / SuperSecurePassword@123");
         System.out.println("2. Org Owner: mithesh@ravgroup.org / password123");
         System.out.println("3. Org Admin: admin@ravgroup.org / password123");
-        System.out.println("4. Workspace Admin: workspace.admin@apexmarketing.com / password123");
-        System.out.println("5. Org Member: member@ravgroup.org / password123");
-        System.out.println("6. Workspace Member: member@apexmarketing.com / password123");
+        System.out.println("4. Org Member: member@ravgroup.org / password123");
     }
 }

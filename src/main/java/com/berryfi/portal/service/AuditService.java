@@ -35,19 +35,12 @@ public class AuditService {
     @Autowired
     private FileService fileService;
 
-    /**
-     * Get audit logs with pagination and filtering.
-     */
-    public Page<AuditLogResponse> getAuditLogs(String organizationId, String userId, String action, 
-                                             String resource, String startDate, String endDate, 
-                                             Pageable pageable) {
-        return getAuditLogs(organizationId, null, userId, action, resource, startDate, endDate, pageable);
-    }
+
 
     /**
-     * Get audit logs with workspace support.
+     * Get audit logs for organization.
      */
-    public Page<AuditLogResponse> getAuditLogs(String organizationId, String workspaceId, String userId, 
+    public Page<AuditLogResponse> getAuditLogs(String organizationId, String userId, 
                                              String action, String resource, String startDate, String endDate, 
                                              Pageable pageable) {
         try {
@@ -55,7 +48,7 @@ public class AuditService {
             LocalDateTime end = endDate != null ? LocalDateTime.parse(endDate + "T23:59:59") : null;
 
             Page<AuditLog> auditLogs = auditLogRepository.findWithFilters(
-                organizationId, workspaceId, userId, action, resource, start, end, pageable);
+                organizationId, userId, action, resource, start, end, pageable);
 
             return auditLogs.map(this::convertToResponse);
         } catch (Exception e) {
@@ -198,7 +191,6 @@ public class AuditService {
             Map<String, Long> resourceCounts = new HashMap<>();
             resourceCounts.put("PROJECT", 123L);
             resourceCounts.put("USER", 89L);
-            resourceCounts.put("WORKSPACE", 45L);
 
             Map<String, Long> dailyActivity = new HashMap<>();
             dailyActivity.put("2024-01-15", 45L);
@@ -238,28 +230,13 @@ public class AuditService {
         }
     }
 
-    /**
-     * Get VM session audit logs for a workspace.
-     */
-    public Page<VMSessionAuditLogResponse> getVMSessionAuditLogs(String workspaceId, String userId, 
-                                                               String sessionId, String action, String vmInstanceId,
-                                                               String startDate, String endDate, String status,
-                                                               Pageable pageable) {
-        try {
-            // Convert workspace-based call to organization-based call
-            // Note: This method is deprecated - use organization-based method instead
-            return Page.empty(pageable);
-        } catch (Exception e) {
-            // Return empty page on error
-            return Page.empty(pageable);
-        }
-    }
+
 
     /**
-     * Get VM session audit logs for an organization (org-level access).
+     * Get VM session audit logs for an organization.
      */
     public Page<VMSessionAuditLogResponse> getVMSessionAuditLogsByOrganization(String organizationId, 
-                                                                             String workspaceId, String userId,
+                                                                             String userId,
                                                                              String sessionId, String action, 
                                                                              String vmInstanceId, String startDate, 
                                                                              String endDate, String status,
@@ -277,54 +254,7 @@ public class AuditService {
         }
     }
 
-    /**
-     * Get VM session audit statistics for workspace.
-     */
-    public VMSessionAuditStatsResponse getVMSessionAuditStats(String workspaceId) {
-        try {
-            // Note: workspace-based counting is deprecated
-            long totalLogs = 0; // TODO: Convert to organization-based counting
-            
-            // Get action counts
-            // Note: workspace-based stats are deprecated
-            List<Object[]> actionCounts = new ArrayList<>(); // TODO: Convert to organization-based stats
-            Map<String, Long> actionMap = new HashMap<>();
-            for (Object[] row : actionCounts) {
-                actionMap.put((String) row[0], (Long) row[1]);
-            }
 
-            // Get user activity
-            // Note: workspace-based activity is deprecated
-            List<Object[]> userActivity = new ArrayList<>(); // TODO: Convert to organization-based activity
-            Map<String, Long> userMap = new HashMap<>();
-            for (Object[] row : userActivity) {
-                String userName = (String) row[1];
-                Long count = (Long) row[2];
-                userMap.put(userName != null ? userName : "Unknown", count);
-            }
-
-            // Get VM instance activity
-            // Note: workspace-based VM activity is deprecated
-            List<Object[]> vmActivity = new ArrayList<>(); // TODO: Convert to organization-based VM activity
-            Map<String, Long> vmMap = new HashMap<>();
-            for (Object[] row : vmActivity) {
-                String vmId = (String) row[0];
-                Long count = (Long) row[2];
-                vmMap.put(vmId != null ? vmId : "Unknown", count);
-            }
-
-            // Note: workspace-based credit tracking is deprecated
-            Double totalCreditsUsed = 0.0; // TODO: Convert to organization-based credit tracking
-
-            return new VMSessionAuditStatsResponse(
-                totalLogs, actionMap, userMap, vmMap, 
-                totalCreditsUsed != null ? totalCreditsUsed : 0.0
-            );
-        } catch (Exception e) {
-            return new VMSessionAuditStatsResponse(0L, new HashMap<>(), new HashMap<>(), 
-                                                 new HashMap<>(), 0.0);
-        }
-    }
 
     /**
      * Convert VMSessionAuditLog to response DTO.
@@ -347,7 +277,7 @@ public class AuditService {
             auditLog.getUserName(),
             auditLog.getUserEmail(),
             auditLog.getOrganizationId(),
-            null, // workspaceId - removed
+            null,
             auditLog.getWorkspaceName(),
             auditLog.getProjectId(),
             auditLog.getProjectName(),
@@ -403,27 +333,7 @@ public class AuditService {
         }
     }
 
-    /**
-     * Log a workspace-level action.
-     */
-    public void logWorkspaceAction(String userId, String userName, String organizationId, String workspaceId,
-                                 String action, String resource, String resourceId, 
-                                 String details, HttpServletRequest request) {
-        try {
-            AuditLog auditLog = new AuditLog(userId, userName, organizationId, workspaceId, action, resource, resourceId);
-            auditLog.setDetails(details);
-            
-            if (request != null) {
-                auditLog.setIpAddress(getClientIpAddress(request));
-                auditLog.setUserAgent(request.getHeader("User-Agent"));
-                auditLog.setSessionId(request.getSession().getId());
-            }
-            
-            auditLogRepository.save(auditLog);
-        } catch (Exception e) {
-            System.err.println("Failed to save workspace audit log: " + e.getMessage());
-        }
-    }
+
 
     /**
      * Log a VM session action.
@@ -495,7 +405,6 @@ public class AuditService {
             
             Page<AuditLog> auditLogs = auditLogRepository.findWithFilters(
                 request.getOrganizationId(), 
-                null, // workspaceId - not used in export for now
                 request.getUserId(), 
                 request.getAction(), 
                 request.getResource(), 

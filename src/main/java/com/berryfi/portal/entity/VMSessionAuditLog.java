@@ -42,12 +42,9 @@ public class VMSessionAuditLog {
     @Column(name = "organization_id", nullable = false)
     private String organizationId;
 
-    @NotBlank(message = "Workspace ID is required")
-    @Column(name = "workspace_id", nullable = false)
-    private String workspaceId;
 
-    @Column(name = "workspace_name")
-    private String workspaceName;
+
+
 
     @Column(name = "project_id")
     private String projectId;
@@ -140,14 +137,12 @@ public class VMSessionAuditLog {
     }
 
     public VMSessionAuditLog(String userId, String userName, String userEmail, String organizationId, 
-                           String workspaceId, String workspaceName, String action) {
+                           String action) {
         this();
         this.userId = userId;
         this.userName = userName;
         this.userEmail = userEmail;
         this.organizationId = organizationId;
-        this.workspaceId = workspaceId;
-        this.workspaceName = workspaceName;
         this.action = action;
     }
 
@@ -162,10 +157,10 @@ public class VMSessionAuditLog {
 
     // Helper methods for creating VM session audit logs
     public static VMSessionAuditLog createSessionStartLog(VmSession session, String userName, String userEmail, 
-                                                         String workspaceName, String projectName) {
+                                                         String projectName) {
         VMSessionAuditLog log = new VMSessionAuditLog(
             session.getUserId(), userName, userEmail, session.getOrganizationId(),
-            null, workspaceName, "VM_SESSION_START"
+            "VM_SESSION_START"
         );
         log.setSessionId(session.getId());
         log.setVmInstanceId(session.getVmInstanceId());
@@ -181,10 +176,10 @@ public class VMSessionAuditLog {
     }
 
     public static VMSessionAuditLog createSessionStopLog(VmSession session, String userName, String userEmail,
-                                                        String workspaceName, String projectName, String reason) {
+                                                        String projectName, String reason) {
         VMSessionAuditLog log = new VMSessionAuditLog(
             session.getUserId(), userName, userEmail, session.getOrganizationId(),
-            null, workspaceName, "VM_SESSION_STOP"
+            "VM_SESSION_STOP"
         );
         log.setSessionId(session.getId());
         log.setVmInstanceId(session.getVmInstanceId());
@@ -200,10 +195,10 @@ public class VMSessionAuditLog {
     }
 
     public static VMSessionAuditLog createSessionHeartbeatLog(VmSession session, String userName, String userEmail,
-                                                            String workspaceName, String projectName) {
+                                                            String projectName) {
         VMSessionAuditLog log = new VMSessionAuditLog(
             session.getUserId(), userName, userEmail, session.getOrganizationId(),
-            null, workspaceName, "VM_SESSION_HEARTBEAT"
+            "VM_SESSION_HEARTBEAT"
         );
         log.setSessionId(session.getId());
         log.setVmInstanceId(session.getVmInstanceId());
@@ -256,21 +251,13 @@ public class VMSessionAuditLog {
         this.organizationId = organizationId;
     }
 
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
 
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
-    }
 
-    public String getWorkspaceName() {
-        return workspaceName;
-    }
 
-    public void setWorkspaceName(String workspaceName) {
-        this.workspaceName = workspaceName;
-    }
+
+
+
+
 
     public String getProjectId() {
         return projectId;

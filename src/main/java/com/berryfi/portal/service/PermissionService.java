@@ -95,9 +95,7 @@ public class PermissionService {
             Permission.TEAM_MANAGE_CAMPAIGNS, Permission.TEAM_VIEW_LEADS, Permission.TEAM_CREATE_LEADS,
             Permission.TEAM_UPDATE_LEADS, Permission.TEAM_MANAGE_LEADS, Permission.TEAM_VIEW_STATS,
             
-            // Workspaces (full)
-            Permission.WORKSPACE_VIEW, Permission.WORKSPACE_CREATE, Permission.WORKSPACE_UPDATE, Permission.WORKSPACE_DELETE,
-            Permission.WORKSPACE_MANAGE_CREDITS, Permission.WORKSPACE_VIEW_STATS, Permission.WORKSPACE_MANAGE_MEMBERS,
+
             
             // Analytics (full)
             Permission.ANALYTICS_VIEW_USAGE, Permission.ANALYTICS_VIEW_LEADS, Permission.ANALYTICS_VIEW_GEOGRAPHIC,
@@ -109,7 +107,7 @@ public class PermissionService {
             Permission.AUDIT_VIEW_ACTIONS, Permission.AUDIT_EXPORT,
             
             // Usage (full)
-            Permission.USAGE_VIEW_SESSIONS, Permission.USAGE_VIEW_STATS, Permission.USAGE_VIEW_WORKSPACES,
+            Permission.USAGE_VIEW_SESSIONS, Permission.USAGE_VIEW_STATS,
             Permission.USAGE_VIEW_MEMBERS, Permission.USAGE_EXPORT,
             
             // Reports (full)
@@ -140,9 +138,7 @@ public class PermissionService {
             Permission.TEAM_MANAGE_CAMPAIGNS, Permission.TEAM_VIEW_LEADS, Permission.TEAM_CREATE_LEADS,
             Permission.TEAM_UPDATE_LEADS, Permission.TEAM_MANAGE_LEADS, Permission.TEAM_VIEW_STATS,
             
-            // Workspaces (limited)
-            Permission.WORKSPACE_VIEW, Permission.WORKSPACE_CREATE, Permission.WORKSPACE_UPDATE,
-            Permission.WORKSPACE_VIEW_STATS, Permission.WORKSPACE_MANAGE_MEMBERS,
+
             
             // Analytics (full)
             Permission.ANALYTICS_VIEW_USAGE, Permission.ANALYTICS_VIEW_LEADS, Permission.ANALYTICS_VIEW_GEOGRAPHIC,
@@ -153,7 +149,7 @@ public class PermissionService {
             Permission.AUDIT_VIEW_LOGS, Permission.AUDIT_VIEW_STATS, Permission.AUDIT_VIEW_USERS, Permission.AUDIT_VIEW_ACTIONS,
             
             // Usage (view only)
-            Permission.USAGE_VIEW_SESSIONS, Permission.USAGE_VIEW_STATS, Permission.USAGE_VIEW_WORKSPACES, Permission.USAGE_VIEW_MEMBERS,
+            Permission.USAGE_VIEW_SESSIONS, Permission.USAGE_VIEW_STATS, Permission.USAGE_VIEW_MEMBERS,
             
             // Reports (full)
             Permission.REPORTS_VIEW_DASHBOARD, Permission.REPORTS_VIEW_ANALYTICS, Permission.REPORTS_EXPORT

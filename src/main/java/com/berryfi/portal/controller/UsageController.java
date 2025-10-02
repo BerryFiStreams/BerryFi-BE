@@ -27,11 +27,10 @@ public class UsageController {
 
     /**
      * Get usage sessions for user's entitled workspaces - workspace-based approach
-     * GET /api/usage/sessions?workspaceId=xxx&projectId=xxx&userId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
+     * GET /api/usage/sessions?projectId=xxx&userId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
      */
     @GetMapping("/sessions")
     public ResponseEntity<Page<UsageSessionDto>> getUsageSessions(
-            @RequestParam(required = false) String workspaceId,
             @RequestParam(required = false) String projectId,
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -41,7 +40,7 @@ public class UsageController {
             @AuthenticationPrincipal User currentUser) {
         try {
             Page<UsageSessionDto> sessions = usageService.getUsageSessionsForUser(
-                    currentUser, workspaceId, projectId, userId, startDate, endDate, page, size);
+                    currentUser, projectId, userId, startDate, endDate, page, size);
             return ResponseEntity.ok(sessions);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -49,7 +48,7 @@ public class UsageController {
     }
 
     /**
-     * Get active sessions for user's entitled workspaces
+     * Get active sessions for user's organization
      * GET /api/usage/sessions/active
      */
     @GetMapping("/sessions/active")
@@ -64,7 +63,7 @@ public class UsageController {
     }
 
     /**
-     * Get usage statistics for user's entitled workspaces within date range
+     * Get usage statistics for user's organization within date range
      * GET /api/usage/statistics?startDate=xxx&endDate=xxx
      */
     @GetMapping("/statistics")
@@ -83,11 +82,10 @@ public class UsageController {
 
     /**
      * Get usage analytics for user's entitled workspaces
-     * GET /api/usage/analytics?workspaceId=xxx&projectId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
+     * GET /api/usage/analytics?projectId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
      */
     @GetMapping("/analytics")
     public ResponseEntity<Page<UsageAnalyticsDto>> getUsageAnalytics(
-            @RequestParam(required = false) String workspaceId,
             @RequestParam(required = false) String projectId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
@@ -96,7 +94,7 @@ public class UsageController {
             @AuthenticationPrincipal User currentUser) {
         try {
             Page<UsageAnalyticsDto> analytics = usageService.getUsageAnalyticsForUser(
-                    currentUser, workspaceId, projectId, startDate, endDate, page, size);
+                    currentUser, projectId, startDate, endDate, page, size);
             return ResponseEntity.ok(analytics);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -104,7 +102,7 @@ public class UsageController {
     }
 
     /**
-     * Generate daily analytics for user's entitled workspaces
+     * Generate daily analytics for user's organization
      * POST /api/usage/analytics/generate
      */
     @PostMapping("/analytics/generate")

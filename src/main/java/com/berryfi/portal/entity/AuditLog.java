@@ -34,8 +34,7 @@ public class AuditLog {
     @Column(name = "organization_id", nullable = false)
     private String organizationId;
 
-    @Column(name = "workspace_id")
-    private String workspaceId;
+
 
     @NotBlank(message = "Action is required")
     @Column(name = "action", nullable = false)
@@ -96,17 +95,7 @@ public class AuditLog {
         this.resourceId = resourceId;
     }
 
-    public AuditLog(String userId, String userName, String organizationId, String workspaceId, 
-                   String action, String resource, String resourceId) {
-        this();
-        this.userId = userId;
-        this.userName = userName;
-        this.organizationId = organizationId;
-        this.workspaceId = workspaceId;
-        this.action = action;
-        this.resource = resource;
-        this.resourceId = resourceId;
-    }
+
 
     private String generateAuditId() {
         return "audit_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
@@ -145,13 +134,9 @@ public class AuditLog {
         this.organizationId = organizationId;
     }
 
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
 
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
-    }
+
+
 
     public String getAction() {
         return action;
