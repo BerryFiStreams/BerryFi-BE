@@ -34,7 +34,6 @@ public class CampaignResponse {
     private Double conversionRate;
     
     private String organizationId;
-    private String workspaceId;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -100,8 +99,7 @@ public class CampaignResponse {
     public String getOrganizationId() { return organizationId; }
     public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
     
-    public String getWorkspaceId() { return workspaceId; }
-    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
+
     
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }

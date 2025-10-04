@@ -15,7 +15,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * REST Controller for usage tracking and analytics - workspace-based approach.
+ * REST Controller for usage tracking and analytics - organization-based approach.
  */
 @RestController
 @RequestMapping("/api/usage")
@@ -26,7 +26,7 @@ public class UsageController {
     private UsageService usageService;
 
     /**
-     * Get usage sessions for user's entitled workspaces - workspace-based approach
+     * Get usage sessions for user's entitled organizations - organization-based approach
      * GET /api/usage/sessions?projectId=xxx&userId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
      */
     @GetMapping("/sessions")
@@ -81,7 +81,7 @@ public class UsageController {
     }
 
     /**
-     * Get usage analytics for user's entitled workspaces
+     * Get usage analytics for user's entitled organizations
      * GET /api/usage/analytics?projectId=xxx&startDate=xxx&endDate=xxx&page=0&size=20
      */
     @GetMapping("/analytics")

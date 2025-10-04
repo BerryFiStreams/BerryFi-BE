@@ -21,7 +21,7 @@ public class ReportsService {
     /**
      * Get analytics reports data.
      */
-    public AnalyticsReportResponse getAnalyticsReport(String organizationId, String workspaceId, 
+    public AnalyticsReportResponse getAnalyticsReport(String organizationId, 
                                                      String dateRange, String reportType) {
         // Mock implementation
         Map<String, Object> summary = new HashMap<>();
@@ -38,7 +38,6 @@ public class ReportsService {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("generatedAt", LocalDateTime.now());
         metadata.put("organization", organizationId);
-        metadata.put("workspace", workspaceId);
 
         return new AnalyticsReportResponse("report_123", reportType, dateRange, summary, chartData, metadata);
     }
@@ -53,7 +52,7 @@ public class ReportsService {
         // Convert DashboardResponse to DashboardReportResponse
         return new DashboardReportResponse(
             dashboardData.getSummary(),
-            Collections.emptyList(), // No workspaces since concept is removed
+            Collections.emptyList(), // Organizations list - to be implemented
             dashboardData.getRecentProjects()
         );
     }
@@ -103,7 +102,6 @@ public class ReportsService {
         response.setSchedule(request.getSchedule());
         response.setStatus("active");
         response.setOrganizationId(request.getOrganizationId());
-        response.setWorkspaceId(request.getWorkspaceId());
         response.setRecipients(request.getRecipients());
         response.setParameters(request.getParameters());
         response.setCreatedAt(LocalDateTime.now());

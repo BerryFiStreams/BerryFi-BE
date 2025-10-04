@@ -278,7 +278,7 @@ public class AuditService {
             auditLog.getUserEmail(),
             auditLog.getOrganizationId(),
             null,
-            null, // workspaceName not available in VMSessionAuditLog
+            null, // organizationName not available in VMSessionAuditLog
             auditLog.getProjectId(),
             auditLog.getProjectName(),
             auditLog.getSessionId(),
@@ -339,7 +339,7 @@ public class AuditService {
      * Log a VM session action.
      */
     public void logVMSessionAction(VmSession session, String userName, String userEmail, 
-                                 String workspaceName, String projectName, String action,
+                                 String organizationName, String projectName, String action,
                                  String details) {
         try {
             VMSessionAuditLog auditLog = new VMSessionAuditLog(

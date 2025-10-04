@@ -88,7 +88,7 @@ public class UsageService {
     }
 
     /**
-     * Get usage sessions for user's entitled workspaces - based on VM sessions
+     * Get usage sessions for user's entitled organizations - based on VM sessions
      */
     public Page<UsageSessionDto> getUsageSessionsForUser(User currentUser, 
                                                        String projectId, String userId, 
@@ -182,7 +182,7 @@ public class UsageService {
     }
 
     /**
-     * Get usage analytics for user's entitled workspaces
+     * Get usage analytics for user's entitled organizations
      */
     public Page<UsageAnalyticsDto> getUsageAnalyticsForUser(User currentUser, 
                                                           String projectId, LocalDate startDate, 
@@ -265,7 +265,6 @@ public class UsageService {
         UsageAnalyticsDto dto = new UsageAnalyticsDto();
         dto.setId(analytics.getId());
         dto.setOrganizationId(analytics.getOrganizationId());
-        dto.setWorkspaceId(analytics.getWorkspaceId());
         dto.setProjectId(analytics.getProjectId());
         dto.setUserId(analytics.getUserId());
         dto.setDate(analytics.getDate());

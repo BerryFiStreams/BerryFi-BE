@@ -27,12 +27,12 @@ public class TeamController {
      */
     @GetMapping("/stats")
     public ResponseEntity<TeamStatsResponse> getTeamStats(
-            @RequestParam(required = false) String workspaceId,
+
             @RequestHeader("X-Organization-ID") String organizationId) {
-        logger.info("Getting team stats for organization: {}, workspace: {}", organizationId, workspaceId);
+        logger.info("Getting team stats for organization: {}", organizationId);
 
         try {
-            TeamStatsResponse stats = teamService.getTeamStats(organizationId, workspaceId);
+            TeamStatsResponse stats = teamService.getTeamStats(organizationId);
             return ResponseEntity.ok(stats);
         } catch (RuntimeException e) {
             logger.error("Error getting team stats: {}", e.getMessage());

@@ -37,7 +37,6 @@ public class LeadResponse {
     private String qualificationNotes;
     
     private String organizationId;
-    private String workspaceId;
     private String assignedTo;
     private String assignedToName;
     private String createdBy;
@@ -124,8 +123,7 @@ public class LeadResponse {
     public String getOrganizationId() { return organizationId; }
     public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
     
-    public String getWorkspaceId() { return workspaceId; }
-    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
+
     
     public String getAssignedTo() { return assignedTo; }
     public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }

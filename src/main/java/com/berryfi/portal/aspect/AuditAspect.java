@@ -187,7 +187,7 @@ public class AuditAspect {
             }
 
             // Get project name
-            String workspaceName = "Unknown Workspace"; // Default workspace name since workspace is removed
+            String organizationName = "Unknown Organization"; // Default organization name
             String projectName = "Unknown Project"; // TODO: Get project name from project service
 
             String details = buildVMSessionAuditDetails(joinPoint, vmSessionAudit, session, 
@@ -197,7 +197,7 @@ public class AuditAspect {
                 session,
                 currentUser.getName(),
                 currentUser.getEmail(),
-                workspaceName,
+                organizationName,
                 projectName,
                 vmSessionAudit.action(),
                 details

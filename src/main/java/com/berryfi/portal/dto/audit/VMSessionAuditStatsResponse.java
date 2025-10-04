@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * Response DTO for VM session audit statistics.
- * Provides workspace-level statistics for VM session activities.
+ * Provides organization-level statistics for VM session activities.
  */
 public class VMSessionAuditStatsResponse {
     private long totalLogs;

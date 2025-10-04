@@ -4,8 +4,7 @@ package com.berryfi.portal.enums;
  * Enum representing account types in the system.
  */
 public enum AccountType {
-    ORGANIZATION("organization", "Organization"),
-    WORKSPACE("workspace", "Workspace");
+    ORGANIZATION("organization", "Organization");
 
     private final String value;
     private final String displayName;

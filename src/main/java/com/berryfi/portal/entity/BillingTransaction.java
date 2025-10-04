@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @Table(name = "billing_transactions",
        indexes = {
            @Index(name = "idx_transaction_organization", columnList = "organizationId"),
-           @Index(name = "idx_transaction_workspace", columnList = "workspaceId"),
            @Index(name = "idx_transaction_date", columnList = "date"),
            @Index(name = "idx_transaction_type", columnList = "type")
        })
@@ -23,12 +22,6 @@ public class BillingTransaction {
     
     @Column(name = "organization_id", nullable = false)
     private String organizationId;
-    
-    @Column(name = "workspace_id")
-    private String workspaceId;
-    
-    @Column(name = "workspace_name")
-    private String workspaceName;
     
     @Column(nullable = false)
     private LocalDateTime date;
@@ -119,22 +112,6 @@ public class BillingTransaction {
 
     public void setOrganizationId(String organizationId) {
         this.organizationId = organizationId;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
-    }
-
-    public String getWorkspaceName() {
-        return workspaceName;
-    }
-
-    public void setWorkspaceName(String workspaceName) {
-        this.workspaceName = workspaceName;
     }
 
     public LocalDateTime getDate() {

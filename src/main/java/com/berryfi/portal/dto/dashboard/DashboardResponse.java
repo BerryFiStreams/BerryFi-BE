@@ -12,10 +12,8 @@ public class DashboardResponse {
     
     public DashboardResponse() {}
     
-    public DashboardResponse(DashboardSummary summary, List<Object> recentWorkspaces, 
-                           List<RecentProject> recentProjects) {
+    public DashboardResponse(DashboardSummary summary, List<RecentProject> recentProjects) {
         this.summary = summary;
-        // recentWorkspaces ignored since workspaces are removed
         this.recentProjects = recentProjects;
     }
     

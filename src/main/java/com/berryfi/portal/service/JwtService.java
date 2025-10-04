@@ -134,9 +134,4 @@ public class JwtService {
         Claims claims = extractAllClaims(token);
         return (String) claims.get("organizationId");
     }
-
-    public String getWorkspaceIdFromToken(String token) {
-        Claims claims = extractAllClaims(token);
-        return (String) claims.get("workspaceId");
-    }
 }

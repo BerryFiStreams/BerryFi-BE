@@ -73,7 +73,7 @@ public class DashboardService {
         return new DashboardSummary(
             totalSessions != null ? totalSessions.intValue() : 0,
             currentCredits != null ? currentCredits : 0.0,
-            0 // No workspaces since concept is removed
+            0 // No separate workspace count needed
         );
     }
 
@@ -112,8 +112,8 @@ public class DashboardService {
             project.getId(),
             project.getName(),
             project.getDescription(),
-            null, // workspaceId - removed
-            null, // workspaceName - removed
+            null, // organizationId placeholder
+            null, // organizationName placeholder
             project.getTotalCreditsUsed(),
             project.getSessionsCount(),
             project.getStatus(),

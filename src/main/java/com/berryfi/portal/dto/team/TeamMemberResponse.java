@@ -18,8 +18,6 @@ public class TeamMemberResponse {
     private String lastName;
     private String organizationId;
     private String organizationName;
-    private String workspaceId;
-    private String workspaceName;
     private Role role;
     private UserStatus status;
     private String invitedBy;
@@ -72,11 +70,7 @@ public class TeamMemberResponse {
     public String getOrganizationName() { return organizationName; }
     public void setOrganizationName(String organizationName) { this.organizationName = organizationName; }
     
-    public String getWorkspaceId() { return workspaceId; }
-    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
-    
-    public String getWorkspaceName() { return workspaceName; }
-    public void setWorkspaceName(String workspaceName) { this.workspaceName = workspaceName; }
+
     
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }

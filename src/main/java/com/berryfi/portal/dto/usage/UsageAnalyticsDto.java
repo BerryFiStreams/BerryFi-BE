@@ -10,7 +10,6 @@ public class UsageAnalyticsDto {
     
     private String id;
     private String organizationId;
-    private String workspaceId;
     private String projectId;
     private String userId;
     private LocalDate date;
@@ -59,14 +58,6 @@ public class UsageAnalyticsDto {
 
     public void setOrganizationId(String organizationId) {
         this.organizationId = organizationId;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
     }
 
     public String getProjectId() {

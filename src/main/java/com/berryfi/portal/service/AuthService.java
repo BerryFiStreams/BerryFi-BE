@@ -108,11 +108,6 @@ public class AuthService {
             user.setOrganizationId(registerRequest.getOrganizationId());
         }
 
-        // Set organizationId if provided
-        if (registerRequest.getWorkspaceId() != null && !registerRequest.getWorkspaceId().trim().isEmpty()) {
-            user.setOrganizationId(registerRequest.getWorkspaceId());
-        }
-
         // Save user
         User savedUser = userRepository.save(user);
 
@@ -209,25 +204,12 @@ public class AuthService {
      * Check if user can access organization.
      */
     public boolean canAccessOrganization(User user, String organizationId) {
-        if (user.getRole().isOrganizationLevel()) {
+        if (user.getRole() == com.berryfi.portal.enums.Role.SUPER_ADMIN) {
+            return true; // Super admin can access any organization
+        } else {
+            // Users can access their own organization
             return organizationId.equals(user.getOrganizationId());
         }
-        return false;
-    }
-
-    /**
-     * Check if user can access workspace.
-     */
-    public boolean canAccessWorkspace(User user, String workspaceId) {
-        if (user.getRole().isProjectLevel()) {
-            return workspaceId.equals(user.getOrganizationId());
-        }
-        if (user.getRole().isOrganizationLevel()) {
-            // Organization users can access workspaces in their organization
-            // This would require a workspace-organization mapping
-            return true; // Simplified for now
-        }
-        return false;
     }
 
     /**

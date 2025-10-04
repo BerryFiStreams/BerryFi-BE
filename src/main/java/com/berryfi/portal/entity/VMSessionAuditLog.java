@@ -10,12 +10,12 @@ import java.util.UUID;
 
 /**
  * Entity representing VM session-specific audit log entries.
- * This tracks workspace-level VM session actions and provides access control
- * based on workspace membership rather than organization-level permissions.
+ * This tracks organization-level VM session actions and provides access control
+ * based on organization membership permissions.
  */
 @Entity
 @Table(name = "vm_session_audit_logs", indexes = {
-    @Index(name = "idx_vm_audit_workspace", columnList = "workspaceId"),
+
     @Index(name = "idx_vm_audit_user", columnList = "userId"),
     @Index(name = "idx_vm_audit_session", columnList = "sessionId"),
     @Index(name = "idx_vm_audit_timestamp", columnList = "timestamp"),

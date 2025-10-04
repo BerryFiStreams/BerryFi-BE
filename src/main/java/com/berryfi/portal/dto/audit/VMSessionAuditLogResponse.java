@@ -5,7 +5,7 @@ import java.util.Map;
 
 /**
  * Response DTO for VMSessionAuditLog.
- * Contains comprehensive VM session audit information for workspace-level access.
+ * Contains comprehensive VM session audit information for organization-level access.
  */
 public class VMSessionAuditLogResponse {
     private String id;
@@ -13,8 +13,6 @@ public class VMSessionAuditLogResponse {
     private String userName;
     private String userEmail;
     private String organizationId;
-    private String workspaceId;
-    private String workspaceName;
     private String projectId;
     private String projectName;
     private String sessionId;
@@ -43,7 +41,7 @@ public class VMSessionAuditLogResponse {
     public VMSessionAuditLogResponse() {}
 
     public VMSessionAuditLogResponse(String id, String userId, String userName, String userEmail, 
-                                   String organizationId, String workspaceId, String workspaceName,
+                                   String organizationId,
                                    String projectId, String projectName, String sessionId,
                                    String vmInstanceId, String vmInstanceType, String action,
                                    String resource, String resourceId, Map<String, Object> details,
@@ -57,8 +55,6 @@ public class VMSessionAuditLogResponse {
         this.userName = userName;
         this.userEmail = userEmail;
         this.organizationId = organizationId;
-        this.workspaceId = workspaceId;
-        this.workspaceName = workspaceName;
         this.projectId = projectId;
         this.projectName = projectName;
         this.sessionId = sessionId;
@@ -126,21 +122,7 @@ public class VMSessionAuditLogResponse {
         this.organizationId = organizationId;
     }
 
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
 
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
-    }
-
-    public String getWorkspaceName() {
-        return workspaceName;
-    }
-
-    public void setWorkspaceName(String workspaceName) {
-        this.workspaceName = workspaceName;
-    }
 
     public String getProjectId() {
         return projectId;

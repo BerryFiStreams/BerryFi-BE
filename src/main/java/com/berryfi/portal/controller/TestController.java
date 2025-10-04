@@ -53,7 +53,7 @@ public class TestController {
      * Admin only endpoint.
      */
     @GetMapping("/admin")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ORG_OWNER') or hasRole('ORG_ADMIN') or hasRole('WORKSPACE_ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ORG_OWNER') or hasRole('ORG_ADMIN')")
     public ResponseEntity<Map<String, Object>> adminEndpoint(@AuthenticationPrincipal User user) {
         Map<String, Object> response = new HashMap<>();
         response.put("message", "This is an admin-only endpoint");
@@ -92,7 +92,7 @@ public class TestController {
      * Billing endpoint - only for users with billing permissions.
      */
     @GetMapping("/billing")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ORG_OWNER') or hasRole('ORG_ADMIN') or hasRole('ORG_BILLING') or hasRole('WORKSPACE_BILLING')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ORG_OWNER') or hasRole('ORG_ADMIN') or hasRole('ORG_BILLING')")
     public ResponseEntity<Map<String, Object>> billingEndpoint(@AuthenticationPrincipal User user) {
         Map<String, Object> response = new HashMap<>();
         response.put("message", "This endpoint requires billing permissions");
@@ -105,7 +105,7 @@ public class TestController {
      * Reports endpoint - only for users with reporting permissions.
      */
     @GetMapping("/reports")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ORG_OWNER') or hasRole('ORG_ADMIN') or hasRole('ORG_REPORTER') or hasRole('WORKSPACE_REPORTER')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ORG_OWNER') or hasRole('ORG_ADMIN') or hasRole('ORG_REPORTER')")
     public ResponseEntity<Map<String, Object>> reportsEndpoint(@AuthenticationPrincipal User user) {
         Map<String, Object> response = new HashMap<>();
         response.put("message", "This endpoint requires reporting permissions");

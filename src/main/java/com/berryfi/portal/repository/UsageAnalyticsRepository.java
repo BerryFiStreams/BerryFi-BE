@@ -45,10 +45,7 @@ public interface UsageAnalyticsRepository extends JpaRepository<UsageAnalytics, 
      */
     Page<UsageAnalytics> findByProjectIdOrderByDateDesc(String projectId, Pageable pageable);
 
-    /**
-     * Find analytics by workspace ID
-     */
-    Page<UsageAnalytics> findByWorkspaceIdOrderByDateDesc(String workspaceId, Pageable pageable);
+
 
     /**
      * Find analytics by user ID

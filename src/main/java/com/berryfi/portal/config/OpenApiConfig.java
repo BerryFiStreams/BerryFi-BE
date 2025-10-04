@@ -45,8 +45,8 @@ public class OpenApiConfig {
                         new Tag().name("Projects").description("Project management operations"),
                         new Tag().name("Reports").description("Report generation operations"),
                         new Tag().name("Team").description("Team member management operations"),
-                        new Tag().name("Usage").description("Usage tracking operations"),
-                        new Tag().name("Workspaces").description("Workspace management operations")
+                        new Tag().name("Usage").description("Usage tracking operations")
+
                 ));
     }
 }

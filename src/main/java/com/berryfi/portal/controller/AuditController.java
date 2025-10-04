@@ -234,17 +234,17 @@ public class AuditController {
     }
 
     // ====================
-    // WORKSPACE-LEVEL AUDIT ENDPOINTS
+    // ORGANIZATION-LEVEL AUDIT ENDPOINTS (Workspace endpoints deprecated)
     // ====================
 
     /**
-     * Get audit logs for a specific workspace.
-     * GET /audit/workspaces/{workspaceId}/logs
+     * Get audit logs for a specific organization.
+     * GET /audit/organizations/{organizationId}/logs  
      */
-    @GetMapping("/workspaces/{workspaceId}/logs")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_WORKSPACE_ADMIN')")
-    public ResponseEntity<Page<AuditLogResponse>> getWorkspaceAuditLogs(
-            @PathVariable String workspaceId,
+    @GetMapping("/organizations/{organizationId}/logs")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_ORG_ADMIN')")
+    public ResponseEntity<Page<AuditLogResponse>> getOrganizationAuditLogs(
+            @PathVariable String organizationId,
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String resource,
@@ -255,11 +255,9 @@ public class AuditController {
         try {
             Pageable pageable = PageRequest.of(page, size);
             
-            // Get organization ID from workspace ID (you might need to add this logic)
-            // For now, using null which means the service will need to handle workspace-specific queries
-            // Convert workspace call to organization call
+            // Get audit logs for the organization
             Page<AuditLogResponse> auditLogs = auditService.getAuditLogs(
-                    null, userId, action, resource, startDate, endDate, pageable);
+                    organizationId, userId, action, resource, startDate, endDate, pageable);
             
             return ResponseEntity.ok(auditLogs);
         } catch (Exception e) {
@@ -281,7 +279,7 @@ public class AuditController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_ORG_ADMIN') or hasAuthority('ROLE_ORG_OWNER')")
     public ResponseEntity<Page<VMSessionAuditLogResponse>> getOrganizationVMSessionAuditLogs(
             @PathVariable String organizationId,
-            @RequestParam(required = false) String workspaceId,
+
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) String sessionId,
             @RequestParam(required = false) String action,

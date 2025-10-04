@@ -100,14 +100,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()
                 
                 // API endpoints with role-based access
-                .requestMatchers("/api/projects/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_MEMBER", "WORKSPACE_ADMIN", "WORKSPACE_MEMBER")
-                .requestMatchers("/api/billing/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_BILLING", "WORKSPACE_BILLING")
-                .requestMatchers("/api/team/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_MEMBER", "WORKSPACE_ADMIN", "WORKSPACE_MEMBER")
-                .requestMatchers("/api/workspaces/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN")
-                .requestMatchers("/api/analytics/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_REPORTER", "WORKSPACE_REPORTER")
-                .requestMatchers("/api/audit/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_AUDITOR", "WORKSPACE_AUDITOR")
-                .requestMatchers("/api/usage/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_AUDITOR", "WORKSPACE_AUDITOR")
-                .requestMatchers("/api/reports/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_REPORTER", "WORKSPACE_REPORTER")
+                .requestMatchers("/api/projects/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_MEMBER")
+                .requestMatchers("/api/billing/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_BILLING")
+                .requestMatchers("/api/team/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_MEMBER")
+                
+                .requestMatchers("/api/analytics/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_REPORTER")
+                .requestMatchers("/api/audit/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_AUDITOR")
+                .requestMatchers("/api/usage/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_AUDITOR")
+                .requestMatchers("/api/reports/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_REPORTER")
                 
                 // All other requests require authentication
                 .anyRequest().authenticated()

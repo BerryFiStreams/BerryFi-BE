@@ -25,14 +25,14 @@ public class ReportsController {
      */
     @GetMapping("/analytics")
     public ResponseEntity<AnalyticsReportResponse> getAnalyticsReport(
-            @RequestParam(required = false) String workspaceId,
+
             @RequestParam(required = false) String dateRange,
             @RequestParam(required = false) String reportType,
             @AuthenticationPrincipal User currentUser) {
         try {
             String organizationId = currentUser.getOrganizationId();
             AnalyticsReportResponse report = reportsService.getAnalyticsReport(
-                    organizationId, workspaceId, dateRange, reportType);
+                    organizationId, null, dateRange, reportType);
             return ResponseEntity.ok(report);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

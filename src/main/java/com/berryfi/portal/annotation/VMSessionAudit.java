@@ -5,7 +5,7 @@ import java.lang.annotation.*;
 /**
  * Annotation to mark VM session methods that should be audited.
  * This annotation will trigger automatic audit logging using VMSessionAuditLog
- * for workspace-level VM session activities.
+ * for organization-level VM session activities.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

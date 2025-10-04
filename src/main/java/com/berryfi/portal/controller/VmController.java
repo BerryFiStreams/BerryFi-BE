@@ -260,9 +260,6 @@ public class VmController {
         @NotBlank(message = "Project ID is required")
         private String projectId;
         
-        @NotBlank(message = "Workspace ID is required")
-        private String workspaceId;
-        
         @NotBlank(message = "VM type is required")
         private String vmType;
 
@@ -274,9 +271,6 @@ public class VmController {
 
         public String getProjectId() { return projectId; }
         public void setProjectId(String projectId) { this.projectId = projectId; }
-        
-        public String getWorkspaceId() { return workspaceId; }
-        public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
         
         public String getVmType() { return vmType; }
         public void setVmType(String vmType) { this.vmType = vmType; }

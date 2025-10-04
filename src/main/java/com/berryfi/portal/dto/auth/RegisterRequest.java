@@ -32,8 +32,6 @@ public class RegisterRequest {
 
     private String organizationId; // Optional, will be auto-generated if not provided
 
-    private String workspaceId; // Optional, only for workspace users
-
     public RegisterRequest() {}
 
     public RegisterRequest(String name, String email, String password, Role role, AccountType accountType) {
@@ -91,13 +89,5 @@ public class RegisterRequest {
 
     public void setOrganizationId(String organizationId) {
         this.organizationId = organizationId;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
     }
 }

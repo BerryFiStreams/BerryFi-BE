@@ -24,9 +24,6 @@ public class UsageAnalytics {
     @Column(name = "organization_id", nullable = false)
     private String organizationId;
     
-    @Column(name = "workspace_id")
-    private String workspaceId;
-    
     @Column(name = "project_id")
     private String projectId;
     
@@ -116,14 +113,6 @@ public class UsageAnalytics {
 
     public void setOrganizationId(String organizationId) {
         this.organizationId = organizationId;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
     }
 
     public String getProjectId() {

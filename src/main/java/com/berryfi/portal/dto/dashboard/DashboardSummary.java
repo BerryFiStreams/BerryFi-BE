@@ -7,14 +7,14 @@ public class DashboardSummary {
     
     private Integer totalSessionsCount;
     private Double creditsAsOfToday;
-    private Integer totalWorkspaces;
+    private Integer totalOrganizations;
     
     public DashboardSummary() {}
     
-    public DashboardSummary(Integer totalSessionsCount, Double creditsAsOfToday, Integer totalWorkspaces) {
+    public DashboardSummary(Integer totalSessionsCount, Double creditsAsOfToday, Integer totalOrganizations) {
         this.totalSessionsCount = totalSessionsCount;
         this.creditsAsOfToday = creditsAsOfToday;
-        this.totalWorkspaces = totalWorkspaces;
+        this.totalOrganizations = totalOrganizations;
     }
     
     // Getters and Setters
@@ -34,11 +34,11 @@ public class DashboardSummary {
         this.creditsAsOfToday = creditsAsOfToday;
     }
     
-    public Integer getTotalWorkspaces() {
-        return totalWorkspaces;
+    public Integer getTotalOrganizations() {
+        return totalOrganizations;
     }
-    
-    public void setTotalWorkspaces(Integer totalWorkspaces) {
-        this.totalWorkspaces = totalWorkspaces;
+
+    public void setTotalOrganizations(Integer totalOrganizations) {
+        this.totalOrganizations = totalOrganizations;
     }
 }

@@ -15,7 +15,6 @@ public class ScheduledReportResponse {
     private String schedule;
     private String status;
     private String organizationId;
-    private String workspaceId;
     private List<String> recipients;
     private Map<String, Object> parameters;
     private LocalDateTime createdAt;
@@ -45,9 +44,6 @@ public class ScheduledReportResponse {
 
     public String getOrganizationId() { return organizationId; }
     public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
-
-    public String getWorkspaceId() { return workspaceId; }
-    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
 
     public List<String> getRecipients() { return recipients; }
     public void setRecipients(List<String> recipients) { this.recipients = recipients; }

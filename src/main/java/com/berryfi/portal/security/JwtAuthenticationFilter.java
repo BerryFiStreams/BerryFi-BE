@@ -67,15 +67,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     
                     // Extract additional claims from JWT
                     String organizationId = jwtService.getOrganizationIdFromToken(jwt);
-                    String workspaceId = jwtService.getWorkspaceIdFromToken(jwt);
                     String userId = jwtService.getUserIdFromToken(jwt);
                     
                     // Add claims as headers to the wrapper
                     if (organizationId != null) {
                         requestWrapper.putHeader("X-Organization-ID", organizationId);
-                    }
-                    if (workspaceId != null) {
-                        requestWrapper.putHeader("X-Workspace-ID", workspaceId);
                     }
                     if (userId != null) {
                         requestWrapper.putHeader("X-User-ID", userId);

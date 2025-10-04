@@ -1,9 +1,12 @@
 package com.berryfi.portal.config;
 
+import com.berryfi.portal.entity.Organization;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.enums.AccountType;
+import com.berryfi.portal.enums.OrganizationStatus;
 import com.berryfi.portal.enums.Role;
 import com.berryfi.portal.enums.UserStatus;
+import com.berryfi.portal.repository.OrganizationRepository;
 import com.berryfi.portal.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -20,12 +23,53 @@ public class DataInitializer implements CommandLineRunner {
     private UserRepository userRepository;
 
     @Autowired
+    private OrganizationRepository organizationRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) throws Exception {
+        // Create sample organizations first (users reference these)
+        createSampleOrganizations();
         // Create sample users if they don't exist
         createSampleUsers();
+    }
+
+    private void createSampleOrganizations() {
+        // Create BerryFi organization for super admin
+        if (!organizationRepository.existsById("berryfi")) {
+            Organization berryfiOrg = new Organization(
+                "BerryFi Systems",
+                "Primary BerryFi organization for system administration",
+                "system", // Will be updated when user is created
+                "admin@berryfi.com",
+                "Super Admin",
+                "system"
+            );
+            berryfiOrg.setId("berryfi");
+            berryfiOrg.setStatus(OrganizationStatus.ACTIVE);
+            berryfiOrg.setTotalCredits(10000.0);
+            berryfiOrg.setRemainingCredits(10000.0);
+            organizationRepository.save(berryfiOrg);
+        }
+
+        // Create RAV Group organization
+        if (!organizationRepository.existsById("ravgroup")) {
+            Organization ravgroupOrg = new Organization(
+                "RAV Group",
+                "Sample organization for testing purposes",
+                "system", // Will be updated when user is created
+                "mithesh@ravgroup.org",
+                "Mithesh Bhat",
+                "system"
+            );
+            ravgroupOrg.setId("ravgroup");
+            ravgroupOrg.setStatus(OrganizationStatus.ACTIVE);
+            ravgroupOrg.setTotalCredits(5000.0);
+            ravgroupOrg.setRemainingCredits(5000.0);
+            organizationRepository.save(ravgroupOrg);
+        }
     }
 
     private void createSampleUsers() {
@@ -39,7 +83,13 @@ public class DataInitializer implements CommandLineRunner {
             superAdmin.setAccountType(AccountType.ORGANIZATION);
             superAdmin.setOrganizationId("berryfi");
             superAdmin.setStatus(UserStatus.ACTIVE);
-            userRepository.save(superAdmin);
+            User savedSuperAdmin = userRepository.save(superAdmin);
+            
+            // Update organization owner ID
+            organizationRepository.findById("berryfi").ifPresent(org -> {
+                org.setOwnerId(savedSuperAdmin.getId());
+                organizationRepository.save(org);
+            });
         }
 
         // Create Organization Owner (Mithesh Bhat)
@@ -52,7 +102,13 @@ public class DataInitializer implements CommandLineRunner {
             orgOwner.setAccountType(AccountType.ORGANIZATION);
             orgOwner.setOrganizationId("ravgroup");
             orgOwner.setStatus(UserStatus.ACTIVE);
-            userRepository.save(orgOwner);
+            User savedOrgOwner = userRepository.save(orgOwner);
+            
+            // Update organization owner ID
+            organizationRepository.findById("ravgroup").ifPresent(org -> {
+                org.setOwnerId(savedOrgOwner.getId());
+                organizationRepository.save(org);
+            });
         }
 
         // Create Organization Admin

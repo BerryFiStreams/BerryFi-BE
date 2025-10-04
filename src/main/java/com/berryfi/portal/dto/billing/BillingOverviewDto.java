@@ -13,14 +13,14 @@ public class BillingOverviewDto {
     private String billingCycle;
     private String nextBillingDate;
     private boolean isMainAccount;
-    private String workspaceId;
-    private String workspaceName;
+    private String organizationId;
+    private String organizationName;
 
     public BillingOverviewDto() {}
 
     public BillingOverviewDto(String accountId, String accountName, String accountType, String status,
                              double credits, double monthlyBudget, String billingCycle, String nextBillingDate,
-                             boolean isMainAccount, String workspaceId, String workspaceName) {
+                             boolean isMainAccount, String organizationId, String organizationName) {
         this.accountId = accountId;
         this.accountName = accountName;
         this.accountType = accountType;
@@ -30,8 +30,8 @@ public class BillingOverviewDto {
         this.billingCycle = billingCycle;
         this.nextBillingDate = nextBillingDate;
         this.isMainAccount = isMainAccount;
-        this.workspaceId = workspaceId;
-        this.workspaceName = workspaceName;
+        this.organizationId = organizationId;
+        this.organizationName = organizationName;
     }
 
     // Getters and setters
@@ -62,9 +62,9 @@ public class BillingOverviewDto {
     public boolean isMainAccount() { return isMainAccount; }
     public void setMainAccount(boolean mainAccount) { isMainAccount = mainAccount; }
 
-    public String getWorkspaceId() { return workspaceId; }
-    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
+    public String getOrganizationId() { return organizationId; }
+    public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
 
-    public String getWorkspaceName() { return workspaceName; }
-    public void setWorkspaceName(String workspaceName) { this.workspaceName = workspaceName; }
+    public String getOrganizationName() { return organizationName; }
+    public void setOrganizationName(String organizationName) { this.organizationName = organizationName; }
 }

@@ -9,7 +9,6 @@ public class BillingTransactionDto {
     private String id;
     private String userId;
     private String projectId;
-    private String workspaceId;
     private String organizationId;
     private String transactionType;
     private Double amount;
@@ -23,13 +22,12 @@ public class BillingTransactionDto {
     // Constructors
     public BillingTransactionDto() {}
 
-    public BillingTransactionDto(String id, String userId, String projectId, String workspaceId, 
-                                String organizationId, String transactionType, Double amount, 
+    public BillingTransactionDto(String id, String userId, String projectId, String organizationId, 
+                                String transactionType, Double amount, 
                                 Double credits, String description, LocalDateTime createdAt) {
         this.id = id;
         this.userId = userId;
         this.projectId = projectId;
-        this.workspaceId = workspaceId;
         this.organizationId = organizationId;
         this.transactionType = transactionType;
         this.amount = amount;
@@ -48,8 +46,7 @@ public class BillingTransactionDto {
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
 
-    public String getWorkspaceId() { return workspaceId; }
-    public void setWorkspaceId(String workspaceId) { this.workspaceId = workspaceId; }
+
 
     public String getOrganizationId() { return organizationId; }
     public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }

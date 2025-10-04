@@ -14,5 +14,5 @@ public class AopConfig {
     // AOP configuration for audit aspects
     // The @EnableAspectJAutoProxy annotation enables Spring's aspect-oriented programming
     // capabilities, allowing the AuditAspect to automatically intercept and log method calls
-    // marked with audit annotations (@OrganizationAudit, @WorkspaceAudit, @VMSessionAudit)
+    // marked with audit annotations (@OrganizationAudit, @VMSessionAudit)
 }

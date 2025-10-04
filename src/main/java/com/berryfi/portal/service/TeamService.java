@@ -32,14 +32,14 @@ public class TeamService {
     /**
      * Get team statistics.
      */
-    public TeamStatsResponse getTeamStats(String organizationId, String workspaceId) {
-        logger.debug("Getting team stats for organization: {}, workspace: {}", organizationId, workspaceId);
+    public TeamStatsResponse getTeamStats(String organizationId) {
+        logger.debug("Getting team stats for organization: {}", organizationId);
 
         TeamStatsResponse response = new TeamStatsResponse();
         TeamStatsResponse.TeamStatsData data = response.getData();
 
         try {
-            // Organization-wide stats (workspace filtering not implemented yet)
+            // Organization-wide stats
             data.setTotalMembers(teamMemberRepository.countByOrganizationId(organizationId).intValue());
             data.setActiveMembers(teamMemberRepository.countByOrganizationIdAndStatus(organizationId, UserStatus.ACTIVE).intValue());
             

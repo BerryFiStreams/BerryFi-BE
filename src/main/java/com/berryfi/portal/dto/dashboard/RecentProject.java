@@ -11,8 +11,8 @@ public class RecentProject {
     private String id;
     private String name;
     private String description;
-    private String workspaceId;
-    private String workspaceName;
+    private String organizationId;
+    private String organizationName;
     private Double totalCreditsUsed;
     private Integer sessionsCount;
     private ProjectStatus status;
@@ -22,15 +22,15 @@ public class RecentProject {
     
     public RecentProject() {}
     
-    public RecentProject(String id, String name, String description, String workspaceId, 
-                        String workspaceName, Double totalCreditsUsed, Integer sessionsCount, 
+    public RecentProject(String id, String name, String description, String organizationId, 
+                        String organizationName, Double totalCreditsUsed, Integer sessionsCount, 
                         ProjectStatus status, LocalDateTime lastDeployed, LocalDateTime createdAt, 
                         LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.description = description;
-        this.workspaceId = workspaceId;
-        this.workspaceName = workspaceName;
+        this.organizationId = organizationId;
+        this.organizationName = organizationName;
         this.totalCreditsUsed = totalCreditsUsed;
         this.sessionsCount = sessionsCount;
         this.status = status;
@@ -64,20 +64,20 @@ public class RecentProject {
         this.description = description;
     }
     
-    public String getWorkspaceId() {
-        return workspaceId;
+    public String getOrganizationId() {
+        return organizationId;
     }
     
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
+    public void setOrganizationId(String organizationId) {
+        this.organizationId = organizationId;
     }
     
-    public String getWorkspaceName() {
-        return workspaceName;
+    public String getOrganizationName() {
+        return organizationName;
     }
     
-    public void setWorkspaceName(String workspaceName) {
-        this.workspaceName = workspaceName;
+    public void setOrganizationName(String organizationName) {
+        this.organizationName = organizationName;
     }
     
     public Double getTotalCreditsUsed() {

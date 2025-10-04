@@ -10,7 +10,6 @@ public class UsageSessionDto {
     
     private String id;
     private String organizationId;
-    private String workspaceId;
     private String projectId;
     private String projectName;
     private String userId;
@@ -58,14 +57,6 @@ public class UsageSessionDto {
 
     public void setOrganizationId(String organizationId) {
         this.organizationId = organizationId;
-    }
-
-    public String getWorkspaceId() {
-        return workspaceId;
-    }
-
-    public void setWorkspaceId(String workspaceId) {
-        this.workspaceId = workspaceId;
     }
 
     public String getProjectId() {
