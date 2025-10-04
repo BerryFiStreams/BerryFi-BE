@@ -1,6 +1,7 @@
 package com.berryfi.portal.controller;
 
 import com.berryfi.portal.dto.audit.*;
+import com.berryfi.portal.dto.common.PageResponse;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.service.AuditService;
 import com.berryfi.portal.service.AuthService;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,38 +36,40 @@ public class AuditController {
     private FileService fileService;
 
     /**
-     * Get audit logs with pagination and filtering.
+     * Get audit logs with pagination and filtering for authenticated user's organization.
      * GET /audit/logs
      */
     @GetMapping("/logs")
-    public ResponseEntity<Page<AuditLogResponse>> getAuditLogs(
-            @RequestParam(required = false) String organizationId,
+    public ResponseEntity<PageResponse<AuditLogResponse>> getAuditLogs(
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String resource,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             Pageable pageable = PageRequest.of(page, size);
             Page<AuditLogResponse> auditLogs = auditService.getAuditLogs(
                     organizationId, userId, action, resource, startDate, endDate, pageable);
-            return ResponseEntity.ok(auditLogs);
+            return ResponseEntity.ok(PageResponse.from(auditLogs));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     /**
-     * Get audit statistics.
+     * Get audit statistics for authenticated user's organization.
      * GET /audit/stats
      */
     @GetMapping("/stats")
     public ResponseEntity<AuditStatsResponse> getAuditStats(
-            @RequestParam(required = false) String organizationId,
-            @RequestParam(required = false) String dateRange) {
+            @RequestParam(required = false) String dateRange,
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             AuditStatsResponse stats = auditService.getAuditStats(organizationId, dateRange);
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
@@ -74,16 +78,17 @@ public class AuditController {
     }
 
     /**
-     * Get audit logs by user.
+     * Get audit logs by user in authenticated user's organization.
      * GET /audit/users/{userId}/logs
      */
     @GetMapping("/users/{userId}/logs")
     public ResponseEntity<Page<AuditLogResponse>> getAuditLogsByUser(
             @PathVariable String userId,
-            @RequestParam(required = false) String organizationId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             Pageable pageable = PageRequest.of(page, size);
             Page<AuditLogResponse> auditLogs = auditService.getAuditLogsByUser(userId, organizationId, pageable);
             return ResponseEntity.ok(auditLogs);

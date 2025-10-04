@@ -169,7 +169,7 @@ public class PermissionService {
             Permission.AUDIT_VIEW_ACTIONS, Permission.AUDIT_EXPORT,
             
             // Usage (full)
-            Permission.USAGE_VIEW_SESSIONS, Permission.USAGE_VIEW_STATS, Permission.USAGE_VIEW_WORKSPACES,
+            Permission.USAGE_VIEW_SESSIONS, Permission.USAGE_VIEW_STATS,
             Permission.USAGE_VIEW_MEMBERS, Permission.USAGE_EXPORT
         );
     }

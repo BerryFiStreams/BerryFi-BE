@@ -1,5 +1,6 @@
 package com.berryfi.portal.controller;
 
+import com.berryfi.portal.dto.common.PageResponse;
 import com.berryfi.portal.dto.project.*;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.enums.ProjectStatus;
@@ -33,18 +34,18 @@ public class ProjectController {
     private ProjectService projectService;
 
     /**
-     * Get all projects for an organization.
-     * GET /api/projects?organizationId=org123&page=0&size=10&sort=createdAt,desc
+     * Get all projects for the authenticated user's organization.
+     * GET /api/projects?page=0&size=10&sort=createdAt,desc
      */
     @GetMapping
-    public ResponseEntity<Page<ProjectSummary>> getProjects(
-            @RequestParam String organizationId,
+    public ResponseEntity<PageResponse<ProjectSummary>> getProjects(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @AuthenticationPrincipal User currentUser) {
 
+        String organizationId = currentUser.getOrganizationId();
         logger.info("Getting projects for organization: {} (page: {}, size: {})", organizationId, page, size);
 
         Sort sort = sortDir.equalsIgnoreCase("desc") ? 
@@ -53,7 +54,7 @@ public class ProjectController {
 
         Page<ProjectSummary> projects = projectService.getProjects(organizationId, pageable, currentUser);
 
-        return ResponseEntity.ok(projects);
+        return ResponseEntity.ok(PageResponse.from(projects));
     }
 
 
@@ -173,12 +174,11 @@ public class ProjectController {
     }
 
     /**
-     * Search projects.
-     * GET /api/projects/search?organizationId=org123&q=keyword
+     * Search projects in the authenticated user's organization.
+     * GET /api/projects/search?q=keyword
      */
     @GetMapping("/search")
-    public ResponseEntity<Page<ProjectSummary>> searchProjects(
-            @RequestParam String organizationId,
+    public ResponseEntity<PageResponse<ProjectSummary>> searchProjects(
             @RequestParam String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -186,6 +186,7 @@ public class ProjectController {
             @RequestParam(defaultValue = "desc") String sortDir,
             @AuthenticationPrincipal User currentUser) {
 
+        String organizationId = currentUser.getOrganizationId();
         logger.info("Searching projects in organization: {} with keyword: {}", organizationId, q);
 
         Sort sort = sortDir.equalsIgnoreCase("desc") ? 
@@ -194,18 +195,18 @@ public class ProjectController {
 
         Page<ProjectSummary> projects = projectService.searchProjects(organizationId, q, pageable, currentUser);
 
-        return ResponseEntity.ok(projects);
+        return ResponseEntity.ok(PageResponse.from(projects));
     }
 
     /**
-     * Get project statistics for an organization.
-     * GET /api/projects/stats?organizationId=org123
+     * Get project statistics for the authenticated user's organization.
+     * GET /api/projects/stats
      */
     @GetMapping("/stats")
     public ResponseEntity<ProjectService.ProjectStatistics> getProjectStatistics(
-            @RequestParam String organizationId,
             @AuthenticationPrincipal User currentUser) {
 
+        String organizationId = currentUser.getOrganizationId();
         logger.info("Getting project statistics for organization: {}", organizationId);
 
         ProjectService.ProjectStatistics stats = projectService.getProjectStatistics(organizationId, currentUser);

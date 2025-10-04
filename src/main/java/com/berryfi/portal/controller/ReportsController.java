@@ -20,16 +20,17 @@ public class ReportsController {
     private ReportsService reportsService;
 
     /**
-     * Get analytics reports data.
+     * Get analytics reports data for authenticated user's organization.
      * GET /reports/analytics
      */
     @GetMapping("/analytics")
     public ResponseEntity<AnalyticsReportResponse> getAnalyticsReport(
-            @RequestParam(required = false) String organizationId,
             @RequestParam(required = false) String workspaceId,
             @RequestParam(required = false) String dateRange,
-            @RequestParam(required = false) String reportType) {
+            @RequestParam(required = false) String reportType,
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             AnalyticsReportResponse report = reportsService.getAnalyticsReport(
                     organizationId, workspaceId, dateRange, reportType);
             return ResponseEntity.ok(report);
@@ -74,8 +75,9 @@ public class ReportsController {
      */
     @GetMapping("/scheduled")
     public ResponseEntity<ScheduledReportsResponse> getScheduledReports(
-            @RequestParam(required = false) String organizationId) {
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             ScheduledReportsResponse reports = reportsService.getScheduledReports(organizationId);
             return ResponseEntity.ok(reports);
         } catch (Exception e) {

@@ -1,6 +1,8 @@
 package com.berryfi.portal.controller;
 
 import com.berryfi.portal.dto.billing.*;
+import com.berryfi.portal.dto.common.PageResponse;
+import com.berryfi.portal.entity.User;
 import com.berryfi.portal.enums.*;
 import com.berryfi.portal.service.BillingService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -9,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -29,13 +32,14 @@ public class BillingController {
     private BillingService billingService;
 
     /**
-     * Get billing balance for organization
-     * GET /billing/balance?organizationId=xxx
+     * Get billing balance for authenticated user's organization
+     * GET /billing/balance
      */
     @GetMapping("/balance")
     public ResponseEntity<BillingBalanceDto> getBillingBalance(
-            @RequestParam String organizationId) {
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             BillingBalanceDto balance = billingService.getBillingBalance(organizationId);
             return ResponseEntity.ok(balance);
         } catch (Exception e) {
@@ -44,21 +48,22 @@ public class BillingController {
     }
 
     /**
-     * Get billing transactions for organization
-     * GET /billing/transactions?organizationId=xxx&type=xxx&startDate=xxx&endDate=xxx&page=0&size=20
+     * Get billing transactions for authenticated user's organization
+     * GET /billing/transactions?type=xxx&startDate=xxx&endDate=xxx&page=0&size=20
      */
     @GetMapping("/transactions")
-    public ResponseEntity<Page<BillingTransactionDto>> getBillingTransactions(
-            @RequestParam String organizationId,
+    public ResponseEntity<PageResponse<BillingTransactionDto>> getBillingTransactions(
             @RequestParam(required = false) TransactionType type,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             Page<BillingTransactionDto> transactions = billingService.getBillingTransactions(
                     organizationId, type, startDate, endDate, page, size);
-            return ResponseEntity.ok(transactions);
+            return ResponseEntity.ok(PageResponse.from(transactions));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -169,21 +174,22 @@ public class BillingController {
     }
 
     /**
-     * Get billing invoices for organization
-     * GET /billing/invoices?organizationId=xxx&status=xxx&startDate=xxx&endDate=xxx&page=0&size=20
+     * Get billing invoices for authenticated user's organization
+     * GET /billing/invoices?status=xxx&startDate=xxx&endDate=xxx&page=0&size=20
      */
     @GetMapping("/invoices")
-    public ResponseEntity<Page<BillingInvoiceDto>> getBillingInvoices(
-            @RequestParam String organizationId,
+    public ResponseEntity<PageResponse<BillingInvoiceDto>> getBillingInvoices(
             @RequestParam(required = false) InvoiceStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             Page<BillingInvoiceDto> invoices = billingService.getBillingInvoices(
                     organizationId, status, startDate, endDate, page, size);
-            return ResponseEntity.ok(invoices);
+            return ResponseEntity.ok(PageResponse.from(invoices));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -246,8 +252,9 @@ public class BillingController {
      */
     @GetMapping("/outstanding-balance")
     public ResponseEntity<Double> getOutstandingBalance(
-            @RequestParam String organizationId) {
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             Double outstanding = billingService.getOutstandingBalance(organizationId);
             return ResponseEntity.ok(outstanding);
         } catch (Exception e) {

@@ -36,14 +36,18 @@ import java.util.List;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Autowired
-    private CustomUserDetailsService userDetailsService;
+    private final CustomUserDetailsService userDetailsService;
+    private final CustomPermissionEvaluator permissionEvaluator;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Autowired
-    private CustomPermissionEvaluator permissionEvaluator;
-
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    public SecurityConfig(CustomUserDetailsService userDetailsService, 
+                         CustomPermissionEvaluator permissionEvaluator,
+                         JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.userDetailsService = userDetailsService;
+        this.permissionEvaluator = permissionEvaluator;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
