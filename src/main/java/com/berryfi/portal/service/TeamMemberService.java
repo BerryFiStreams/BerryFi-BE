@@ -2,89 +2,336 @@ package com.berryfi.portal.service;
 
 import com.berryfi.portal.dto.team.TeamMemberResponse;
 import com.berryfi.portal.entity.TeamMember;
+import com.berryfi.portal.entity.TeamMemberInvitation;
 import com.berryfi.portal.entity.User;
-
+import com.berryfi.portal.entity.Organization;
+import com.berryfi.portal.enums.InvitationStatus;
 import com.berryfi.portal.enums.Role;
 import com.berryfi.portal.enums.UserStatus;
+
 import com.berryfi.portal.repository.TeamMemberRepository;
+import com.berryfi.portal.repository.TeamMemberInvitationRepository;
 import com.berryfi.portal.repository.UserRepository;
+import com.berryfi.portal.repository.OrganizationRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Service class for managing team members.
- */
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class TeamMemberService {
-    
+
+    private static final Logger logger = LoggerFactory.getLogger(TeamMemberService.class);
+
     @Autowired
     private TeamMemberRepository teamMemberRepository;
     
     @Autowired
+    private TeamMemberInvitationRepository teamMemberInvitationRepository;
+    
+    @Autowired
     private UserRepository userRepository;
     
-
+    @Autowired
+    private OrganizationRepository organizationRepository;
     
+    @Autowired
+    private EmailTemplateService emailTemplateService;
+
     /**
-     * Invite a user to join the team.
+     * Invite a team member to join the organization.
+     * This creates an invitation with a unique token and sends an email.
      */
+    @Transactional
     public TeamMemberResponse inviteTeamMember(String userEmail, String organizationId, 
                                               Role role, String invitedBy) {
-        // Check if user exists
-        User user = userRepository.findByEmail(userEmail)
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        // Check if already a team member
-        Optional<TeamMember> existingMember = teamMemberRepository.findByUserIdAndOrganizationId(user.getId(), organizationId);
-        if (existingMember.isPresent()) {
+        return inviteTeamMember(userEmail, organizationId, role, invitedBy, null);
+    }
+
+    /**
+     * Invite a team member to join the organization with custom message.
+     * This creates an invitation with a unique token and sends an email.
+     */
+    @Transactional
+    public TeamMemberResponse inviteTeamMember(String userEmail, String organizationId, 
+                                              Role role, String invitedBy, String message) {
+        // Check if user is already a team member
+        // Check by finding users in organization first
+        List<User> usersWithEmail = userRepository.findByEmail(userEmail).map(List::of).orElse(List.of());
+        List<TeamMember> existingMembers = usersWithEmail.stream()
+            .flatMap(user -> teamMemberRepository.findByUserIdAndOrganizationId(user.getId(), organizationId).stream())
+            .toList();
+        if (!existingMembers.isEmpty()) {
             throw new RuntimeException("User is already a team member");
         }
-        
 
-        
-        TeamMember teamMember = new TeamMember();
-        teamMember.setId(UUID.randomUUID().toString());
-        teamMember.setUserId(user.getId());
-        teamMember.setUserName(user.getUsername());
-        teamMember.setOrganizationId(organizationId);
-        teamMember.setRole(role);
-        teamMember.setStatus(UserStatus.INVITED);
-        teamMember.setInvitedBy(invitedBy);
-        teamMember.setInvitedAt(LocalDateTime.now());
-        
-        TeamMember savedTeamMember = teamMemberRepository.save(teamMember);
-        return mapToResponse(savedTeamMember);
-    }
-    
-    /**
-     * Accept team invitation.
-     */
-    public TeamMemberResponse acceptInvitation(String teamMemberId, String userId) {
-        TeamMember teamMember = teamMemberRepository.findById(teamMemberId)
-            .orElseThrow(() -> new RuntimeException("Team member invitation not found"));
-        
-        if (!teamMember.getUserId().equals(userId)) {
-            throw new RuntimeException("Not authorized to accept this invitation");
+        // Check if there's already a pending invitation
+        Optional<TeamMemberInvitation> existingInvitation = teamMemberInvitationRepository
+            .findByInviteEmailAndOrganizationIdAndStatus(userEmail, organizationId, InvitationStatus.PENDING);
+        if (existingInvitation.isPresent()) {
+            throw new RuntimeException("Invitation already exists for this user");
         }
+
+        // Create the invitation
+        TeamMemberInvitation invitation = new TeamMemberInvitation();
+        invitation.setInviteToken(UUID.randomUUID().toString());
+        invitation.setInviteEmail(userEmail);
+        invitation.setOrganizationId(organizationId);
+        invitation.setRole(role);
+        invitation.setInvitedByUserId(invitedBy);
+        invitation.setStatus(InvitationStatus.PENDING);
+        invitation.setCreatedAt(LocalDateTime.now());
+        invitation.setExpiresAt(LocalDateTime.now().plusDays(7)); // 7 days expiration
+        if (message != null && !message.trim().isEmpty()) {
+            invitation.setMessage(message.trim());
+        }
+
+        // Save the invitation
+        invitation = teamMemberInvitationRepository.save(invitation);
+
+        // Send the invitation email
+        try {
+            sendTeamInvitationEmail(invitation);
+        } catch (Exception e) {
+            logger.error("Failed to send invitation email to {}: {}", userEmail, e.getMessage());
+            // Don't fail the invitation creation if email fails
+        }
+
+        // Return response
+        TeamMemberResponse response = new TeamMemberResponse();
+        response.setId(invitation.getId());
+        response.setUserEmail(invitation.getInviteEmail());
+        response.setRole(invitation.getRole());
+        response.setStatus(UserStatus.INVITED);
+        response.setInvitedAt(invitation.getCreatedAt());
+        response.setInvitedBy(invitation.getInvitedByUserId());
         
-        if (teamMember.getStatus() != UserStatus.INVITED) {
+        return response;
+    }
+
+    /**
+     * Send team invitation email.
+     */
+    private void sendTeamInvitationEmail(TeamMemberInvitation invitation) {
+        try {
+            // Get organization details
+            Optional<Organization> orgOpt = organizationRepository.findById(invitation.getOrganizationId());
+            String organizationName = orgOpt.map(Organization::getName).orElse("Organization");
+            
+            // Get inviter details
+            Optional<User> inviterOpt = userRepository.findById(invitation.getInvitedByUserId());
+            String inviterName = inviterOpt.map(User::getName).orElse("Team Admin");
+            
+            // Prepare template variables
+            String subject = "Team Invitation from " + organizationName;
+            String roleName = getRoleDisplayName(invitation.getRole());
+            String roleDescription = getRoleDescription(invitation.getRole());
+            
+            // Generate email content using template service
+            String htmlContent = emailTemplateService.generateTeamInvitationEmail(
+                invitation.getInviteEmail(),
+                organizationName,
+                inviterName,
+                roleName,
+                roleDescription,
+                invitation.getInviteToken(),
+                invitation.getMessage(),
+                invitation.getExpiresAt().format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' HH:mm"))
+            );
+            
+            String textContent = String.format(
+                "You have been invited to join %s as %s by %s. " +
+                "Click the link in the email to accept the invitation. " +
+                "This invitation expires on %s.",
+                organizationName, roleName, inviterName,
+                invitation.getExpiresAt().format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' HH:mm"))
+            );
+            
+            // Send the email (placeholder implementation)
+            sendTeamInvitationEmailActual(invitation.getInviteEmail(), subject, htmlContent, textContent);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send team invitation email", e);
+        }
+    }
+
+    /**
+     * Get role display name for UI.
+     */
+    private String getRoleDisplayName(Role role) {
+        return switch (role) {
+            case ORG_OWNER -> "Organization Owner";
+            case ORG_ADMIN -> "Organization Administrator";
+            case ORG_MEMBER -> "Organization Member";
+            case ORG_AUDITOR -> "Organization Auditor";
+            case ORG_REPORTER -> "Organization Reporter";
+            case ORG_BILLING -> "Billing Manager";
+            case PROJECT_ADMIN -> "Project Administrator";
+            case PROJECT_COLLABORATOR -> "Project Collaborator";
+            default -> role.name();
+        };
+    }
+
+    /**
+     * Get role description for invitation email.
+     */
+    private String getRoleDescription(Role role) {
+        return switch (role) {
+            case ORG_OWNER -> "Full organization control and management";
+            case ORG_ADMIN -> "Organization administration and user management";
+            case ORG_MEMBER -> "Standard organization member access";
+            case ORG_AUDITOR -> "Read-only access for auditing purposes";
+            case ORG_REPORTER -> "Access to reports and analytics";
+            case ORG_BILLING -> "Billing and subscription management";
+            case PROJECT_ADMIN -> "Project administration and management";
+            case PROJECT_COLLABORATOR -> "Project collaboration and contribution";
+            default -> "Organization member";
+        };
+    }
+
+    /**
+     * Get team invitation by token.
+     * This allows users to view invitation details before accepting.
+     */
+    public TeamMemberResponse getInvitationByToken(String inviteToken) {
+        // Find invitation by token first, then check status
+        TeamMemberInvitation invitation = teamMemberInvitationRepository.findByInviteToken(inviteToken)
+            .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
+        
+        if (invitation.getStatus() != InvitationStatus.PENDING) {
             throw new RuntimeException("Invitation is not pending");
         }
+            
+        // Check if invitation is expired
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Invitation has expired");
+        }
         
-        teamMember.activate();
-        TeamMember updatedTeamMember = teamMemberRepository.save(teamMember);
-        return mapToResponse(updatedTeamMember);
+        // Return invitation details as a response
+        TeamMemberResponse response = new TeamMemberResponse();
+        response.setId(invitation.getId());
+        response.setUserEmail(invitation.getInviteEmail());
+        response.setRole(invitation.getRole());
+        response.setStatus(UserStatus.INVITED);
+        response.setInvitedAt(invitation.getCreatedAt());
+        response.setInvitedBy(invitation.getInvitedByUserId());
+        
+        // Set organization details if needed
+        Optional<Organization> orgOpt = organizationRepository.findById(invitation.getOrganizationId());
+        if (orgOpt.isPresent()) {
+            response.setOrganizationName(orgOpt.get().getName());
+        }
+        
+        return response;
     }
-    
+
+    /**
+     * Accept team invitation by token.
+     * For existing users, adds them to the team.
+     * For new users, creates account and adds to team.
+     */
+    @Transactional
+    public TeamMemberResponse acceptInvitationByToken(String inviteToken, String userId) {
+        // Find invitation by token first, then check status
+        TeamMemberInvitation invitation = teamMemberInvitationRepository.findByInviteToken(inviteToken)
+            .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
+        
+        if (invitation.getStatus() != InvitationStatus.PENDING) {
+            throw new RuntimeException("Invitation is not pending");
+        }
+            
+        // Check if invitation is expired
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Invitation has expired");
+        }
+
+        // Get or create user
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Verify user email matches invitation
+        if (!user.getEmail().equals(invitation.getInviteEmail())) {
+            throw new RuntimeException("User email does not match invitation");
+        }
+
+        // Check if user is already a team member
+        Optional<TeamMember> existingMemberOpt = teamMemberRepository.findByUserIdAndOrganizationId(
+            userId, invitation.getOrganizationId());
+        if (existingMemberOpt.isPresent()) {
+            throw new RuntimeException("User is already a team member");
+        }
+
+        // Create team member
+        TeamMember teamMember = new TeamMember();
+        teamMember.setUserId(userId);
+        teamMember.setOrganizationId(invitation.getOrganizationId());
+        teamMember.setRole(invitation.getRole());
+        teamMember.setStatus(UserStatus.ACTIVE);
+        teamMember.setJoinedAt(LocalDateTime.now());
+        teamMember.setInvitedBy(invitation.getInvitedByUserId());
+        
+        teamMember = teamMemberRepository.save(teamMember);
+
+        // Update invitation status
+        invitation.acceptInvitation(user.getId());
+        teamMemberInvitationRepository.save(invitation);
+        
+        return mapToResponse(teamMember);
+    }
+
+    /**
+     * Accept team invitation (legacy method for backward compatibility).
+     */
+    public TeamMemberResponse acceptInvitation(String teamMemberId, String userId) {
+        // Try to find as team member first (old system)
+        Optional<TeamMember> teamMemberOpt = teamMemberRepository.findById(teamMemberId);
+        if (teamMemberOpt.isPresent()) {
+            TeamMember teamMember = teamMemberOpt.get();
+            
+            if (!teamMember.getUserId().equals(userId)) {
+                throw new RuntimeException("Not authorized to accept this invitation");
+            }
+            
+            if (teamMember.getStatus() != UserStatus.INVITED) {
+                throw new RuntimeException("Invitation is not pending");
+            }
+            
+            teamMember.activate();
+            TeamMember updatedTeamMember = teamMemberRepository.save(teamMember);
+            return mapToResponse(updatedTeamMember);
+        }
+        
+        // Try to find as invitation (new system) - assume teamMemberId is actually a token
+        return acceptInvitationByToken(teamMemberId, userId);
+    }
+
+    /**
+     * Send actual email (temporary method until we can refactor InvitationEmailService).
+     */
+    private void sendTeamInvitationEmailActual(String to, String subject, String htmlContent, String textContent) {
+        // For now, we'll create a simple implementation
+        // In a real implementation, you'd want to use the existing email infrastructure
+        try {
+            // This is a placeholder - you should integrate with your email service
+            // For demonstration, we'll just log the email
+            logger.info("Would send team invitation email to: {} with subject: {}", to, subject);
+            // TODO: Implement actual email sending using JavaMailSender or similar
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send team invitation email: " + e.getMessage(), e);
+        }
+    }
+
     /**
      * Update team member role.
      */
@@ -100,7 +347,7 @@ public class TeamMemberService {
         TeamMember updatedTeamMember = teamMemberRepository.save(teamMember);
         return mapToResponse(updatedTeamMember);
     }
-    
+
     /**
      * Get team member by ID.
      */
@@ -114,7 +361,7 @@ public class TeamMemberService {
         
         return mapToResponse(teamMember);
     }
-    
+
     /**
      * Get team members by organization with pagination.
      */
@@ -122,33 +369,25 @@ public class TeamMemberService {
         Page<TeamMember> teamMembers = teamMemberRepository.findByOrganizationIdOrderByJoinedAtDesc(organizationId, pageable);
         return teamMembers.map(this::mapToResponse);
     }
-    
 
-    
     /**
      * Search team members.
      */
-    public Page<TeamMemberResponse> searchTeamMembers(String organizationId, String searchTerm, Pageable pageable) {
-        Page<TeamMember> teamMembers = teamMemberRepository.searchTeamMembers(organizationId, searchTerm, pageable);
+    public Page<TeamMemberResponse> searchTeamMembers(String organizationId, String query, Pageable pageable) {
+        Page<TeamMember> teamMembers = teamMemberRepository.searchTeamMembers(
+            organizationId, query, pageable);
         return teamMembers.map(this::mapToResponse);
     }
-    
+
     /**
      * Get active team members.
      */
     public Page<TeamMemberResponse> getActiveTeamMembers(String organizationId, Pageable pageable) {
-        Page<TeamMember> teamMembers = teamMemberRepository.findByOrganizationIdAndStatusOrderByJoinedAtDesc(organizationId, UserStatus.ACTIVE, pageable);
+        Page<TeamMember> teamMembers = teamMemberRepository.findByOrganizationIdAndStatusOrderByJoinedAtDesc(
+            organizationId, UserStatus.ACTIVE, pageable);
         return teamMembers.map(this::mapToResponse);
     }
-    
-    /**
-     * Get team members by role.
-     */
-    public List<TeamMemberResponse> getTeamMembersByRole(String organizationId, Role role) {
-        List<TeamMember> teamMembers = teamMemberRepository.findByOrganizationIdAndRole(organizationId, role);
-        return teamMembers.stream().map(this::mapToResponse).toList();
-    }
-    
+
     /**
      * Remove team member.
      */
@@ -162,7 +401,22 @@ public class TeamMemberService {
         
         teamMemberRepository.delete(teamMember);
     }
-    
+
+    /**
+     * Get team member count by organization.
+     */
+    public long getTeamMemberCount(String organizationId) {
+        return teamMemberRepository.countByOrganizationId(organizationId);
+    }
+
+    /**
+     * Get team members by role.
+     */
+    public List<TeamMemberResponse> getTeamMembersByRole(String organizationId, Role role) {
+        List<TeamMember> teamMembers = teamMemberRepository.findByOrganizationIdAndRole(organizationId, role);
+        return teamMembers.stream().map(this::mapToResponse).toList();
+    }
+
     /**
      * Deactivate team member.
      */
@@ -178,7 +432,7 @@ public class TeamMemberService {
         TeamMember updatedTeamMember = teamMemberRepository.save(teamMember);
         return mapToResponse(updatedTeamMember);
     }
-    
+
     /**
      * Reactivate team member.
      */
@@ -190,109 +444,76 @@ public class TeamMemberService {
             throw new RuntimeException("Team member not found in organization");
         }
         
-        teamMember.activate();
+        teamMember.setStatus(UserStatus.ACTIVE);
         TeamMember updatedTeamMember = teamMemberRepository.save(teamMember);
         return mapToResponse(updatedTeamMember);
     }
-    
-    /**
-     * Get team analytics.
-     */
-    public TeamAnalytics getTeamAnalytics(String organizationId) {
-        TeamAnalytics analytics = new TeamAnalytics();
-        analytics.setTotalMembers(teamMemberRepository.countByOrganizationId(organizationId));
-        analytics.setActiveMembers(teamMemberRepository.countByOrganizationIdAndStatus(organizationId, UserStatus.ACTIVE));
-        analytics.setAdminMembers(teamMemberRepository.countByOrganizationIdAndRole(organizationId, Role.ORG_ADMIN));
-        analytics.setManagerMembers(teamMemberRepository.countByOrganizationIdAndRole(organizationId, Role.ORG_ADMIN));
-        analytics.setMemberMembers(teamMemberRepository.countByOrganizationIdAndRole(organizationId, Role.ORG_MEMBER));
-        
-        // Recently active members (last 7 days)
-        LocalDateTime weekAgo = LocalDateTime.now().minusDays(7);
-        analytics.setRecentlyActiveMembers(teamMemberRepository.countActiveMembers(organizationId, weekAgo));
-        
-        return analytics;
-    }
-    
+
     /**
      * Check if user is member of organization.
      */
     public boolean isUserMemberOfOrganization(String userId, String organizationId) {
         return teamMemberRepository.existsByUserIdAndOrganizationId(userId, organizationId);
     }
-    
 
-    
-
-    
     /**
-     * Map TeamMember entity to TeamMemberResponse DTO.
+     * Get team analytics.
+     */
+    public TeamAnalytics getTeamAnalytics(String organizationId) {
+        TeamAnalytics analytics = new TeamAnalytics();
+        
+        analytics.setTotalMembers(teamMemberRepository.countByOrganizationId(organizationId).intValue());
+        analytics.setActiveMembers(teamMemberRepository.countByOrganizationIdAndStatus(organizationId, UserStatus.ACTIVE).intValue());
+        analytics.setPendingInvitations(teamMemberInvitationRepository.countByOrganizationIdAndStatus(organizationId, InvitationStatus.PENDING).intValue());
+        
+        return analytics;
+    }
+
+    /**
+     * Simple TeamAnalytics class for basic analytics.
+     */
+    public static class TeamAnalytics {
+        private int totalMembers;
+        private int activeMembers;
+        private int pendingInvitations;
+        
+        public int getTotalMembers() { return totalMembers; }
+        public void setTotalMembers(int totalMembers) { this.totalMembers = totalMembers; }
+        
+        public int getActiveMembers() { return activeMembers; }
+        public void setActiveMembers(int activeMembers) { this.activeMembers = activeMembers; }
+        
+        public int getPendingInvitations() { return pendingInvitations; }
+        public void setPendingInvitations(int pendingInvitations) { this.pendingInvitations = pendingInvitations; }
+    }
+
+    /**
+     * Map TeamMember entity to response DTO.
      */
     private TeamMemberResponse mapToResponse(TeamMember teamMember) {
         TeamMemberResponse response = new TeamMemberResponse();
         response.setId(teamMember.getId());
         response.setUserId(teamMember.getUserId());
-        
-        // Get user information from repository
-        Optional<User> user = userRepository.findById(teamMember.getUserId());
-        if (user.isPresent()) {
-            response.setUserName(user.get().getUsername());
-            response.setUserEmail(user.get().getEmail());
-            // Use name field for both first and last name display
-            response.setFirstName(user.get().getName());
-            response.setLastName(""); // Empty since User entity only has name field
-        } else {
-            // Fallback to stored user name if user not found
-            response.setUserName(teamMember.getUserName());
-        }
-        
         response.setOrganizationId(teamMember.getOrganizationId());
         response.setRole(teamMember.getRole());
         response.setStatus(teamMember.getStatus());
-        response.setInvitedBy(teamMember.getInvitedBy());
-        response.setInvitedAt(teamMember.getInvitedAt());
         response.setJoinedAt(teamMember.getJoinedAt());
-        response.setLastActiveAt(teamMember.getLastActiveAt());
-        response.setIsActive(teamMember.isActive()); // Use isActive() method instead of getIsActive()
-        response.setCreatedAt(teamMember.getCreatedAt());
-        response.setUpdatedAt(teamMember.getUpdatedAt());
+        response.setInvitedBy(teamMember.getInvitedBy());
         
-        // Set permissions based on role
-        response.setCanManageTeam(teamMember.getRole() == Role.ORG_ADMIN || teamMember.getRole() == Role.ORG_OWNER);
-        response.setCanManageProjects(teamMember.getRole() != Role.ORG_MEMBER);
-        response.setCanManageCampaigns(teamMember.getRole() != Role.ORG_MEMBER);
-        response.setCanViewAnalytics(true); // All members can view analytics
+        // Load user details if available
+        Optional<User> userOpt = userRepository.findById(teamMember.getUserId());
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            response.setUserEmail(user.getEmail());
+            response.setUserName(user.getName());
+        }
+        
+        // Load organization details if available
+        Optional<Organization> orgOpt = organizationRepository.findById(teamMember.getOrganizationId());
+        if (orgOpt.isPresent()) {
+            response.setOrganizationName(orgOpt.get().getName());
+        }
         
         return response;
-    }
-    
-    /**
-     * Inner class for team analytics data.
-     */
-    public static class TeamAnalytics {
-        private Long totalMembers;
-        private Long activeMembers;
-        private Long adminMembers;
-        private Long managerMembers;
-        private Long memberMembers;
-        private Long recentlyActiveMembers;
-        
-        // Getters and setters
-        public Long getTotalMembers() { return totalMembers; }
-        public void setTotalMembers(Long totalMembers) { this.totalMembers = totalMembers; }
-        
-        public Long getActiveMembers() { return activeMembers; }
-        public void setActiveMembers(Long activeMembers) { this.activeMembers = activeMembers; }
-        
-        public Long getAdminMembers() { return adminMembers; }
-        public void setAdminMembers(Long adminMembers) { this.adminMembers = adminMembers; }
-        
-        public Long getManagerMembers() { return managerMembers; }
-        public void setManagerMembers(Long managerMembers) { this.managerMembers = managerMembers; }
-        
-        public Long getMemberMembers() { return memberMembers; }
-        public void setMemberMembers(Long memberMembers) { this.memberMembers = memberMembers; }
-        
-        public Long getRecentlyActiveMembers() { return recentlyActiveMembers; }
-        public void setRecentlyActiveMembers(Long recentlyActiveMembers) { this.recentlyActiveMembers = recentlyActiveMembers; }
     }
 }

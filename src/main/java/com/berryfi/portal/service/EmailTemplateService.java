@@ -124,6 +124,40 @@ public class EmailTemplateService {
     }
 
     /**
+     * Generate team member invitation email content using the BerryFi Studio template.
+     */
+    public String generateTeamInvitationEmail(String inviterName, String inviterEmail,
+                                            String organizationName, String roleName,
+                                            String roleDescription, String invitationLink,
+                                            String expiresAt, String personalMessage) {
+        // Build message section HTML if personal message is provided
+        String messageSection = "";
+        if (personalMessage != null && !personalMessage.trim().isEmpty()) {
+            messageSection = String.format(
+                "<div style=\"background: oklch(0.96 0.01 50 / 0.92); border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid oklch(0.7 0.28 25); border: 1px solid oklch(0.1 0.02 50 / 0.08);\">" +
+                "<h3 style=\"color: oklch(0.15 0.03 50); font-size: 16px; font-weight: 600; margin: 0 0 12px 0;\">💬 Personal Message from %s</h3>" +
+                "<p style=\"color: oklch(0.4 0.03 50); font-size: 14px; margin: 0; line-height: 1.5; font-style: italic;\">\"%s\"</p>" +
+                "</div>",
+                inviterName, personalMessage
+            );
+        }
+
+        Map<String, String> variables = Map.of(
+            "inviter_name", inviterName,
+            "inviter_email", inviterEmail,
+            "organization_name", organizationName,
+            "role_name", roleName,
+            "role_description", roleDescription,
+            "invitation_link", invitationLink,
+            "expires_at", expiresAt,
+            "message_section", messageSection,
+            "company_name", companyName
+        );
+        
+        return processTemplate("team-invitation", variables);
+    }
+
+    /**
      * Generate a notification email for various system events.
      */
     public String generateNotificationEmail(String userName, String subject, 
