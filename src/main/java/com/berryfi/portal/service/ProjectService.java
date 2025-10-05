@@ -15,6 +15,9 @@ import com.berryfi.portal.repository.ProjectShareRepository;
 import com.berryfi.portal.repository.VmSessionRepository;
 import com.berryfi.portal.repository.OrganizationRepository;
 import com.berryfi.portal.repository.UserRepository;
+import com.berryfi.portal.repository.ProjectInvitationRepository;
+import com.berryfi.portal.entity.ProjectInvitation;
+import com.berryfi.portal.enums.InvitationStatus;
 
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -62,6 +65,12 @@ public class ProjectService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ProjectInvitationRepository projectInvitationRepository;
+
+    @Autowired
+    private InvitationEmailService invitationEmailService;
 
     /**
      * Create a new project.
@@ -543,8 +552,14 @@ public class ProjectService {
             throw new IllegalArgumentException("You don't have permission to share this project");
         }
 
-        // Resolve target organization ID
-        String targetOrganizationId = resolveTargetOrganization(request);
+        // Resolve target organization ID (may create invitation if user doesn't exist)
+        String targetOrganizationId = resolveTargetOrganization(request, projectId, currentUser);
+        
+        // If targetOrganizationId is null, it means an invitation was sent instead
+        if (targetOrganizationId == null) {
+            logger.info("Invitation sent to {} for project {}", request.getUserEmail(), projectId);
+            return; // Exit early - invitation process completed
+        }
         
         // Verify target organization exists
         if (!organizationRepository.existsById(targetOrganizationId)) {
@@ -613,26 +628,88 @@ public class ProjectService {
     }
 
     /**
-     * Resolve target organization ID from either organizationId or userEmail
+     * Resolve target organization ID from either organizationId or userEmail.
+     * If userEmail is provided but user doesn't exist, create an invitation.
      */
-    private String resolveTargetOrganization(ShareProjectRequest request) {
+    private String resolveTargetOrganization(ShareProjectRequest request, String projectId, User currentUser) {
         if (request.getOrganizationId() != null && !request.getOrganizationId().trim().isEmpty()) {
             return request.getOrganizationId();
         }
         
         if (request.getUserEmail() != null && !request.getUserEmail().trim().isEmpty()) {
-            // Find user by email and get their organization
-            User targetUser = userRepository.findByEmail(request.getUserEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getUserEmail()));
+            // Try to find user by email
+            Optional<User> targetUserOpt = userRepository.findByEmail(request.getUserEmail());
             
-            if (targetUser.getOrganizationId() == null) {
-                throw new IllegalArgumentException("User does not belong to any organization: " + request.getUserEmail());
+            if (targetUserOpt.isPresent()) {
+                // User exists - get their organization
+                User targetUser = targetUserOpt.get();
+                if (targetUser.getOrganizationId() == null) {
+                    throw new IllegalArgumentException("User does not belong to any organization: " + request.getUserEmail());
+                }
+                return targetUser.getOrganizationId();
+            } else {
+                // User doesn't exist - create and send invitation
+                createAndSendInvitation(projectId, request, currentUser);
+                // Return null to indicate invitation was sent instead of direct sharing
+                return null;
             }
-            
-            return targetUser.getOrganizationId();
         }
         
         throw new IllegalArgumentException("Either organizationId or userEmail must be provided");
+    }
+
+    /**
+     * Create and send project invitation to non-existent user.
+     */
+    private void createAndSendInvitation(String projectId, ShareProjectRequest request, User currentUser) {
+        logger.info("Creating invitation for non-existent user: {} for project: {}", 
+                   request.getUserEmail(), projectId);
+
+        // Check if there's already a pending invitation for this email and project
+        boolean existingInvitation = projectInvitationRepository
+            .existsByInviteEmailAndProjectIdAndStatus(request.getUserEmail(), projectId, InvitationStatus.PENDING);
+        
+        if (existingInvitation) {
+            throw new IllegalArgumentException("An invitation for this project has already been sent to this email address");
+        }
+
+        // Create invitation
+        ProjectInvitation invitation = new ProjectInvitation(
+            projectId,
+            currentUser.getId(),
+            currentUser.getOrganizationId(),
+            request.getUserEmail()
+        );
+
+        // Set share details
+        invitation.setInitialCredits(request.getInitialCredits());
+        invitation.setMonthlyRecurringCredits(request.getMonthlyRecurringCredits());
+        invitation.setCanViewAnalytics(request.getCanViewAnalytics());
+        invitation.setCanManageSessions(request.getCanManageSessions());
+        invitation.setCanShareFurther(request.getCanShareFurther());
+        invitation.setIsPermanent(request.getIsPermanent());
+        invitation.setShareMessage(request.getShareMessage());
+
+        // Save invitation
+        invitation = projectInvitationRepository.save(invitation);
+
+        // Send invitation email
+        try {
+            Project project = projectRepository.findById(projectId).orElse(null);
+            Organization invitingOrg = organizationRepository.findById(currentUser.getOrganizationId()).orElse(null);
+            
+            if (project != null && invitingOrg != null) {
+                invitationEmailService.sendProjectInvitationEmail(invitation, project, currentUser, invitingOrg);
+                logger.info("Successfully sent invitation email to: {} for project: {}", 
+                           request.getUserEmail(), projectId);
+            } else {
+                logger.error("Failed to send invitation email - missing project or organization data");
+                throw new RuntimeException("Failed to send invitation email");
+            }
+        } catch (Exception e) {
+            logger.error("Failed to send invitation email to: {}", request.getUserEmail(), e);
+            // Don't throw exception here - invitation is created, email sending is best effort
+        }
     }
 
     /**
