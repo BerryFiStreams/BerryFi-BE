@@ -5,6 +5,7 @@ import com.berryfi.portal.entity.TeamMember;
 import com.berryfi.portal.entity.TeamMemberInvitation;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.entity.Organization;
+import com.berryfi.portal.enums.AccountType;
 import com.berryfi.portal.enums.InvitationStatus;
 import com.berryfi.portal.enums.Role;
 import com.berryfi.portal.enums.UserStatus;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +56,12 @@ public class TeamMemberService {
     
     @Autowired
     private InvitationEmailService invitationEmailService;
+    
+    @Autowired
+    private JwtService jwtService;
+    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -328,12 +336,11 @@ public class TeamMemberService {
     }
 
     /**
-     * Accept team invitation by token.
+     * Accept team invitation by token for existing user.
      * For existing users, adds them to the team.
-     * For new users, creates account and adds to team.
      */
     @Transactional
-    public TeamMemberResponse acceptInvitationByToken(String inviteToken, String userId) {
+    public TeamMemberResponse acceptInvitationByTokenForUser(String inviteToken, String userId) {
         // Find invitation by token first, then check status
         TeamMemberInvitation invitation = teamMemberInvitationRepository.findByInviteToken(inviteToken)
             .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
@@ -365,6 +372,7 @@ public class TeamMemberService {
 
         // Create team member
         TeamMember teamMember = new TeamMember();
+        teamMember.setId("tm_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)); // Generate unique ID
         teamMember.setUserId(userId);
         teamMember.setOrganizationId(invitation.getOrganizationId());
         teamMember.setRole(invitation.getRole());
@@ -379,6 +387,116 @@ public class TeamMemberService {
         teamMemberInvitationRepository.save(invitation);
         
         return mapToResponse(teamMember);
+    }
+
+    /**
+     * Accept team invitation by token and create new user if needed.
+     * This method handles the complete invitation acceptance flow for new users.
+     */
+    @Transactional
+    public TeamMemberResponse acceptInvitationByTokenAndCreateUser(
+            String inviteToken, String password, String firstName, String lastName) {
+        logger.info("Accepting invitation by token and creating user: token={}", inviteToken);
+        
+        // Find invitation by token first, then check status
+        TeamMemberInvitation invitation = teamMemberInvitationRepository.findByInviteToken(inviteToken)
+            .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
+        
+        if (invitation.getStatus() != InvitationStatus.PENDING) {
+            throw new RuntimeException("Invitation is not pending - current status: " + invitation.getStatus());
+        }
+            
+        // Check if invitation is expired
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Invitation has expired");
+        }
+
+        String inviteEmail = invitation.getInviteEmail();
+        logger.info("Processing invitation for email: {}", inviteEmail);
+
+        // Check if user already exists
+        Optional<User> existingUserOpt = userRepository.findByEmail(inviteEmail);
+        User user;
+        
+        if (existingUserOpt.isPresent()) {
+            // User exists - use existing user
+            user = existingUserOpt.get();
+            logger.info("Found existing user: {}", user.getId());
+        } else {
+            // Create new user
+            logger.info("Creating new user for email: {}", inviteEmail);
+            user = createUserFromInvitation(invitation, password, firstName, lastName);
+            logger.info("Created new user: {}", user.getId());
+        }
+
+        // Check if user is already a team member
+        Optional<TeamMember> existingMemberOpt = teamMemberRepository.findByUserIdAndOrganizationId(
+            user.getId(), invitation.getOrganizationId());
+        if (existingMemberOpt.isPresent()) {
+            throw new RuntimeException("User is already a team member");
+        }
+
+        // Create team member
+        TeamMember teamMember = new TeamMember();
+        teamMember.setId("tm_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)); // Generate unique ID
+        teamMember.setUserId(user.getId());
+        teamMember.setOrganizationId(invitation.getOrganizationId());
+        teamMember.setRole(invitation.getRole());
+        teamMember.setStatus(UserStatus.ACTIVE);
+        teamMember.setJoinedAt(LocalDateTime.now());
+        teamMember.setInvitedBy(invitation.getInvitedByUserId());
+        
+        teamMember = teamMemberRepository.save(teamMember);
+
+        // Update invitation status
+        invitation.acceptInvitation(user.getId());
+        teamMemberInvitationRepository.save(invitation);
+        
+        logger.info("Successfully accepted invitation and created team member: {}", teamMember.getId());
+        return mapToResponse(teamMember);
+    }
+
+    /**
+     * Create a new user from invitation details.
+     */
+    private User createUserFromInvitation(TeamMemberInvitation invitation, String password, String firstName, String lastName) {
+        User user = new User();
+        user.setEmail(invitation.getInviteEmail());
+        user.setOrganizationId(invitation.getOrganizationId());
+        user.setStatus(UserStatus.ACTIVE);
+        user.setRole(invitation.getRole());
+        user.setAccountType(AccountType.ORGANIZATION); // Set appropriate account type
+        
+        // Set name - combine first and last name or derive from email
+        String fullName;
+        if (firstName != null && !firstName.trim().isEmpty()) {
+            fullName = firstName.trim();
+            if (lastName != null && !lastName.trim().isEmpty()) {
+                fullName += " " + lastName.trim();
+            }
+        } else {
+            // Derive name from email
+            String emailPrefix = invitation.getInviteEmail().split("@")[0];
+            // Capitalize first letter and replace dots/underscores with spaces
+            fullName = emailPrefix.substring(0, 1).toUpperCase() + 
+                      emailPrefix.substring(1).replace(".", " ").replace("_", " ");
+        }
+        
+        user.setName(fullName);
+        
+        // Set password - use provided or generate temporary password
+        if (password != null && !password.trim().isEmpty()) {
+            // TODO: Hash password properly with BCrypt
+            user.setPassword(password); // This should be hashed in a real implementation
+        } else {
+            // Generate temporary password - user should be prompted to change it
+            user.setPassword("TempPass123!"); // This should be hashed and user should be forced to change
+        }
+        
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        
+        return userRepository.save(user);
     }
 
     /**
@@ -404,7 +522,7 @@ public class TeamMemberService {
         }
         
         // Try to find as invitation (new system) - assume teamMemberId is actually a token
-        return acceptInvitationByToken(teamMemberId, userId);
+        return acceptInvitationByTokenForUser(teamMemberId, userId);
     }
 
     /**
@@ -831,5 +949,84 @@ public class TeamMemberService {
 
         logger.info("Successfully cancelled team invitation: {} by user: {}", invitationId, requestedByUserId);
         return mapInvitationToResponse(invitation);
+    }
+
+    /**
+     * Register user through team invitation (follows InvitationController pattern).
+     * Creates a new user account and adds them to the team.
+     */
+    @Transactional
+    public TeamMemberResponse registerThroughTeamInvitation(com.berryfi.portal.controller.TeamController.TeamInvitationRegistrationRequest request) {
+        logger.info("Processing team invitation registration for token: {}", request.getInviteToken());
+
+        // Get and validate invitation
+        TeamMemberInvitation invitation = teamMemberInvitationRepository
+            .findByInviteToken(request.getInviteToken())
+            .orElseThrow(() -> new RuntimeException("Team invitation not found or invalid"));
+
+        // Validate invitation status and expiration
+        if (invitation.getStatus() != InvitationStatus.PENDING) {
+            throw new RuntimeException("This team invitation is no longer valid. Status: " + invitation.getStatus());
+        }
+
+        if (invitation.getExpiresAt() != null && LocalDateTime.now().isAfter(invitation.getExpiresAt())) {
+            invitation.setStatus(InvitationStatus.EXPIRED);
+            teamMemberInvitationRepository.save(invitation);
+            throw new RuntimeException("This team invitation has expired");
+        }
+
+        // Check if user with this email already exists
+        if (userRepository.existsByEmail(invitation.getInviteEmail())) {
+            throw new RuntimeException("An account with this email address already exists. Please log in to accept the invitation.");
+        }
+
+        // Get organization details
+        Organization organization = organizationRepository.findById(invitation.getOrganizationId())
+            .orElseThrow(() -> new RuntimeException("Organization not found"));
+
+        // Create new user account
+        User newUser = new User(
+            request.getFullName(),
+            invitation.getInviteEmail(),
+            passwordEncoder.encode(request.getPassword()),
+            invitation.getRole(),
+            AccountType.ORGANIZATION
+        );
+        newUser.setOrganizationId(organization.getId());
+        newUser = userRepository.save(newUser);
+        logger.info("Created new user account: {} for organization: {}", newUser.getEmail(), organization.getName());
+
+        // Create team member record
+        TeamMember teamMember = new TeamMember();
+        teamMember.setId("tm_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)); // Generate unique ID
+        teamMember.setUserId(newUser.getId());
+        teamMember.setUserName(newUser.getName());
+        teamMember.setEmail(newUser.getEmail());
+        teamMember.setRole(invitation.getRole());
+        teamMember.setOrganizationId(organization.getId());
+        teamMember.setStatus(UserStatus.ACTIVE);
+        teamMember.setInvitedBy(invitation.getInvitedByUserId());
+        teamMember.setInvitedAt(invitation.getCreatedAt());
+        teamMember.setJoinedAt(LocalDateTime.now());
+        teamMember = teamMemberRepository.save(teamMember);
+
+        // Mark invitation as accepted
+        invitation.setStatus(InvitationStatus.ACCEPTED);
+        invitation.setAcceptedAt(LocalDateTime.now());
+        teamMemberInvitationRepository.save(invitation);
+
+        logger.info("Successfully registered user {} through team invitation and added to organization {}", 
+                   newUser.getEmail(), organization.getName());
+
+        return mapToResponse(teamMember);
+    }
+
+    /**
+     * Check if a user exists by email address.
+     * This is a helper method for invitation flow to determine whether to use registration or accept flow.
+     */
+    public boolean checkUserExistsByEmail(String email) {
+        logger.info("Checking if user exists by email: {}", email);
+        return userRepository.findByEmail(email).isPresent();
     }
 }

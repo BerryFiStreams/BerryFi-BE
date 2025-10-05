@@ -209,26 +209,124 @@ public class TeamController {
     }
 
     /**
-     * Accept team invitation by token (public endpoint for email links).
+     * Check if a user exists by email (helper endpoint for invitation flow).
+     * GET /api/team/invitations/check-user?email={email}
+     * This public endpoint helps determine whether to use registration or accept flow.
+     */
+    @GetMapping("/invitations/check-user")
+    public ResponseEntity<?> checkUserExists(@RequestParam String email) {
+        logger.info("Checking if user exists: {}", email);
+
+        try {
+            boolean userExists = teamMemberService.checkUserExistsByEmail(email);
+            return ResponseEntity.ok(new UserExistsResponse(userExists, email));
+        } catch (Exception e) {
+            logger.error("Error checking user existence: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                new ErrorResponse("Failed to check user existence: " + e.getMessage())
+            );
+        }
+    }
+
+    /**
+     * Register user through team invitation (public endpoint).
+     * POST /api/team/invitations/register
+     * This endpoint handles new user registration through team invitation.
+     */
+    @PostMapping("/invitations/register")
+    public ResponseEntity<?> registerThroughTeamInvitation(
+            @RequestBody TeamInvitationRegistrationRequest request) {
+        
+        logger.info("Processing team invitation registration for token: {}", request.getInviteToken());
+        
+        try {
+            TeamMemberResponse response = teamMemberService.registerThroughTeamInvitation(request);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            logger.error("Error registering through team invitation: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                new ErrorResponse("Failed to register through team invitation: " + e.getMessage())
+            );
+        }
+    }
+
+        /**
+     * Accept a team invitation using the invitation token.
      * POST /api/team/invitations/token/{token}/accept
-     * This endpoint requires authentication but accepts the token from URL.
+     * This endpoint is for existing users who are already logged in.
+     * For new users who need to register, use POST /api/team/invitations/register instead.
      */
     @PostMapping("/invitations/token/{token}/accept")
     public ResponseEntity<?> acceptInvitationByToken(
             @PathVariable String token,
             @AuthenticationPrincipal User currentUser) {
-        logger.info("Accepting invitation by token: {} for user: {}", token, currentUser.getId());
-
-        try {
-            String userId = currentUser.getId();
-            TeamMemberResponse response = teamMemberService.acceptInvitationByToken(token, userId);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            logger.error("Error accepting invitation by token: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("Failed to accept invitation: " + e.getMessage())
+        
+        // Check if user is authenticated
+        if (currentUser == null) {
+            logger.warn("Unauthenticated user attempted to accept team invitation with token: {}", token);
+            return ResponseEntity.status(401).body(
+                new ErrorResponse("Authentication required. If you don't have an account, please use the registration endpoint: POST /api/team/invitations/register")
             );
         }
+        
+        logger.info("Accepting team invitation for token: {} by user: {}", token, currentUser.getId());
+        
+        try {
+            TeamMemberResponse response = teamMemberService.acceptInvitationByTokenForUser(token, currentUser.getId());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            logger.error("Error accepting team invitation by token: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                new ErrorResponse("Failed to accept team invitation: " + e.getMessage())
+            );
+        }
+    }
+
+    /**
+     * Request DTO for team invitation registration.
+     */
+    public static class TeamInvitationRegistrationRequest {
+        private String inviteToken;
+        private String fullName;
+        private String password;
+        private String phoneNumber;
+        private String jobTitle;
+        
+        public TeamInvitationRegistrationRequest() {}
+        
+        public String getInviteToken() { return inviteToken; }
+        public void setInviteToken(String inviteToken) { this.inviteToken = inviteToken; }
+        
+        public String getFullName() { return fullName; }
+        public void setFullName(String fullName) { this.fullName = fullName; }
+        
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+        
+        public String getPhoneNumber() { return phoneNumber; }
+        public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+        
+        public String getJobTitle() { return jobTitle; }
+        public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+    }
+
+    /**
+     * User existence check response DTO.
+     */
+    public static class UserExistsResponse {
+        private boolean exists;
+        private String email;
+
+        public UserExistsResponse(boolean exists, String email) {
+            this.exists = exists;
+            this.email = email;
+        }
+
+        public boolean isExists() { return exists; }
+        public void setExists(boolean exists) { this.exists = exists; }
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
     }
 
     /**

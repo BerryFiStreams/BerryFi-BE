@@ -105,6 +105,9 @@ public class SecurityConfig {
                 
                 // Team invitation endpoints - public access for invitation token operations
                 .requestMatchers(HttpMethod.GET, "/api/team/invitations/token/*").permitAll() // Get invitation details by token
+                .requestMatchers(HttpMethod.GET, "/api/team/invitations/check-user").permitAll() // Check if user exists by email
+                .requestMatchers(HttpMethod.POST, "/api/team/invitations/register").permitAll() // Register through team invitation
+                .requestMatchers(HttpMethod.POST, "/api/team/invitations/token/*/accept").permitAll() // Accept invitation by token
                 .requestMatchers(HttpMethod.GET, "/api/team/members/invitations/*").permitAll() // Alternative endpoint for invitation details
                 
                 // Authentication required endpoints

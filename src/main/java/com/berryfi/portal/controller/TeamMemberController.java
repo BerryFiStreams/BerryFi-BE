@@ -362,7 +362,7 @@ public class TeamMemberController {
         try {
             String userId = currentUser.getId();
             
-            TeamMemberResponse response = teamMemberService.acceptInvitationByToken(token, userId);
+            TeamMemberResponse response = teamMemberService.acceptInvitationByTokenForUser(token, userId);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(
