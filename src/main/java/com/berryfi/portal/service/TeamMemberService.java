@@ -15,6 +15,7 @@ import com.berryfi.portal.repository.UserRepository;
 import com.berryfi.portal.repository.OrganizationRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,12 @@ public class TeamMemberService {
     
     @Autowired
     private EmailTemplateService emailTemplateService;
+    
+    @Autowired
+    private InvitationEmailService invitationEmailService;
+    
+    @Value("${app.frontend.url:https://localhost:5173}")
+    private String frontendUrl;
 
     /**
      * Invite a team member to join the organization.
@@ -66,26 +73,40 @@ public class TeamMemberService {
     @Transactional
     public TeamMemberResponse inviteTeamMember(String userEmail, String organizationId, 
                                               Role role, String invitedBy, String message) {
+        logger.info("=== Starting team invitation process ===");
+        logger.info("Inviting user: {} to organization: {} with role: {} by: {}", userEmail, organizationId, role, invitedBy);
+        logger.info("Message: {}", message);
+        
         // Check if user is already a team member
         // Check by finding users in organization first
+        logger.debug("Checking if user {} is already a team member in organization {}", userEmail, organizationId);
         List<User> usersWithEmail = userRepository.findByEmail(userEmail).map(List::of).orElse(List.of());
+        logger.debug("Found {} users with email {}", usersWithEmail.size(), userEmail);
+        
         List<TeamMember> existingMembers = usersWithEmail.stream()
             .flatMap(user -> teamMemberRepository.findByUserIdAndOrganizationId(user.getId(), organizationId).stream())
             .toList();
         if (!existingMembers.isEmpty()) {
+            logger.warn("User {} is already a team member in organization {}", userEmail, organizationId);
             throw new RuntimeException("User is already a team member");
         }
+        logger.debug("User {} is not a team member, proceeding with invitation", userEmail);
 
-        // Check if there's already a pending invitation
+                // Check if there's already a pending invitation
+        logger.debug("Checking for existing pending invitations for {} in organization {}", userEmail, organizationId);
         Optional<TeamMemberInvitation> existingInvitation = teamMemberInvitationRepository
             .findByInviteEmailAndOrganizationIdAndStatus(userEmail, organizationId, InvitationStatus.PENDING);
         if (existingInvitation.isPresent()) {
-            throw new RuntimeException("Invitation already exists for this user");
+            logger.warn("User {} already has a pending invitation in organization {}", userEmail, organizationId);
+            throw new RuntimeException("User already has a pending invitation");
         }
+        logger.debug("No existing pending invitations found for {}", userEmail);
 
         // Create the invitation
+        logger.info("Creating team invitation for {} in organization {}", userEmail, organizationId);
         TeamMemberInvitation invitation = new TeamMemberInvitation();
-        invitation.setInviteToken(UUID.randomUUID().toString());
+        String inviteToken = UUID.randomUUID().toString();
+        invitation.setInviteToken(inviteToken);
         invitation.setInviteEmail(userEmail);
         invitation.setOrganizationId(organizationId);
         invitation.setRole(role);
@@ -97,15 +118,27 @@ public class TeamMemberService {
             invitation.setMessage(message.trim());
         }
 
-        // Save the invitation
-        invitation = teamMemberInvitationRepository.save(invitation);
+        logger.debug("Generated invitation token: {}", inviteToken);
+        logger.debug("Invitation expires at: {}", invitation.getExpiresAt());
 
-        // Send the invitation email
+        // Save the invitation
+        logger.debug("Saving invitation to database");
+        invitation = teamMemberInvitationRepository.save(invitation);
+        logger.info("Invitation saved with ID: {}", invitation.getId());
+
+                // Send the invitation email
+        logger.info("=== Starting email sending process ===");
         try {
+            logger.debug("Calling sendTeamInvitationEmail for {}", invitation.getInviteEmail());
             sendTeamInvitationEmail(invitation);
+            logger.info("Email sending completed successfully for {}", invitation.getInviteEmail());
         } catch (Exception e) {
-            logger.error("Failed to send invitation email to {}: {}", userEmail, e.getMessage());
-            // Don't fail the invitation creation if email fails
+            logger.error("Failed to send invitation email to {}: {}", invitation.getInviteEmail(), e.getMessage(), e);
+            logger.error("Exception type: {}", e.getClass().getSimpleName());
+            if (e.getCause() != null) {
+                logger.error("Root cause: {} - {}", e.getCause().getClass().getSimpleName(), e.getCause().getMessage());
+            }
+            throw new RuntimeException("Failed to send team invitation email", e);
         }
 
         // Return response
@@ -124,31 +157,59 @@ public class TeamMemberService {
      * Send team invitation email.
      */
     private void sendTeamInvitationEmail(TeamMemberInvitation invitation) {
+        logger.debug("=== sendTeamInvitationEmail called ===");
+        logger.debug("Invitation details: email={}, org={}, role={}, token={}", 
+                    invitation.getInviteEmail(), invitation.getOrganizationId(), 
+                    invitation.getRole(), invitation.getInviteToken());
+        
         try {
             // Get organization details
+            logger.debug("Fetching organization details for ID: {}", invitation.getOrganizationId());
             Optional<Organization> orgOpt = organizationRepository.findById(invitation.getOrganizationId());
             String organizationName = orgOpt.map(Organization::getName).orElse("Organization");
+            logger.debug("Organization name: {}", organizationName);
             
             // Get inviter details
+            logger.debug("Fetching inviter details for ID: {}", invitation.getInvitedByUserId());
             Optional<User> inviterOpt = userRepository.findById(invitation.getInvitedByUserId());
             String inviterName = inviterOpt.map(User::getName).orElse("Team Admin");
+            logger.debug("Inviter name: {}", inviterName);
             
             // Prepare template variables
             String subject = "Team Invitation from " + organizationName;
             String roleName = getRoleDisplayName(invitation.getRole());
             String roleDescription = getRoleDescription(invitation.getRole());
             
+            // Get inviter email for template
+            String inviterEmail = inviterOpt.map(User::getEmail).orElse("admin@berryfi.in");
+            logger.debug("Inviter email: {}", inviterEmail);
+            
+            // Build invitation link
+            String invitationLink = buildTeamInvitationUrl(invitation.getInviteToken());
+            logger.debug("Invitation link: {}", invitationLink);
+            
             // Generate email content using template service
+            logger.debug("Generating email template with parameters:");
+            logger.debug("  - inviterName: {}", inviterName);
+            logger.debug("  - inviterEmail: {}", inviterEmail);
+            logger.debug("  - organizationName: {}", organizationName);
+            logger.debug("  - roleName: {}", roleName);
+            logger.debug("  - roleDescription: {}", roleDescription);
+            logger.debug("  - invitationLink: {}", invitationLink);
+            logger.debug("  - expiresAt: {}", invitation.getExpiresAt().format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' HH:mm")));
+            logger.debug("  - message: {}", invitation.getMessage());
+            
             String htmlContent = emailTemplateService.generateTeamInvitationEmail(
-                invitation.getInviteEmail(),
-                organizationName,
                 inviterName,
+                inviterEmail,
+                organizationName,
                 roleName,
                 roleDescription,
-                invitation.getInviteToken(),
-                invitation.getMessage(),
-                invitation.getExpiresAt().format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' HH:mm"))
+                invitationLink,
+                invitation.getExpiresAt().format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' HH:mm")),
+                invitation.getMessage()
             );
+            logger.debug("HTML email content generated successfully (length: {})", htmlContent.length());
             
             String textContent = String.format(
                 "You have been invited to join %s as %s by %s. " +
@@ -158,10 +219,19 @@ public class TeamMemberService {
                 invitation.getExpiresAt().format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' HH:mm"))
             );
             
-            // Send the email (placeholder implementation)
+            // Send the email using InvitationEmailService
+            logger.info("=== Calling actual email sending ===");
+            logger.debug("Email details:");
+            logger.debug("  - to: {}", invitation.getInviteEmail());
+            logger.debug("  - subject: {}", subject);
+            logger.debug("  - htmlContent length: {}", htmlContent.length());
+            logger.debug("  - textContent length: {}", textContent.length());
+            
             sendTeamInvitationEmailActual(invitation.getInviteEmail(), subject, htmlContent, textContent);
+            logger.info("Email sent successfully via InvitationEmailService");
             
         } catch (Exception e) {
+            logger.error("Failed to send invitation email to {}: {}", invitation.getInviteEmail(), e.getMessage(), e);
             throw new RuntimeException("Failed to send team invitation email", e);
         }
     }
@@ -317,17 +387,29 @@ public class TeamMemberService {
     }
 
     /**
-     * Send actual email (temporary method until we can refactor InvitationEmailService).
+     * Build team invitation URL for frontend.
+     */
+    private String buildTeamInvitationUrl(String inviteToken) {
+        return frontendUrl + "/team-invitation/" + inviteToken;
+    }
+
+    /**
+     * Send actual team invitation email using InvitationEmailService.
      */
     private void sendTeamInvitationEmailActual(String to, String subject, String htmlContent, String textContent) {
-        // For now, we'll create a simple implementation
-        // In a real implementation, you'd want to use the existing email infrastructure
+        logger.debug("=== sendTeamInvitationEmailActual called ===");
+        logger.debug("Calling InvitationEmailService.sendTeamInvitationEmail");
+        logger.debug("Parameters: to={}, subject={}", to, subject);
+        
         try {
-            // This is a placeholder - you should integrate with your email service
-            // For demonstration, we'll just log the email
-            logger.info("Would send team invitation email to: {} with subject: {}", to, subject);
-            // TODO: Implement actual email sending using JavaMailSender or similar
+            invitationEmailService.sendTeamInvitationEmail(to, subject, htmlContent, textContent);
+            logger.info("Successfully sent team invitation email to: {}", to);
         } catch (Exception e) {
+            logger.error("Failed to send team invitation email to: {}", to, e);
+            logger.error("Exception details: type={}, message={}", e.getClass().getSimpleName(), e.getMessage());
+            if (e.getCause() != null) {
+                logger.error("Root cause: type={}, message={}", e.getCause().getClass().getSimpleName(), e.getCause().getMessage());
+            }
             throw new RuntimeException("Failed to send team invitation email: " + e.getMessage(), e);
         }
     }
@@ -515,5 +597,150 @@ public class TeamMemberService {
         }
         
         return response;
+    }
+
+    /**
+     * Get team invitations for an organization with pagination and optional status filter.
+     */
+    public Page<com.berryfi.portal.dto.team.TeamInvitationResponse> getTeamInvitations(
+            String organizationId, InvitationStatus status, Pageable pageable) {
+        logger.info("Getting team invitations for organization: {}, status: {}", organizationId, status);
+        
+        Page<TeamMemberInvitation> invitations;
+        if (status != null) {
+            invitations = teamMemberInvitationRepository.findByOrganizationIdAndStatusOrderByCreatedAtDesc(organizationId, status, pageable);
+        } else {
+            invitations = teamMemberInvitationRepository.findByOrganizationIdOrderByCreatedAtDesc(organizationId, pageable);
+        }
+        
+        return invitations.map(this::mapInvitationToResponse);
+    }
+
+    /**
+     * Map TeamMemberInvitation entity to TeamInvitationResponse DTO.
+     */
+    private com.berryfi.portal.dto.team.TeamInvitationResponse mapInvitationToResponse(TeamMemberInvitation invitation) {
+        com.berryfi.portal.dto.team.TeamInvitationResponse response = new com.berryfi.portal.dto.team.TeamInvitationResponse();
+        
+        response.setId(invitation.getId());
+        response.setUserEmail(invitation.getInviteEmail());
+        response.setOrganizationId(invitation.getOrganizationId());
+        response.setRole(invitation.getRole());
+        response.setRoleName(getRoleDisplayName(invitation.getRole()));
+        response.setStatus(invitation.getStatus());
+        response.setInviteToken(invitation.getInviteToken());
+        response.setInvitedByUserId(invitation.getInvitedByUserId());
+        response.setMessage(invitation.getMessage());
+        response.setCreatedAt(invitation.getCreatedAt());
+        response.setExpiresAt(invitation.getExpiresAt());
+        response.setAcceptedAt(invitation.getAcceptedAt());
+        
+        // Build invitation link
+        response.setInvitationLink(buildTeamInvitationUrl(invitation.getInviteToken()));
+        
+        // Load organization details
+        Optional<Organization> orgOpt = organizationRepository.findById(invitation.getOrganizationId());
+        if (orgOpt.isPresent()) {
+            response.setOrganizationName(orgOpt.get().getName());
+        }
+        
+        // Load inviter details
+        Optional<User> inviterOpt = userRepository.findById(invitation.getInvitedByUserId());
+        if (inviterOpt.isPresent()) {
+            User inviter = inviterOpt.get();
+            response.setInviterName(inviter.getName());
+            response.setInviterEmail(inviter.getEmail());
+        }
+        
+        return response;
+    }
+
+    /**
+     * Resend a pending team invitation.
+     */
+    @Transactional
+    public com.berryfi.portal.dto.team.TeamInvitationResponse resendTeamInvitation(
+            String invitationId, String organizationId, String requestedByUserId) {
+        logger.info("Resending team invitation: {} for organization: {} by user: {}", 
+                   invitationId, organizationId, requestedByUserId);
+
+        // Find the invitation
+        Optional<TeamMemberInvitation> invitationOpt = teamMemberInvitationRepository.findById(invitationId);
+        if (invitationOpt.isEmpty()) {
+            throw new RuntimeException("Team invitation not found");
+        }
+
+        TeamMemberInvitation invitation = invitationOpt.get();
+
+        // Validate organization
+        if (!invitation.getOrganizationId().equals(organizationId)) {
+            throw new RuntimeException("Invitation does not belong to your organization");
+        }
+
+        // Validate status - only pending invitations can be resent
+        if (invitation.getStatus() != InvitationStatus.PENDING) {
+            throw new RuntimeException("Only pending invitations can be resent. Current status: " + invitation.getStatus());
+        }
+
+        // Check if invitation is expired
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            // Update status to expired
+            invitation.setStatus(InvitationStatus.EXPIRED);
+            teamMemberInvitationRepository.save(invitation);
+            throw new RuntimeException("Invitation has expired and cannot be resent");
+        }
+
+        try {
+            // Extend expiration by 7 more days
+            invitation.setExpiresAt(LocalDateTime.now().plusDays(7));
+            invitation = teamMemberInvitationRepository.save(invitation);
+            logger.info("Extended invitation expiration to: {}", invitation.getExpiresAt());
+
+            // Resend the email
+            logger.info("Resending invitation email to: {}", invitation.getInviteEmail());
+            sendTeamInvitationEmail(invitation);
+            
+            logger.info("Successfully resent team invitation: {}", invitationId);
+            return mapInvitationToResponse(invitation);
+
+        } catch (Exception e) {
+            logger.error("Failed to resend team invitation {}: {}", invitationId, e.getMessage(), e);
+            throw new RuntimeException("Failed to resend team invitation: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Cancel a pending team invitation.
+     */
+    @Transactional
+    public com.berryfi.portal.dto.team.TeamInvitationResponse cancelTeamInvitation(
+            String invitationId, String organizationId, String requestedByUserId) {
+        logger.info("Cancelling team invitation: {} for organization: {} by user: {}", 
+                   invitationId, organizationId, requestedByUserId);
+
+        // Find the invitation
+        Optional<TeamMemberInvitation> invitationOpt = teamMemberInvitationRepository.findById(invitationId);
+        if (invitationOpt.isEmpty()) {
+            throw new RuntimeException("Team invitation not found");
+        }
+
+        TeamMemberInvitation invitation = invitationOpt.get();
+
+        // Validate organization
+        if (!invitation.getOrganizationId().equals(organizationId)) {
+            throw new RuntimeException("Invitation does not belong to your organization");
+        }
+
+        // Validate status - only pending invitations can be cancelled
+        if (invitation.getStatus() != InvitationStatus.PENDING) {
+            throw new RuntimeException("Only pending invitations can be cancelled. Current status: " + invitation.getStatus());
+        }
+
+        // Update status to cancelled
+        invitation.setStatus(InvitationStatus.CANCELLED);
+        invitation = teamMemberInvitationRepository.save(invitation);
+
+        logger.info("Successfully cancelled team invitation: {} by user: {}", invitationId, requestedByUserId);
+        return mapInvitationToResponse(invitation);
     }
 }

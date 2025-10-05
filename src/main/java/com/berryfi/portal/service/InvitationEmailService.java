@@ -41,6 +41,9 @@ public class InvitationEmailService {
 
     @Value("${app.email.enabled:true}")
     private boolean emailEnabled;
+    
+    @Value("${app.email.debug:false}")
+    private boolean emailDebugMode;
 
     @Autowired
     public InvitationEmailService(JavaMailSender mailSender, EmailTemplateService emailTemplateService) {
@@ -168,28 +171,49 @@ public class InvitationEmailService {
      * Send actual email using JavaMailSender.
      */
     private void sendActualEmail(String to, String subject, String htmlContent, String textContent) {
+        logger.debug("=== sendActualEmail called ===");
+        logger.debug("Email enabled: {}", emailEnabled);
+        logger.debug("Email debug mode: {}", emailDebugMode);
+        
         if (!emailEnabled) {
             logger.info("Email sending is disabled. Would have sent email to: {} with subject: {}", to, subject);
             return;
         }
+        
+        if (emailDebugMode) {
+            logger.info("=== EMAIL DEBUG MODE - Not sending actual email ===");
+            logger.info("To: {}", to);
+            logger.info("Subject: {}", subject);
+            logger.info("HTML Content Length: {}", htmlContent.length());
+            logger.info("Text Content Length: {}", textContent.length());
+            logger.info("From: {} <{}>", fromName, fromEmail);
+            logger.info("=== EMAIL DEBUG MODE END ===");
+            return;
+        }
 
         try {
+            logger.debug("Creating MimeMessage");
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             // Set sender
+            logger.debug("Setting sender: {} <{}>", fromName, fromEmail);
             helper.setFrom(fromEmail, fromName);
             
             // Set recipient
+            logger.debug("Setting recipient: {}", to);
             helper.setTo(to);
             
             // Set subject
+            logger.debug("Setting subject: {}", subject);
             helper.setSubject(subject);
             
             // Set content (HTML with text fallback)
+            logger.debug("Setting email content (HTML length: {}, Text length: {})", htmlContent.length(), textContent.length());
             helper.setText(textContent, htmlContent);
             
             // Send the email
+            logger.debug("Sending email via JavaMailSender");
             mailSender.send(message);
             
             logger.info("Successfully sent email to: {} with subject: {}", to, subject);
@@ -200,6 +224,30 @@ public class InvitationEmailService {
         } catch (Exception e) {
             logger.error("Unexpected error sending email to: {} with subject: {}", to, subject, e);
             throw new RuntimeException("Unexpected error sending email: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Send team member invitation email.
+     */
+    public void sendTeamInvitationEmail(String to, String subject, String htmlContent, String textContent) {
+        logger.info("=== InvitationEmailService.sendTeamInvitationEmail called ===");
+        logger.info("Sending team invitation email to: {} with subject: {}", to, subject);
+        logger.debug("Email enabled: {}", emailEnabled);
+        logger.debug("From email: {}", fromEmail);
+        logger.debug("From name: {}", fromName);
+        
+        try {
+            logger.debug("Calling sendActualEmail method");
+            sendActualEmail(to, subject, htmlContent, textContent);
+            logger.info("Successfully sent team invitation email to: {}", to);
+        } catch (Exception e) {
+            logger.error("Failed to send team invitation email to: {} with subject: {}", to, subject, e);
+            logger.error("Exception type: {}, message: {}", e.getClass().getSimpleName(), e.getMessage());
+            if (e.getCause() != null) {
+                logger.error("Root cause: {}, message: {}", e.getCause().getClass().getSimpleName(), e.getCause().getMessage());
+            }
+            throw new RuntimeException("Failed to send team invitation email", e);
         }
     }
 
