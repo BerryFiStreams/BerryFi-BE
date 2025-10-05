@@ -83,6 +83,7 @@ public class CustomPermissionEvaluator implements PermissionEvaluator {
             case "project:delete" -> Permission.PROJECT_DELETE;
             case "project:deploy" -> Permission.PROJECT_DEPLOY;
             case "project:stop" -> Permission.PROJECT_STOP;
+            case "project:share" -> Permission.PROJECT_SHARE;
             
             // User permissions
             case "user:create" -> Permission.USER_CREATE;

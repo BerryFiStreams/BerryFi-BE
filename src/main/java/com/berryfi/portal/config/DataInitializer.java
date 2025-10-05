@@ -42,10 +42,10 @@ public class DataInitializer implements CommandLineRunner {
             Organization berryfiOrg = new Organization(
                 "BerryFi Systems",
                 "Primary BerryFi organization for system administration",
-                "system", // Will be updated when user is created
+                "admin@berryfi.com", // Use admin email as created_by to avoid circular dependency
                 "admin@berryfi.com",
                 "Super Admin",
-                "system"
+                "admin@berryfi.com" // Use admin email as created_by
             );
             berryfiOrg.setId("berryfi");
             berryfiOrg.setStatus(OrganizationStatus.ACTIVE);
@@ -59,10 +59,10 @@ public class DataInitializer implements CommandLineRunner {
             Organization ravgroupOrg = new Organization(
                 "RAV Group",
                 "Sample organization for testing purposes",
-                "system", // Will be updated when user is created
+                "admin@berryfi.com", // Use admin email as created_by (system admin creates all orgs)
                 "mithesh@ravgroup.org",
                 "Mithesh Bhat",
-                "system"
+                "admin@berryfi.com" // Use admin email as created_by
             );
             ravgroupOrg.setId("ravgroup");
             ravgroupOrg.setStatus(OrganizationStatus.ACTIVE);
@@ -85,7 +85,7 @@ public class DataInitializer implements CommandLineRunner {
             superAdmin.setStatus(UserStatus.ACTIVE);
             User savedSuperAdmin = userRepository.save(superAdmin);
             
-            // Update organization owner ID
+            // Update organization owner ID - the organization already has correct created_by
             organizationRepository.findById("berryfi").ifPresent(org -> {
                 org.setOwnerId(savedSuperAdmin.getId());
                 organizationRepository.save(org);
@@ -104,7 +104,7 @@ public class DataInitializer implements CommandLineRunner {
             orgOwner.setStatus(UserStatus.ACTIVE);
             User savedOrgOwner = userRepository.save(orgOwner);
             
-            // Update organization owner ID
+            // Update organization owner ID - the organization already has correct created_by
             organizationRepository.findById("ravgroup").ifPresent(org -> {
                 org.setOwnerId(savedOrgOwner.getId());
                 organizationRepository.save(org);

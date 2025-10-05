@@ -6,23 +6,47 @@ import com.berryfi.portal.entity.User;
 import com.berryfi.portal.entity.Organization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+
 /**
- * Service for sending invitation emails.
- * This is a mock implementation. In production, integrate with actual email service.
+ * Service for sending invitation emails using Spring Boot's JavaMailSender.
+ * Supports HTML and text email formats with SMTP configuration.
  */
 @Service
 public class InvitationEmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(InvitationEmailService.class);
 
-    @Value("${app.frontend.url:http://localhost:3000}")
+    private final JavaMailSender mailSender;
+    private final EmailTemplateService emailTemplateService;
+
+    @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
-    @Value("${app.company.name:BerryFi}")
+    @Value("${app.company.name:BerryFi Studio}")
     private String companyName;
+
+    @Value("${app.email.from}")
+    private String fromEmail;
+
+    @Value("${app.email.from-name}")
+    private String fromName;
+
+    @Value("${app.email.enabled:true}")
+    private boolean emailEnabled;
+
+    @Autowired
+    public InvitationEmailService(JavaMailSender mailSender, EmailTemplateService emailTemplateService) {
+        this.mailSender = mailSender;
+        this.emailTemplateService = emailTemplateService;
+    }
 
     /**
      * Send project sharing invitation email.
@@ -36,13 +60,24 @@ public class InvitationEmailService {
             // Build invitation URL
             String invitationUrl = buildInvitationUrl(invitation.getInviteToken());
             
-            // Build email content
+            // Build email content using BerryFi Studio template system
             String subject = buildEmailSubject(invitedByUser.getName(), invitedByOrganization.getName(), project.getName());
-            String htmlContent = buildEmailHtmlContent(invitation, project, invitedByUser, invitedByOrganization, invitationUrl);
+            
+            String initialCredits = invitation.getInitialCredits() != null ? invitation.getInitialCredits().toString() : "0";
+            String monthlyCredits = invitation.getMonthlyRecurringCredits() != null ? invitation.getMonthlyRecurringCredits().toString() : "0";
+            
+            String htmlContent = emailTemplateService.generateInvitationEmail(
+                invitedByUser.getName(),
+                project.getName(),
+                invitedByOrganization.getName(),
+                invitationUrl,
+                initialCredits,
+                monthlyCredits
+            );
             String textContent = buildEmailTextContent(invitation, project, invitedByUser, invitedByOrganization, invitationUrl);
 
-            // Mock email sending - In production, replace with actual email service
-            mockSendEmail(invitation.getInviteEmail(), subject, htmlContent, textContent);
+            // Send actual email
+            sendActualEmail(invitation.getInviteEmail(), subject, htmlContent, textContent);
 
             logger.info("Successfully sent invitation email to: {}", invitation.getInviteEmail());
 
@@ -68,143 +103,104 @@ public class InvitationEmailService {
                            inviterName, organizationName, projectName);
     }
 
-    /**
-     * Build HTML email content.
-     */
-    private String buildEmailHtmlContent(ProjectInvitation invitation, Project project, 
-                                       User invitedByUser, Organization invitedByOrganization, 
-                                       String invitationUrl) {
-        StringBuilder html = new StringBuilder();
-        
-        html.append("<!DOCTYPE html>");
-        html.append("<html><head><meta charset='UTF-8'>");
-        html.append("<title>Project Invitation</title>");
-        html.append("<style>");
-        html.append("body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }");
-        html.append(".container { max-width: 600px; margin: 0 auto; padding: 20px; }");
-        html.append(".header { background: #2196F3; color: white; padding: 20px; text-align: center; }");
-        html.append(".content { padding: 30px; background: #f9f9f9; }");
-        html.append(".button { display: inline-block; padding: 12px 24px; background: #FF5722; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }");
-        html.append(".details { background: white; padding: 20px; margin: 20px 0; border-radius: 5px; }");
-        html.append(".footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }");
-        html.append("</style>");
-        html.append("</head><body>");
-        
-        html.append("<div class='container'>");
-        html.append("<div class='header'>");
-        html.append("<h1>").append(companyName).append(" Project Invitation</h1>");
-        html.append("</div>");
-        
-        html.append("<div class='content'>");
-        html.append("<h2>You've been invited to collaborate!</h2>");
-        html.append("<p>Hello,</p>");
-        html.append("<p><strong>").append(invitedByUser.getName()).append("</strong> from <strong>")
-               .append(invitedByOrganization.getName()).append("</strong> has invited you to join the project:</p>");
-        
-        html.append("<div class='details'>");
-        html.append("<h3>Project: ").append(project.getName()).append("</h3>");
-        if (project.getDescription() != null) {
-            html.append("<p>").append(project.getDescription()).append("</p>");
-        }
-        
-        if (invitation.getInitialCredits() != null && invitation.getInitialCredits() > 0) {
-            html.append("<p><strong>Initial Credits:</strong> ").append(invitation.getInitialCredits()).append("</p>");
-        }
-        
-        if (invitation.getMonthlyRecurringCredits() != null && invitation.getMonthlyRecurringCredits() > 0) {
-            html.append("<p><strong>Monthly Recurring Credits:</strong> ").append(invitation.getMonthlyRecurringCredits()).append("</p>");
-        }
-        
-        if (invitation.getShareMessage() != null && !invitation.getShareMessage().trim().isEmpty()) {
-            html.append("<p><strong>Message from ").append(invitedByUser.getName()).append(":</strong></p>");
-            html.append("<p><em>").append(invitation.getShareMessage()).append("</em></p>");
-        }
-        html.append("</div>");
-        
-        html.append("<p>To accept this invitation and create your account, click the button below:</p>");
-        html.append("<a href='").append(invitationUrl).append("' class='button'>Accept Invitation & Register</a>");
-        
-        html.append("<p>This invitation will expire on <strong>").append(invitation.getExpiresAt()).append("</strong></p>");
-        
-        html.append("<p>If you have any questions, you can contact ").append(invitedByUser.getName())
-               .append(" at ").append(invitedByUser.getEmail()).append("</p>");
-        html.append("</div>");
-        
-        html.append("<div class='footer'>");
-        html.append("<p>This invitation was sent by ").append(companyName).append(" on behalf of ")
-               .append(invitedByOrganization.getName()).append("</p>");
-        html.append("<p>If you weren't expecting this invitation, you can safely ignore this email.</p>");
-        html.append("</div>");
-        
-        html.append("</div>");
-        html.append("</body></html>");
-        
-        return html.toString();
-    }
+
 
     /**
-     * Build plain text email content.
+     * Build plain text email content following BerryFi Studio design principles.
      */
     private String buildEmailTextContent(ProjectInvitation invitation, Project project, 
                                        User invitedByUser, Organization invitedByOrganization, 
                                        String invitationUrl) {
         StringBuilder text = new StringBuilder();
         
-        text.append(companyName).append(" Project Invitation\n");
+        text.append("🎉 BerryFi Studio - Project Invitation\n");
         text.append("=====================================\n\n");
         
-        text.append("Hello,\n\n");
-        text.append(invitedByUser.getName()).append(" from ").append(invitedByOrganization.getName())
-            .append(" has invited you to join the project:\n\n");
+        text.append("Hello!\n\n");
+        text.append(invitedByUser.getName()).append(" has invited you to collaborate on \"")
+            .append(project.getName()).append("\" in ").append(invitedByOrganization.getName()).append(".\n\n");
         
+        text.append("📋 PROJECT DETAILS\n");
+        text.append("------------------\n");
         text.append("Project: ").append(project.getName()).append("\n");
-        if (project.getDescription() != null) {
+        if (project.getDescription() != null && !project.getDescription().trim().isEmpty()) {
             text.append("Description: ").append(project.getDescription()).append("\n");
         }
+        text.append("Invited by: ").append(invitedByUser.getName()).append("\n");
+        text.append("Organization: ").append(invitedByOrganization.getName()).append("\n");
         
         if (invitation.getInitialCredits() != null && invitation.getInitialCredits() > 0) {
             text.append("Initial Credits: ").append(invitation.getInitialCredits()).append("\n");
         }
         
         if (invitation.getMonthlyRecurringCredits() != null && invitation.getMonthlyRecurringCredits() > 0) {
-            text.append("Monthly Recurring Credits: ").append(invitation.getMonthlyRecurringCredits()).append("\n");
+            text.append("Monthly Credits: ").append(invitation.getMonthlyRecurringCredits()).append("\n");
         }
+        
+        text.append("Expires: ").append(invitation.getExpiresAt()).append("\n\n");
         
         if (invitation.getShareMessage() != null && !invitation.getShareMessage().trim().isEmpty()) {
-            text.append("\nMessage from ").append(invitedByUser.getName()).append(":\n");
-            text.append(invitation.getShareMessage()).append("\n");
+            text.append("💬 PERSONAL MESSAGE FROM ").append(invitedByUser.getName().toUpperCase()).append("\n");
+            text.append("------------------------------------------\n");
+            text.append("\"").append(invitation.getShareMessage()).append("\"\n\n");
         }
         
-        text.append("\nTo accept this invitation and create your account, visit:\n");
+        text.append("🚀 ACCEPT INVITATION\n");
+        text.append("--------------------\n");
+        text.append("Click or copy this link to accept:\n");
         text.append(invitationUrl).append("\n\n");
         
-        text.append("This invitation will expire on ").append(invitation.getExpiresAt()).append("\n\n");
+        text.append("❓ NEED HELP?\n");
+        text.append("-------------\n");
+        text.append("Contact ").append(invitedByUser.getName()).append(" at ").append(invitedByUser.getEmail()).append("\n\n");
         
-        text.append("If you have any questions, you can contact ").append(invitedByUser.getName())
-            .append(" at ").append(invitedByUser.getEmail()).append("\n\n");
-        
-        text.append("---\n");
-        text.append("This invitation was sent by ").append(companyName).append(" on behalf of ")
-            .append(invitedByOrganization.getName()).append("\n");
-        text.append("If you weren't expecting this invitation, you can safely ignore this email.\n");
+        text.append("════════════════════════════════════════\n");
+        text.append("This invitation was sent by BerryFi Studio\n");
+        text.append("on behalf of ").append(invitedByOrganization.getName()).append(".\n\n");
+        text.append("If you weren't expecting this invitation,\n");
+        text.append("you can safely ignore this email.\n\n");
+        text.append("© 2025 BerryFi Studio. All rights reserved.\n");
         
         return text.toString();
     }
 
     /**
-     * Mock email sending implementation.
-     * In production, replace with actual email service (SendGrid, AWS SES, etc.)
+     * Send actual email using JavaMailSender.
      */
-    private void mockSendEmail(String to, String subject, String htmlContent, String textContent) {
-        logger.info("=== MOCK EMAIL ===");
-        logger.info("To: {}", to);
-        logger.info("Subject: {}", subject);
-        logger.info("HTML Content Length: {} characters", htmlContent.length());
-        logger.info("Text Content Length: {} characters", textContent.length());
-        logger.info("==================");
-        
-        // In production, implement actual email sending:
-        // emailService.send(to, subject, htmlContent, textContent);
+    private void sendActualEmail(String to, String subject, String htmlContent, String textContent) {
+        if (!emailEnabled) {
+            logger.info("Email sending is disabled. Would have sent email to: {} with subject: {}", to, subject);
+            return;
+        }
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            // Set sender
+            helper.setFrom(fromEmail, fromName);
+            
+            // Set recipient
+            helper.setTo(to);
+            
+            // Set subject
+            helper.setSubject(subject);
+            
+            // Set content (HTML with text fallback)
+            helper.setText(textContent, htmlContent);
+            
+            // Send the email
+            mailSender.send(message);
+            
+            logger.info("Successfully sent email to: {} with subject: {}", to, subject);
+            
+        } catch (MessagingException e) {
+            logger.error("Failed to send email to: {} with subject: {}", to, subject, e);
+            throw new RuntimeException("Failed to send email: " + e.getMessage(), e);
+        } catch (Exception e) {
+            logger.error("Unexpected error sending email to: {} with subject: {}", to, subject, e);
+            throw new RuntimeException("Unexpected error sending email: " + e.getMessage(), e);
+        }
     }
 
     /**

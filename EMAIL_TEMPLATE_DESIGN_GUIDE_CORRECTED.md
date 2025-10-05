@@ -1,0 +1,195 @@
+# BerryFi Studio Email Template Design Guide
+
+## 🎨 Color Palette
+
+**Primary Colors:**
+- **Orange**: `oklch(0.7 0.28 25)` (~`#CC5A04`) - Main brand color
+- **Orange Hover**: `oklch(0.75 0.28 25)` (~`#E16B14`) - Button hover state
+- **White**: `#FFFFFF` - Text on orange backgrounds
+
+**Text Colors:**
+- **Primary Text**: `oklch(0.15 0.03 50)` (~`#1E1E1F`) - Main headings and content
+- **Secondary Text**: `oklch(0.4 0.03 50)` (~`#5C5C60`) - Subtitles and descriptions
+- **Tertiary Text**: `oklch(0.55 0.02 50)` (~`#7C7C7E`) - Footer and fine print
+
+**Backgrounds:**
+- **Main**: `oklch(0.99 0.005 60)` (~`#FDFDFD`) - Email background
+- **Card**: `oklch(1 0 0 / 0.92)` (~`rgba(255,255,255,0.92)`) - Content cards with frosted glass
+- **Section**: `oklch(0.96 0.01 50 / 0.92)` (~`rgba(245,245,245,0.92)`) - Detail sections
+- **Border**: `oklch(0.1 0.02 50 / 0.08)` (~`rgba(18,18,20,0.08)`) - Subtle dividers
+
+---
+
+## 📧 Complete Email Template
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BerryFi Studio Invitation</title>
+</head>
+<body style="
+  margin: 0; 
+  padding: 20px; 
+  background: radial-gradient(circle at 20% 80%, oklch(0.7 0.28 25 / 0.08) 0%, transparent 50%), 
+              radial-gradient(circle at 80% 20%, oklch(0.7 0.2 225 / 0.08) 0%, transparent 50%), 
+              oklch(0.99 0.005 60); 
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+">
+  
+  <!-- Main Container -->
+  <div style="
+    max-width: 600px; 
+    margin: 0 auto; 
+    background: oklch(1 0 0 / 0.92);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid oklch(0.1 0.02 50 / 0.08);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+    backdrop-filter: blur(12px);
+  ">
+    
+    <!-- Header -->
+    <header style="
+      background: linear-gradient(135deg, oklch(0.7 0.28 25) 0%, oklch(0.75 0.28 25) 100%); 
+      padding: 24px; 
+      text-align: center;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    ">
+      <h1 style="
+        color: #ffffff; 
+        font-size: 24px; 
+        font-weight: 600; 
+        margin: 0;
+      ">BerryFi Studio</h1>
+      <p style="
+        color: #ffffff; 
+        font-size: 14px; 
+        margin: 8px 0 0 0; 
+        opacity: 0.9;
+      ">Project Collaboration Platform</p>
+    </header>
+
+    <!-- Main Content -->
+    <div style="padding: 32px;">
+      
+      <!-- Invitation Header -->
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="
+          width: 64px; 
+          height: 64px; 
+          margin: 0 auto 16px auto; 
+          background: oklch(0.7 0.28 25 / 0.1); 
+          border-radius: 50%; 
+          display: inline-flex; 
+          align-items: center; 
+          justify-content: center;
+        ">
+          <span style="font-size: 24px;">👥</span>
+        </div>
+        <h2 style="
+          color: oklch(0.15 0.03 50); 
+          font-size: 24px; 
+          font-weight: 600; 
+          margin: 0 0 8px 0;
+        ">You're Invited!</h2>
+        <p style="
+          color: oklch(0.4 0.03 50); 
+          font-size: 16px; 
+          margin: 0;
+        "><strong style="color: oklch(0.15 0.03 50);">{inviter_name}</strong> has invited you to collaborate on <strong style="color: oklch(0.7 0.28 25);">"{project_name}"</strong></p>
+      </div>
+      
+      <!-- CTA Button -->
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="{invitation_link}" style="
+          display: inline-block; 
+          background: linear-gradient(135deg, oklch(0.7 0.28 25) 0%, oklch(0.75 0.28 25) 100%); 
+          color: #ffffff; 
+          text-decoration: none; 
+          padding: 14px 28px; 
+          border-radius: 8px; 
+          font-weight: 600; 
+          font-size: 16px;
+          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+        ">Accept Invitation →</a>
+      </div>
+
+      <!-- Project Details -->
+      <div style="
+        background: oklch(0.96 0.01 50 / 0.92); 
+        border-radius: 8px; 
+        padding: 20px; 
+        margin: 24px 0;
+        border-left: 4px solid oklch(0.7 0.28 25);
+        border: 1px solid oklch(0.1 0.02 50 / 0.08);
+        backdrop-filter: blur(8px);
+      ">
+        <h3 style="
+          color: oklch(0.15 0.03 50); 
+          font-size: 16px; 
+          font-weight: 600; 
+          margin: 0 0 12px 0;
+        ">📋 Project Details</h3>
+        
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="color: oklch(0.4 0.03 50); padding: 4px 12px 4px 0; font-size: 14px;">Project:</td>
+            <td style="color: oklch(0.15 0.03 50); font-weight: 600; padding: 4px 0; font-size: 14px;">{project_name}</td>
+          </tr>
+          <tr>
+            <td style="color: oklch(0.4 0.03 50); padding: 4px 12px 4px 0; font-size: 14px;">Organization:</td>
+            <td style="color: oklch(0.15 0.03 50); font-weight: 600; padding: 4px 0; font-size: 14px;">{organization_name}</td>
+          </tr>
+          <tr>
+            <td style="color: oklch(0.4 0.03 50); padding: 4px 12px 4px 0; font-size: 14px;">Credits:</td>
+            <td style="color: oklch(0.15 0.03 50); font-weight: 600; padding: 4px 0; font-size: 14px;">
+              {initial_credits} initial + {monthly_credits} monthly
+            </td>
+          </tr>
+        </table>
+      </div>
+
+    </div>
+    
+    <!-- Footer -->
+    <footer style="
+      background: oklch(0.96 0.01 50 / 0.92); 
+      padding: 24px; 
+      text-align: center; 
+      border-top: 1px solid oklch(0.1 0.02 50 / 0.08);
+      backdrop-filter: blur(8px);
+    ">
+      <p style="
+        color: oklch(0.55 0.02 50); 
+        font-size: 12px; 
+        margin: 0;
+      ">© 2025 BerryFi Studio. All rights reserved.</p>
+    </footer>
+    
+  </div>
+</body>
+</html>
+```
+
+## 🔧 Template Variables
+
+Replace these variables in your backend:
+- `{inviter_name}` - Person sending the invitation
+- `{project_name}` - Project name
+- `{organization_name}` - Organization name  
+- `{initial_credits}` - Initial credits (e.g., "100")
+- `{monthly_credits}` - Monthly credits (e.g., "1000")
+- `{invitation_link}` - Full invitation URL
+
+## ✅ Implementation Notes
+
+- Use inline styles for email client compatibility
+- Test in Gmail, Outlook, and Apple Mail
+- All colors match your UI design system
+- Mobile-friendly responsive design
+- Clean, professional layout

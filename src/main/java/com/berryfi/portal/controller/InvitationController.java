@@ -59,6 +59,9 @@ public class InvitationController {
         String accessToken = authHeader.replace("Bearer ", "");
         String userId = extractUserIdFromToken(accessToken);
         
+        // Debug log for security verification
+        logger.info("Extracted userId from JWT: '{}' (length: {})", userId, userId != null ? userId.length() : 0);
+        
         Page<SentInvitationResponse> sentInvitations = invitationService.getSentInvitations(userId, status, page, size);
         
         return ResponseEntity.ok(sentInvitations);

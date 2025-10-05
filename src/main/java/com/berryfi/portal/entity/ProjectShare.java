@@ -37,9 +37,13 @@ public class ProjectShare {
     @Column(name = "shared_with_organization_id", nullable = false)
     private String sharedWithOrganizationId;
 
+    @NotBlank(message = "Owner organization ID is required")
+    @Column(name = "owner_organization_id", nullable = false)
+    private String ownerOrganizationId;
+
     @NotNull(message = "Share type is required")
     @Enumerated(EnumType.STRING)
-    @Column(name = "share_type", nullable = false)
+    @Column(name = "share_type", nullable = false, length = 20)
     private ShareType shareType;
 
     @NotNull(message = "Status is required")
@@ -138,6 +142,7 @@ public class ProjectShare {
         this.projectId = projectId;
         this.sharedByOrganizationId = sharedByOrganizationId;
         this.sharedWithOrganizationId = sharedWithOrganizationId;
+        this.ownerOrganizationId = sharedByOrganizationId; // Owner is the organization that shares the project
         this.shareType = shareType;
         this.createdBy = createdBy;
     }
@@ -470,6 +475,14 @@ public class ProjectShare {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public String getOwnerOrganizationId() {
+        return ownerOrganizationId;
+    }
+
+    public void setOwnerOrganizationId(String ownerOrganizationId) {
+        this.ownerOrganizationId = ownerOrganizationId;
     }
 
     public String getAcceptedBy() {

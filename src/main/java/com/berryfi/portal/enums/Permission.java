@@ -24,6 +24,7 @@ public enum Permission {
     PROJECT_DELETE("project:delete", "Delete projects"),
     PROJECT_DEPLOY("project:deploy", "Deploy projects"),
     PROJECT_STOP("project:stop", "Stop projects"),
+    PROJECT_SHARE("project:share", "Share projects with other organizations"),
     PROJECT_MANAGE_CONFIG("project:manage_config", "Manage project configuration"),
     PROJECT_MANAGE_BRANDING("project:manage_branding", "Manage project branding"),
     PROJECT_MANAGE_LINKS("project:manage_links", "Manage project links"),

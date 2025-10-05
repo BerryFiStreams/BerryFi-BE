@@ -27,11 +27,11 @@ public class TeamMember {
     private String id;
     
     @NotBlank(message = "User ID is required")
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private String userId;
     
     @NotBlank(message = "User name is required")
-    @Column(nullable = false)
+    @Column(name = "user_name", nullable = false)
     private String userName;
     
     @Email(message = "Invalid email format")
@@ -45,10 +45,11 @@ public class TeamMember {
     private Role role;
     
     @NotBlank(message = "Organization ID is required")
-    @Column(nullable = false)
+    @Column(name = "organization_id", nullable = false)
     private String organizationId;
     
     // Optional project-specific access (for shared project members)
+    @Column(name = "project_id")
     private String projectId;
     
     @NotNull(message = "Status is required")
@@ -56,19 +57,25 @@ public class TeamMember {
     @Column(nullable = false)
     private UserStatus status;
     
+    @Column(name = "invited_at")
     private LocalDateTime invitedAt;
+    
+    @Column(name = "joined_at")
     private LocalDateTime joinedAt;
+    
+    @Column(name = "last_active_at")
     private LocalDateTime lastActiveAt;
     
     @NotBlank(message = "Invited by is required")
-    @Column(nullable = false)
+    @Column(name = "invited_by", nullable = false)
     private String invitedBy;
     
     @CreationTimestamp
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
     // Default constructor

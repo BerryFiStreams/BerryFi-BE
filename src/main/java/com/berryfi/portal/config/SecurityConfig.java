@@ -18,6 +18,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -95,6 +96,12 @@ public class SecurityConfig {
                 .requestMatchers("/h2-console/**").permitAll() // H2 console for development
                 .requestMatchers("/actuator/health").permitAll() // Health check
                 .requestMatchers("/api/vm/**").permitAll() // VM controller endpoints - no authentication required
+                
+                // Invitation endpoints - public access for specific operations
+                .requestMatchers(HttpMethod.GET, "/api/invitations/*").permitAll() // Get invitation details by token
+                .requestMatchers(HttpMethod.POST, "/api/invitations/register").permitAll() // Register through invitation
+                .requestMatchers(HttpMethod.POST, "/api/invitations/*/decline").permitAll() // Decline invitation
+                .requestMatchers(HttpMethod.POST, "/api/invitations/*/resend").permitAll() // Resend invitation
                 
                 // Authentication required endpoints
                 .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()

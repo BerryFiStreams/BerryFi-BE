@@ -81,7 +81,7 @@ public class PermissionService {
             
             // Projects (full)
             Permission.PROJECT_VIEW, Permission.PROJECT_CREATE, Permission.PROJECT_UPDATE, Permission.PROJECT_DELETE,
-            Permission.PROJECT_DEPLOY, Permission.PROJECT_STOP, Permission.PROJECT_MANAGE_CONFIG,
+            Permission.PROJECT_DEPLOY, Permission.PROJECT_STOP, Permission.PROJECT_SHARE, Permission.PROJECT_MANAGE_CONFIG,
             Permission.PROJECT_MANAGE_BRANDING, Permission.PROJECT_MANAGE_LINKS, Permission.PROJECT_VIEW_STATUS,
             
             // Billing (full)
@@ -125,7 +125,7 @@ public class PermissionService {
             
             // Projects (full)
             Permission.PROJECT_VIEW, Permission.PROJECT_CREATE, Permission.PROJECT_UPDATE, Permission.PROJECT_DELETE,
-            Permission.PROJECT_DEPLOY, Permission.PROJECT_STOP, Permission.PROJECT_MANAGE_CONFIG,
+            Permission.PROJECT_DEPLOY, Permission.PROJECT_STOP, Permission.PROJECT_SHARE, Permission.PROJECT_MANAGE_CONFIG,
             Permission.PROJECT_MANAGE_BRANDING, Permission.PROJECT_MANAGE_LINKS, Permission.PROJECT_VIEW_STATUS,
             
             // Billing (view only)

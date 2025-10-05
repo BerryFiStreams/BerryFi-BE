@@ -66,6 +66,11 @@ public class InvitationService {
     public Page<SentInvitationResponse> getSentInvitations(String userId, InvitationStatus status, int page, int size) {
         logger.info("Getting sent invitations for user: {}, status: {}, page: {}, size: {}", userId, status, page, size);
         
+        // Debug log to verify userId
+        if (userId == null || userId.trim().isEmpty()) {
+            logger.warn("UserId is null or empty! This will cause security issues.");
+        }
+        
         Pageable pageable = PageRequest.of(page, size);
         Page<ProjectInvitation> invitations;
         
@@ -74,6 +79,8 @@ public class InvitationService {
         } else {
             invitations = projectInvitationRepository.findByInvitedByUserIdOrderByCreatedAtDesc(userId, pageable);
         }
+        
+        logger.info("Found {} invitations for user: {}", invitations.getTotalElements(), userId);
         
         return invitations.map(this::convertToSentInvitationResponse);
     }
@@ -204,14 +211,14 @@ public class InvitationService {
             throw new IllegalArgumentException("An account with this email address already exists");
         }
 
-        // Create organization
+        // Create organization with email as temporary values to avoid circular dependency
         Organization organization = new Organization(
                 request.getOrganizationName(),
                 request.getOrganizationDescription(),
-                null, // Will be set after user creation
+                request.getEmail(), // Use email as temporary ownerId to satisfy constraint
                 request.getEmail(),
                 request.getFullName(),
-                null // Will be set after user creation
+                request.getEmail() // Use email as temporary createdBy to satisfy constraint
         );
         organization = organizationRepository.save(organization);
 
@@ -226,7 +233,7 @@ public class InvitationService {
         user.setOrganizationId(organization.getId());
         user = userRepository.save(user);
 
-        // Update organization with user details
+        // Update organization with proper user ID values
         organization.setOwnerId(user.getId());
         organization.setCreatedBy(user.getId());
         organizationRepository.save(organization);
@@ -236,7 +243,7 @@ public class InvitationService {
         projectInvitationRepository.save(invitation);
 
         // Create project share
-        createProjectShareFromInvitation(invitation);
+        createProjectShareFromInvitation(invitation, user.getId());
 
         // Generate JWT token
         String token = jwtService.generateAccessToken(user);
@@ -267,7 +274,7 @@ public class InvitationService {
                 invitation.getInvitedByOrganizationId(), // The organization that sent the invitation
                 organizationId, // User's organization (now the inviting organization)
                 ShareType.DIRECT,
-                invitation.getInvitedByUserId()
+                userId // The user who accepted the invitation is the creator of this share
         );
 
         // Set credit allocation and permissions from invitation
@@ -294,7 +301,7 @@ public class InvitationService {
     /**
      * Create project share from accepted invitation.
      */
-    private void createProjectShareFromInvitation(ProjectInvitation invitation) {
+    private void createProjectShareFromInvitation(ProjectInvitation invitation, String createdByUserId) {
         logger.info("Creating project share from accepted invitation: {}", invitation.getId());
 
         // Create new share relationship
@@ -303,7 +310,7 @@ public class InvitationService {
                 invitation.getInvitedByOrganizationId(), // The organization that sent the invitation
                 invitation.getRegisteredOrganizationId(), // The newly created organization
                 ShareType.DIRECT,
-                invitation.getInvitedByUserId()
+                createdByUserId // The newly registered user who accepted the invitation
         );
 
         // Set credit allocation and permissions from invitation
