@@ -41,6 +41,16 @@ public interface ProjectInvitationRepository extends JpaRepository<ProjectInvita
     Page<ProjectInvitation> findByInvitedByOrganizationIdOrderByCreatedAtDesc(String organizationId, Pageable pageable);
 
     /**
+     * Find invitations by sender user.
+     */
+    Page<ProjectInvitation> findByInvitedByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
+
+    /**
+     * Find invitations by sender user and status.
+     */
+    Page<ProjectInvitation> findByInvitedByUserIdAndStatusOrderByCreatedAtDesc(String userId, InvitationStatus status, Pageable pageable);
+
+    /**
      * Find invitations by status.
      */
     Page<ProjectInvitation> findByStatusOrderByCreatedAtDesc(InvitationStatus status, Pageable pageable);
