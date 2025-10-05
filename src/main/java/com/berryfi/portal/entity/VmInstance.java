@@ -1,6 +1,7 @@
 package com.berryfi.portal.entity;
 
 import com.berryfi.portal.enums.VmStatus;
+import com.berryfi.portal.enums.VmType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,9 +31,10 @@ public class VmInstance {
     @Column(name = "vm_name", nullable = false)
     private String vmName;
     
-    @NotBlank(message = "VM type is required")
+    @NotNull(message = "VM type is required")
+    @Enumerated(EnumType.STRING)
     @Column(name = "vm_type", nullable = false)
-    private String vmType; // T4, A10, etc.
+    private VmType vmType; // T4 or A10 only
     
     @NotBlank(message = "Azure resource ID is required")
     @Column(name = "azure_resource_id", nullable = false)
@@ -116,7 +118,7 @@ public class VmInstance {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public VmInstance(String vmName, String vmType, String azureResourceId, 
+    public VmInstance(String vmName, VmType vmType, String azureResourceId, 
                      String azureResourceGroup, String azureSubscriptionId,
                      String azureTenantId, String azureClientId, String azureClientSecret,
                      String projectId, String createdBy) {
@@ -223,11 +225,11 @@ public class VmInstance {
         this.vmName = vmName;
     }
 
-    public String getVmType() {
+    public VmType getVmType() {
         return vmType;
     }
 
-    public void setVmType(String vmType) {
+    public void setVmType(VmType vmType) {
         this.vmType = vmType;
     }
 

@@ -1,6 +1,7 @@
 package com.berryfi.portal.service;
 
 import com.berryfi.portal.entity.*;
+import com.berryfi.portal.enums.VmType;
 import com.berryfi.portal.repository.*;
 import com.berryfi.portal.dto.billing.BillingTransactionDto;
 import com.berryfi.portal.dto.billing.BillingBalanceDto;
@@ -57,7 +58,7 @@ public class VmSessionService {
     /**
      * Start a VM session for a project with client tracking information
      */
-    public VmSessionResult startVmSession(String projectId, String userId, String userEmail, String vmType,
+    public VmSessionResult startVmSession(String projectId, String userId, String userEmail, VmType vmType,
                                          String username, String clientIpAddress, String clientCountry, 
                                          String clientCity, String userAgent) {
         try {
@@ -72,8 +73,8 @@ public class VmSessionService {
             if (userId == null || userId.isEmpty()) {
                 return VmSessionResult.error("User ID cannot be null or empty");
             }
-            if (vmType == null || vmType.isEmpty()) {
-                return VmSessionResult.error("VM type cannot be null or empty");
+            if (vmType == null) {
+                return VmSessionResult.error("VM type cannot be null");
             }
 
             // Get project and validate
@@ -100,9 +101,9 @@ public class VmSessionService {
             }
 
             // Find available VM of requested type for this project
-            List<VmInstance> availableVms = vmInstanceRepository.findAvailableVmsByTypeForProject(projectId, vmType);
+            List<VmInstance> availableVms = vmInstanceRepository.findAvailableVmsByTypeForProject(projectId, vmType.getValue());
             if (availableVms.isEmpty()) {
-                return VmSessionResult.error("No available VMs of type " + vmType + " for this project");
+                return VmSessionResult.error("No available VMs of type " + vmType.getValue() + " for this project");
             }
 
             VmInstance vm = availableVms.get(0); // Take the first available VM
@@ -121,19 +122,19 @@ public class VmSessionService {
                 // Try to find another available VM (remove the first one from the list and try again)
                 availableVms.remove(0);
                 if (availableVms.isEmpty()) {
-                    return VmSessionResult.error("No available VMs of type " + vmType + " for this project (all are currently in use)");
+                    return VmSessionResult.error("No available VMs of type " + vmType.getValue() + " for this project (all are currently in use)");
                 }
                 vm = availableVms.get(0);
                 
                 // Re-check the new VM
                 activeSessionForVm = vmSessionRepository.findActiveSessionForVm(vm.getId());
                 if (activeSessionForVm.isPresent()) {
-                    return VmSessionResult.error("No available VMs of type " + vmType + " for this project (all are currently in use)");
+                    return VmSessionResult.error("No available VMs of type " + vmType.getValue() + " for this project (all are currently in use)");
                 }
             }
 
             // Check organization has sufficient credits (estimate for 1 minute initially)
-            Double estimatedCredits = pricingService.calculateVmUsageCredits(vmType, 60.0);
+            Double estimatedCredits = pricingService.calculateVmUsageCredits(vmType.getValue(), 60.0);
             BillingBalanceDto balance = billingService.getBillingBalance(organizationId);
             if (balance.getCurrentBalance() < estimatedCredits) {
                 return VmSessionResult.error("Insufficient credits in organization for VM session");
@@ -143,7 +144,7 @@ public class VmSessionService {
             VmSession session = new VmSession(vm.getId(), projectId, userId);
             session.setOrganizationId(organizationId);
             session.setUserEmail(userEmail);
-            session.setCreditsPerMinute(pricingService.getCurrentCreditsPerMinuteForVm(vmType));
+            session.setCreditsPerMinute(pricingService.getCurrentCreditsPerMinuteForVm(vmType.getValue()));
             
             // Set client tracking information
             session.setUsername(username);
@@ -187,7 +188,7 @@ public class VmSessionService {
     /**
      * Start a VM session for a project (backward compatibility)
      */
-    public VmSessionResult startVmSession(String projectId, String userId, String userEmail, String vmType) {
+    public VmSessionResult startVmSession(String projectId, String userId, String userEmail, VmType vmType) {
         return startVmSession(projectId, userId, userEmail, vmType, null, null, null, null, null);
     }
 
@@ -252,12 +253,12 @@ public class VmSessionService {
 
             // Calculate usage and bill
             Long durationSeconds = session.getDurationInSeconds();
-            Double creditsUsed = pricingService.calculateVmUsageCredits(vm.getVmType(), durationSeconds.doubleValue());
+            Double creditsUsed = pricingService.calculateVmUsageCredits(vm.getVmType().getValue(), durationSeconds.doubleValue());
 
             // Create billing transaction
             BillingTransactionDto billing = billingService.recordVmUsage(
                 session.getOrganizationId(), 
-                vm.getVmType(), 
+                vm.getVmType().getValue(), 
                 durationSeconds.doubleValue(), 
                 session.getId()
             );

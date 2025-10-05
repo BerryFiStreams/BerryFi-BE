@@ -4,11 +4,19 @@ import com.berryfi.portal.annotation.VMSessionAudit;
 import com.berryfi.portal.dto.ApiResponse;
 import com.berryfi.portal.entity.VmSession;
 import com.berryfi.portal.entity.VmInstance;
+import com.berryfi.portal.enums.VmType;
 import com.berryfi.portal.service.VmSessionService;
 import com.berryfi.portal.service.VmSessionService.VmSessionResult;
 import com.berryfi.portal.service.IpGeolocationService;
 import com.berryfi.portal.util.ClientInfoExtractor;
 import com.berryfi.portal.util.NumberFormatUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +36,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/vm")
 @CrossOrigin(origins = "*")
+@Tag(name = "VM Session Management", description = "VM session lifecycle operations (public and authenticated endpoints)")
 public class VmController {
 
     private static final Logger logger = LoggerFactory.getLogger(VmController.class);
@@ -44,6 +53,45 @@ public class VmController {
     /**
      * Start a VM session
      */
+    @Operation(
+        summary = "Start VM session",
+        description = "Initiates a new VM session for a project. Supports both authenticated and anonymous users for demo purposes."
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200", 
+            description = "VM session started successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ApiResponse.class),
+                examples = @ExampleObject(
+                    name = "Success Response",
+                    value = """
+                    {
+                      "success": true,
+                      "message": "VM session started successfully",
+                      "data": {
+                        "sessionId": "session_67890",
+                        "vmInstanceId": "vm_12345",
+                        "status": "STARTING",
+                        "startedAt": "2024-01-15T10:30:00Z",
+                        "vmType": "T4",
+                        "connectionUrl": "rdp://10.0.0.100:3389"
+                      }
+                    }
+                    """
+                )
+            )
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400", 
+            description = "Invalid request or no available VMs"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "500", 
+            description = "Internal server error"
+        )
+    })
     @PostMapping("/sessions/start")
     @VMSessionAudit(action = "VM_SESSION_START", description = "Start VM session", includeSessionDetails = true)
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> startSession(
@@ -141,9 +189,24 @@ public class VmController {
     /**
      * Submit heartbeat for a session
      */
+    @Operation(
+        summary = "Submit session heartbeat",
+        description = "Submits a heartbeat signal to maintain an active VM session and report system metrics."
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200", 
+            description = "Heartbeat recorded successfully"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400", 
+            description = "Invalid session or heartbeat data"
+        )
+    })
     @PostMapping("/sessions/{sessionId}/heartbeat")
     @VMSessionAudit(action = "VM_SESSION_HEARTBEAT", description = "VM session heartbeat")
     public ResponseEntity<ApiResponse<String>> submitHeartbeat(
+            @Parameter(description = "VM session ID", required = true, example = "session_67890")
             @PathVariable String sessionId,
             @RequestBody @Valid HeartbeatRequest request) {
         
@@ -255,25 +318,34 @@ public class VmController {
         }
     }
 
-    // Response DTO
+    // Request DTOs
+    @Schema(description = "Request payload for starting a VM session")
     public static class StartVmSessionRequest {
+        @Schema(description = "Project ID", example = "proj_12345", required = true)
         @NotBlank(message = "Project ID is required")
         private String projectId;
         
-        @NotBlank(message = "VM type is required")
-        private String vmType;
+        @Schema(description = "VM type (T4 or A10 only)", example = "T4", required = true, allowableValues = {"T4", "A10"})
+        private VmType vmType;
 
         // Optional user fields for non-authenticated access
+        @Schema(description = "User first name", example = "John")
         private String firstName;
+        
+        @Schema(description = "User last name", example = "Doe")
         private String lastName;
+        
+        @Schema(description = "User email", example = "john.doe@example.com")
         private String email;
+        
+        @Schema(description = "User phone number", example = "+1234567890")
         private String phone;
 
         public String getProjectId() { return projectId; }
         public void setProjectId(String projectId) { this.projectId = projectId; }
         
-        public String getVmType() { return vmType; }
-        public void setVmType(String vmType) { this.vmType = vmType; }
+        public VmType getVmType() { return vmType; }
+        public void setVmType(VmType vmType) { this.vmType = vmType; }
 
         public String getFirstName() { return firstName; }
         public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -295,11 +367,16 @@ public class VmController {
         public void setEmail(String email) { this.email = email; }
     }
 
+    @Schema(description = "Request payload for VM session heartbeat")
     public static class HeartbeatRequest {
+        @Schema(description = "VM session status", example = "ACTIVE", required = true)
         @NotBlank(message = "Status is required")
         private String status;
         
+        @Schema(description = "CPU usage percentage", example = "45.5")
         private Double cpuUsage;
+        
+        @Schema(description = "Memory usage percentage", example = "62.3")
         private Double memoryUsage;
 
         public String getStatus() { return status; }
@@ -329,7 +406,7 @@ public class VmController {
         private LocalDateTime lastHeartbeat;
         private Long durationSeconds;
         private Double creditsUsed;
-        private String vmType;
+        private VmType vmType;
         private String vmStatus;
         private String azureResourceId;
         
@@ -392,7 +469,7 @@ public class VmController {
         public LocalDateTime getLastHeartbeat() { return lastHeartbeat; }
         public Long getDurationSeconds() { return durationSeconds; }
         public Double getCreditsUsed() { return creditsUsed; }
-        public String getVmType() { return vmType; }
+        public VmType getVmType() { return vmType; }
         public String getVmStatus() { return vmStatus; }
         public String getAzureResourceId() { return azureResourceId; }
         
