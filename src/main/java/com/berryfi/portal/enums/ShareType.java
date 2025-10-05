@@ -4,6 +4,7 @@ package com.berryfi.portal.enums;
  * Enumeration for project share types.
  */
 public enum ShareType {
+    DIRECT("direct"),
     ONE_TIME("one_time"),
     RECURRING("recurring"),
     READ_ONLY("read_only"),

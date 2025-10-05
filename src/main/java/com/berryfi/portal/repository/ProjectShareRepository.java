@@ -22,9 +22,9 @@ import java.util.Optional;
 public interface ProjectShareRepository extends JpaRepository<ProjectShare, String> {
 
     /**
-     * Find project shares by owner organization.
+     * Find project shares by sharing organization.
      */
-    Page<ProjectShare> findByOwnerOrganizationId(String ownerOrganizationId, Pageable pageable);
+    Page<ProjectShare> findBySharedByOrganizationId(String sharedByOrganizationId, Pageable pageable);
 
     /**
      * Find project shares received by organization.
@@ -44,11 +44,9 @@ public interface ProjectShareRepository extends JpaRepository<ProjectShare, Stri
     /**
      * Find project shares by owner organization and status.
      */
-    Page<ProjectShare> findByOwnerOrganizationIdAndStatus(String ownerOrganizationId, 
-                                                         ProjectShareStatus status, 
-                                                         Pageable pageable);
-
-    /**
+    Page<ProjectShare> findBySharedByOrganizationIdAndStatus(String sharedByOrganizationId, 
+                                                        ProjectShareStatus status, 
+                                                        Pageable pageable);    /**
      * Find project shares received by organization and status.
      */
     Page<ProjectShare> findBySharedWithOrganizationIdAndStatus(String sharedWithOrganizationId, 
@@ -67,9 +65,9 @@ public interface ProjectShareRepository extends JpaRepository<ProjectShare, Stri
     /**
      * Find specific project share between organizations.
      */
-    Optional<ProjectShare> findByProjectIdAndOwnerOrganizationIdAndSharedWithOrganizationId(
+    Optional<ProjectShare> findByProjectIdAndSharedByOrganizationIdAndSharedWithOrganizationId(
         String projectId,
-        String ownerOrganizationId,
+        String sharedByOrganizationId,
         String sharedWithOrganizationId
     );
 
@@ -101,7 +99,25 @@ public interface ProjectShareRepository extends JpaRepository<ProjectShare, Stri
     /**
      * Count shares by owner organization.
      */
-    long countByOwnerOrganizationIdAndStatus(String ownerOrganizationId, ProjectShareStatus status);
+    long countBySharedByOrganizationIdAndStatus(String sharedByOrganizationId, ProjectShareStatus status);
+
+    /**
+     * Find who directly shared a project with an organization (for sharedBy field)
+     */
+    Optional<ProjectShare> findByProjectIdAndSharedWithOrganizationIdAndStatus(String projectId, String sharedWithOrganizationId, ProjectShareStatus status);
+
+    /**
+     * Check if a project is already shared with a specific organization
+     */
+    boolean existsByProjectIdAndSharedWithOrganizationIdAndStatus(String projectId, String sharedWithOrganizationId, ProjectShareStatus status);
+
+    /**
+     * Check if an organization can reshare a project (has canShareFurther permission)
+     */
+    @Query("SELECT ps FROM ProjectShare ps WHERE ps.projectId = :projectId AND ps.sharedWithOrganizationId = :organizationId AND ps.status = :status AND ps.canShareFurther = true")
+    Optional<ProjectShare> findReshareableAccess(@Param("projectId") String projectId, 
+                                                @Param("organizationId") String organizationId,
+                                                @Param("status") ProjectShareStatus status);
 
     /**
      * Count shares received by organization.
@@ -197,6 +213,33 @@ public interface ProjectShareRepository extends JpaRepository<ProjectShare, Stri
            "COUNT(CASE WHEN ps.status = 'REJECTED' THEN 1 END) as rejectedShares, " +
            "COALESCE(SUM(ps.allocatedCredits), 0) as totalAllocatedCredits, " +
            "COALESCE(SUM(ps.usedCredits), 0) as totalUsedCredits " +
-           "FROM ProjectShare ps WHERE ps.ownerOrganizationId = :organizationId")
+           "FROM ProjectShare ps WHERE ps.sharedByOrganizationId = :organizationId")
     Object[] getOrganizationSharingAnalytics(@Param("organizationId") String organizationId);
+
+    /**
+     * Find all projects shared by an organization (both direct and indirect).
+     * This includes projects originally owned by the organization and projects they reshared.
+     */
+    @Query("SELECT ps FROM ProjectShare ps WHERE ps.sharedByOrganizationId = :organizationId AND ps.status = 'ACCEPTED'")
+    List<ProjectShare> findAllProjectsSharedByOrganization(@Param("organizationId") String organizationId);
+
+    /**
+     * Find all direct shares by organization (projects originally owned by the organization).
+     */
+    @Query("SELECT ps FROM ProjectShare ps " +
+           "JOIN Project p ON ps.projectId = p.id " +
+           "WHERE ps.sharedByOrganizationId = :organizationId " +
+           "AND p.organizationId = :organizationId " +
+           "AND ps.status = 'ACCEPTED'")
+    List<ProjectShare> findDirectSharesByOrganization(@Param("organizationId") String organizationId);
+
+    /**
+     * Find all indirect shares by organization (projects the organization reshared).
+     */
+    @Query("SELECT ps FROM ProjectShare ps " +
+           "JOIN Project p ON ps.projectId = p.id " +
+           "WHERE ps.sharedByOrganizationId = :organizationId " +
+           "AND p.organizationId != :organizationId " +
+           "AND ps.status = 'ACCEPTED'")
+    List<ProjectShare> findIndirectSharesByOrganization(@Param("organizationId") String organizationId);
 }

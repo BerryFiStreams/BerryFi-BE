@@ -2,12 +2,19 @@ package com.berryfi.portal.service;
 
 import com.berryfi.portal.dto.project.*;
 import com.berryfi.portal.entity.Project;
+import com.berryfi.portal.entity.ProjectShare;
 import com.berryfi.portal.entity.User;
+import com.berryfi.portal.entity.Organization;
 
 import com.berryfi.portal.enums.ProjectStatus;
+import com.berryfi.portal.enums.ProjectShareStatus;
+import com.berryfi.portal.enums.ShareType;
 import com.berryfi.portal.exception.ResourceNotFoundException;
 import com.berryfi.portal.repository.ProjectRepository;
+import com.berryfi.portal.repository.ProjectShareRepository;
 import com.berryfi.portal.repository.VmSessionRepository;
+import com.berryfi.portal.repository.OrganizationRepository;
+import com.berryfi.portal.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -20,6 +27,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -46,22 +54,32 @@ public class ProjectService {
     @Autowired
     private VmSessionRepository vmSessionRepository;
 
+    @Autowired
+    private OrganizationRepository organizationRepository;
+
+    @Autowired
+    private ProjectShareRepository projectShareRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
     /**
      * Create a new project.
      */
     @PreAuthorize("hasPermission('project', 'create')")
     public ProjectResponse createProject(CreateProjectRequest request, User currentUser) {
-        logger.info("Creating new project: {} for organization: {}", request.getName(), request.getOrganizationId());
+        String organizationId = currentUser.getOrganizationId();
+        logger.info("Creating new project: {} for organization: {}", request.getName(), organizationId);
 
         // Check if project name already exists in organization
-        if (projectRepository.existsByNameAndOrganizationId(request.getName(), request.getOrganizationId())) {
+        if (projectRepository.existsByNameAndOrganizationId(request.getName(), organizationId)) {
             throw new IllegalArgumentException("Project with name '" + request.getName() + "' already exists in this organization");
         }
 
         Project project = new Project(
             request.getName(),
             request.getDescription(),
-            request.getOrganizationId(),
+            organizationId,
             request.getAccountType(),
             currentUser.getId()
         );
@@ -86,9 +104,27 @@ public class ProjectService {
         // Ensure user has access to this organization
         validateOrganizationAccess(organizationId, currentUser);
 
-        return projectRepository.findByOrganizationId(organizationId, pageable)
+        return projectRepository.findOwnedAndSharedProjects(organizationId, pageable)
                 .map(project -> {
                     ProjectSummary summary = ProjectSummary.from(project);
+                    
+                    // Set access type and sharing information
+                    if (project.getOrganizationId().equals(organizationId)) {
+                        summary.setAccessType("OWNED");
+                        summary.setSharedBy(null);
+                    } else {
+                        summary.setAccessType("SHARED");
+                        // Find who directly shared this project with the current organization
+                        Optional<ProjectShare> directShare = projectShareRepository
+                            .findByProjectIdAndSharedWithOrganizationIdAndStatus(
+                                project.getId(), organizationId, ProjectShareStatus.ACCEPTED);
+                        if (directShare.isPresent()) {
+                            String sharedByOrgName = getOrganizationName(directShare.get().getSharedByOrganizationId());
+                            summary.setSharedBy(sharedByOrgName);
+                        } else {
+                            summary.setSharedBy("Unknown");
+                        }
+                    }
                     
                     // Calculate real statistics from VM sessions
                     String projectId = project.getId();
@@ -134,6 +170,25 @@ public class ProjectService {
         
         // Create response from project entity
         ProjectResponse response = ProjectResponse.from(project);
+        
+        // Set access type and sharing information
+        String organizationId = currentUser.getOrganizationId();
+        if (project.getOrganizationId().equals(organizationId)) {
+            response.setAccessType("OWNED");
+            response.setSharedBy(null);
+        } else {
+            response.setAccessType("SHARED");
+            // Find who directly shared this project with the current organization
+            Optional<ProjectShare> directShare = projectShareRepository
+                .findByProjectIdAndSharedWithOrganizationIdAndStatus(
+                    projectId, organizationId, ProjectShareStatus.ACCEPTED);
+            if (directShare.isPresent()) {
+                String sharedByOrgName = getOrganizationName(directShare.get().getSharedByOrganizationId());
+                response.setSharedBy(sharedByOrgName);
+            } else {
+                response.setSharedBy("Unknown");
+            }
+        }
         
         // Override with real calculated statistics
         response.setTotalCreditsUsed(totalCreditsUsed != null ? totalCreditsUsed : 0.0);
@@ -378,14 +433,26 @@ public class ProjectService {
     }
 
     /**
-     * Find project with access validation.
+     * Find project with access validation (supports owned and shared projects).
      */
     private Project findProjectWithAccess(String projectId, User currentUser) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
 
-        validateOrganizationAccess(project.getOrganizationId(), currentUser);
-        return project;
+        String userOrgId = currentUser.getOrganizationId();
+        
+        // Check if user owns the project
+        if (project.getOrganizationId().equals(userOrgId)) {
+            return project;
+        }
+        
+        // Check if project is shared with user's organization
+        if (project.isSharedWithOrganization(userOrgId)) {
+            return project;
+        }
+        
+        // No access - throw exception
+        throw new ResourceNotFoundException("Project not found or access denied: " + projectId);
     }
 
 
@@ -441,6 +508,250 @@ public class ProjectService {
     }
 
     /**
+     * Share a project with enhanced credit allocation and recipient resolution.
+     */
+    @PreAuthorize("hasPermission('project', 'share')")
+    @Transactional
+    public void shareProject(String projectId, ShareProjectRequest request, User currentUser) {
+        logger.info("Sharing project {} with request: {}", projectId, request);
+
+        // Check if user has permission to share projects (only ORG_ADMIN, ORG_OWNER, SUPER_ADMIN)
+        if (!currentUser.getRole().canShareProjects()) {
+            throw new IllegalArgumentException("Only organization admins can share projects. Your role: " + 
+                currentUser.getRole().getDisplayName());
+        }
+
+        // Find the project
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
+
+        String currentUserOrgId = currentUser.getOrganizationId();
+        
+        // Verify the user can share this project (either owner or has share permissions)
+        boolean canShare = false;
+        if (project.getOrganizationId().equals(currentUserOrgId)) {
+            // User owns the project
+            canShare = true;
+        } else {
+            // Check if user's org has reshare permissions for this project
+            Optional<ProjectShare> reshareAccess = projectShareRepository
+                .findReshareableAccess(projectId, currentUserOrgId, ProjectShareStatus.ACCEPTED);
+            canShare = reshareAccess.isPresent();
+        }
+        
+        if (!canShare) {
+            throw new IllegalArgumentException("You don't have permission to share this project");
+        }
+
+        // Resolve target organization ID
+        String targetOrganizationId = resolveTargetOrganization(request);
+        
+        // Verify target organization exists
+        if (!organizationRepository.existsById(targetOrganizationId)) {
+            throw new ResourceNotFoundException("Target organization not found: " + targetOrganizationId);
+        }
+
+        // Check if already shared with target organization
+        boolean alreadyShared = projectShareRepository
+            .existsByProjectIdAndSharedWithOrganizationIdAndStatus(
+                projectId, targetOrganizationId, ProjectShareStatus.ACCEPTED);
+        if (alreadyShared) {
+            throw new IllegalArgumentException("Project is already shared with this organization");
+        }
+
+        // Validate and deduct credits from sharing organization
+        validateAndDeductCredits(currentUserOrgId, request.getInitialCredits());
+
+        // Create new share relationship
+        ProjectShare projectShare = new ProjectShare(
+            projectId,
+            currentUserOrgId, // The current user's organization is sharing the project
+            targetOrganizationId,
+            ShareType.DIRECT,
+            currentUser.getId()
+        );
+        
+        // Set credit allocation
+        projectShare.setAllocatedCredits(request.getInitialCredits());
+        projectShare.setRemainingCredits(request.getInitialCredits());
+        projectShare.setRecurringCredits(request.getMonthlyRecurringCredits());
+        projectShare.setRecurringIntervalDays(30); // Monthly = 30 days
+        
+        // Set permissions from request
+        projectShare.setCanViewAnalytics(request.getCanViewAnalytics());
+        projectShare.setCanManageSessions(request.getCanManageSessions());
+        projectShare.setCanShareFurther(request.getCanShareFurther());
+        projectShare.setIsPermanent(request.getIsPermanent());
+        projectShare.setShareMessage(request.getShareMessage());
+        
+        // Auto-accept for now (you can implement approval workflow later)
+        projectShare.acceptShare(currentUser.getId());
+        
+        projectShareRepository.save(projectShare);
+        logger.info("Successfully shared project {} with organization {} by {}, credits: initial={}, monthly={}", 
+                   projectId, targetOrganizationId, currentUserOrgId, 
+                   request.getInitialCredits(), request.getMonthlyRecurringCredits());
+    }
+
+    /**
+     * Legacy method for backward compatibility
+     */
+    @PreAuthorize("hasPermission('project', 'share')")
+    @Transactional
+    public void shareProject(String projectId, String targetOrganizationId, User currentUser) {
+        // Check if user has permission to share projects (only ORG_ADMIN, ORG_OWNER, SUPER_ADMIN)
+        if (!currentUser.getRole().canShareProjects()) {
+            throw new IllegalArgumentException("Only organization admins can share projects. Your role: " + 
+                currentUser.getRole().getDisplayName());
+        }
+
+        ShareProjectRequest request = new ShareProjectRequest();
+        request.setOrganizationId(targetOrganizationId);
+        request.setInitialCredits(0.0);
+        request.setMonthlyRecurringCredits(0.0);
+        shareProject(projectId, request, currentUser);
+    }
+
+    /**
+     * Resolve target organization ID from either organizationId or userEmail
+     */
+    private String resolveTargetOrganization(ShareProjectRequest request) {
+        if (request.getOrganizationId() != null && !request.getOrganizationId().trim().isEmpty()) {
+            return request.getOrganizationId();
+        }
+        
+        if (request.getUserEmail() != null && !request.getUserEmail().trim().isEmpty()) {
+            // Find user by email and get their organization
+            User targetUser = userRepository.findByEmail(request.getUserEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getUserEmail()));
+            
+            if (targetUser.getOrganizationId() == null) {
+                throw new IllegalArgumentException("User does not belong to any organization: " + request.getUserEmail());
+            }
+            
+            return targetUser.getOrganizationId();
+        }
+        
+        throw new IllegalArgumentException("Either organizationId or userEmail must be provided");
+    }
+
+    /**
+     * Validate that the sharing organization has enough credits and deduct them
+     */
+    private void validateAndDeductCredits(String organizationId, Double creditsToDeduct) {
+        if (creditsToDeduct == null || creditsToDeduct <= 0) {
+            return; // No credits to deduct
+        }
+        
+        // Find the organization
+        Organization sharingOrg = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + organizationId));
+        
+        // Check if organization has enough credits
+        Double availableCredits = sharingOrg.getRemainingCredits();
+        if (availableCredits == null || availableCredits < creditsToDeduct) {
+            throw new IllegalArgumentException("Insufficient credits. Available: " + 
+                (availableCredits != null ? availableCredits : 0) + 
+                ", Required: " + creditsToDeduct);
+        }
+        
+        // Deduct credits by updating remaining credits
+        sharingOrg.setRemainingCredits(availableCredits - creditsToDeduct);
+        
+        // Also update used credits
+        Double currentUsed = sharingOrg.getUsedCredits();
+        sharingOrg.setUsedCredits((currentUsed != null ? currentUsed : 0) + creditsToDeduct);
+        
+        organizationRepository.save(sharingOrg);
+        
+        logger.info("Deducted {} credits from organization {}. Remaining: {}", 
+                   creditsToDeduct, organizationId, sharingOrg.getRemainingCredits());
+    }
+
+    /**
+     * Unshare a project from an organization.
+     */
+    @PreAuthorize("hasPermission('project', 'share')")
+    @Transactional
+    public void unshareProject(String projectId, String targetOrganizationId, User currentUser) {
+        logger.info("Unsharing project {} from organization: {}", projectId, targetOrganizationId);
+
+        // Check if user has permission to share/unshare projects (only ORG_ADMIN, ORG_OWNER, SUPER_ADMIN)
+        if (!currentUser.getRole().canShareProjects()) {
+            throw new IllegalArgumentException("Only organization admins can unshare projects. Your role: " + 
+                currentUser.getRole().getDisplayName());
+        }
+
+        // Find the project and ensure the user owns it
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
+
+        // Verify the user owns this project
+        if (!project.getOrganizationId().equals(currentUser.getOrganizationId())) {
+            throw new IllegalArgumentException("You can only unshare projects you own");
+        }
+
+        // Check if currently shared
+        if (!project.isSharedWithOrganization(targetOrganizationId)) {
+            throw new IllegalArgumentException("Project is not shared with this organization");
+        }
+
+        // Remove organization from shared list (simple implementation)
+        String currentShared = project.getSharedWithOrganizations();
+        String updatedShared = currentShared.replace("\"" + targetOrganizationId + "\"", "")
+                                          .replace(",,", ",")
+                                          .replace("[,", "[")
+                                          .replace(",]", "]");
+        if (updatedShared.equals("[]")) {
+            project.setSharedWithOrganizations(null);
+        } else {
+            project.setSharedWithOrganizations(updatedShared);
+        }
+
+        projectRepository.save(project);
+        logger.info("Successfully unshared project {} from organization {}", projectId, targetOrganizationId);
+    }
+
+    /**
+     * Allocate credits to a project.
+     */
+    @PreAuthorize("hasPermission('project', 'manage_credits')")
+    @Transactional
+    public ProjectResponse allocateCredits(String projectId, Double credits, User currentUser) {
+        logger.info("Allocating {} credits to project: {}", credits, projectId);
+
+        Project project = findProjectWithAccess(projectId, currentUser);
+        
+        // Verify the user owns this project (only owners can allocate credits)
+        if (!project.getOrganizationId().equals(currentUser.getOrganizationId())) {
+            throw new IllegalArgumentException("You can only allocate credits to projects you own");
+        }
+
+        project.allocateCredits(credits);
+        Project savedProject = projectRepository.save(project);
+
+        ProjectResponse response = ProjectResponse.from(savedProject);
+        
+        // Set access type
+        response.setAccessType("OWNED");
+        response.setSharedBy(null);
+
+        logger.info("Successfully allocated {} credits to project {}. New balance: {}", 
+                   credits, projectId, savedProject.getRemainingCredits());
+
+        return response;
+    }
+
+    /**
+     * Helper method to get organization name by ID
+     */
+    private String getOrganizationName(String organizationId) {
+        return organizationRepository.findById(organizationId)
+                .map(org -> org.getName())
+                .orElse("Unknown Organization");
+    }
+
+    /**
      * DTO for project statistics.
      */
     public static class ProjectStatistics {
@@ -471,5 +782,100 @@ public class ProjectService {
         public long getErrorProjects() { return errorProjects; }
         public double getTotalCreditsUsed() { return totalCreditsUsed; }
         public long getTotalSessions() { return totalSessions; }
+    }
+
+    /**
+     * Get all projects shared by the current organization with usage statistics.
+     */
+    @PreAuthorize("hasPermission('project', 'read')")
+    public List<SharedProjectUsageResponse> getSharedProjectUsage(User currentUser) {
+        logger.info("Getting shared project usage for organization: {}", currentUser.getOrganizationId());
+
+        String currentOrgId = currentUser.getOrganizationId();
+        List<SharedProjectUsageResponse> usageList = new ArrayList<>();
+
+        // Get all direct shares (projects originally owned by current organization)
+        List<ProjectShare> directShares = projectShareRepository.findDirectSharesByOrganization(currentOrgId);
+        for (ProjectShare share : directShares) {
+            SharedProjectUsageResponse usage = buildSharedProjectUsage(share, "DIRECT");
+            if (usage != null) {
+                usageList.add(usage);
+            }
+        }
+
+        // Get all indirect shares (projects the current organization reshared)
+        List<ProjectShare> indirectShares = projectShareRepository.findIndirectSharesByOrganization(currentOrgId);
+        for (ProjectShare share : indirectShares) {
+            SharedProjectUsageResponse usage = buildSharedProjectUsage(share, "INDIRECT");
+            if (usage != null) {
+                usageList.add(usage);
+            }
+        }
+
+        logger.info("Found {} shared projects for organization {}", usageList.size(), currentOrgId);
+        return usageList;
+    }
+
+    /**
+     * Build SharedProjectUsageResponse from ProjectShare entity.
+     */
+    private SharedProjectUsageResponse buildSharedProjectUsage(ProjectShare share, String shareType) {
+        try {
+            // Get project details
+            Project project = projectRepository.findById(share.getProjectId()).orElse(null);
+            if (project == null) {
+                logger.warn("Project not found: {}", share.getProjectId());
+                return null;
+            }
+
+            // Get shared with organization details
+            Organization sharedWithOrg = organizationRepository.findById(share.getSharedWithOrganizationId()).orElse(null);
+            if (sharedWithOrg == null) {
+                logger.warn("Organization not found: {}", share.getSharedWithOrganizationId());
+                return null;
+            }
+
+        // Get admin email (owner email from the shared with organization)
+        String adminEmail = sharedWithOrg.getOwnerEmail();
+
+        // Create response object
+        SharedProjectUsageResponse usage = new SharedProjectUsageResponse(
+            project.getId(),
+            project.getName(),
+            share.getSharedWithOrganizationId(),
+            sharedWithOrg.getName(),
+            adminEmail,
+            shareType
+        );
+
+        // Set credit information
+        usage.setCreditsAllocated(share.getAllocatedCredits());
+        usage.setCreditsUsed(share.getUsedCredits());
+        usage.setCreditsRemaining(share.getRemainingCredits());
+        usage.setMonthlyRecurringCredits(share.getRecurringCredits());
+        usage.setSharedAt(share.getSharedAt());
+        usage.setStatus(share.getStatus().toString());
+
+        // Get session statistics for this project and organization
+        Long totalSessions = vmSessionRepository.countSessionsByProjectAndOrganization(
+            project.getId(), share.getSharedWithOrganizationId());
+        Double creditsUsedFromSessions = vmSessionRepository.getTotalCreditsUsedByProjectAndOrganization(
+            project.getId(), share.getSharedWithOrganizationId());
+        LocalDateTime lastUsed = vmSessionRepository.getLastUsageByProjectAndOrganization(
+            project.getId(), share.getSharedWithOrganizationId());
+
+        usage.setTotalSessions(totalSessions != null ? totalSessions : 0L);
+        usage.setLastUsed(lastUsed);
+
+        // Override credits used with actual session usage if available
+        if (creditsUsedFromSessions != null && creditsUsedFromSessions > 0) {
+            usage.setCreditsUsed(creditsUsedFromSessions);
+        }
+
+        return usage;
+        } catch (Exception e) {
+            logger.error("Error building shared project usage for share: {}", share.getId(), e);
+            return null;
+        }
     }
 }

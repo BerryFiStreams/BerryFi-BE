@@ -50,8 +50,19 @@ public class Project {
     @Column(name = "total_credits_used")
     private Double totalCreditsUsed = 0.0;
 
+    // Project-specific credit allocation
+    @Column(name = "allocated_credits")
+    private Double allocatedCredits = 0.0;
+
+    @Column(name = "remaining_credits")
+    private Double remainingCredits = 0.0;
+
     @Column(name = "sessions_count")
     private Integer sessionsCount = 0;
+
+    // Sharing functionality - JSON array of organization IDs this project is shared with
+    @Column(name = "shared_with_organizations", columnDefinition = "TEXT")
+    private String sharedWithOrganizations; // JSON array of org IDs
 
     @Column(name = "last_deployed")
     private LocalDateTime lastDeployed;
@@ -173,6 +184,48 @@ public class Project {
 
     public void addCreditsUsed(double credits) {
         this.totalCreditsUsed = (this.totalCreditsUsed == null ? 0.0 : this.totalCreditsUsed) + credits;
+        // Also deduct from remaining credits if allocated
+        if (this.remainingCredits != null && this.remainingCredits > 0) {
+            this.remainingCredits = Math.max(0.0, this.remainingCredits - credits);
+        }
+    }
+
+    /**
+     * Allocate credits to this project
+     */
+    public void allocateCredits(double credits) {
+        this.allocatedCredits = (this.allocatedCredits == null ? 0.0 : this.allocatedCredits) + credits;
+        this.remainingCredits = (this.remainingCredits == null ? 0.0 : this.remainingCredits) + credits;
+    }
+
+    /**
+     * Check if project has enough credits for a session
+     */
+    public boolean hasEnoughCredits(double requiredCredits) {
+        return this.remainingCredits != null && this.remainingCredits >= requiredCredits;
+    }
+
+    /**
+     * Get sharing status relative to an organization
+     */
+    public String getProjectStatus(String organizationId) {
+        if (this.organizationId.equals(organizationId)) {
+            return "OWNED";
+        } else if (isSharedWithOrganization(organizationId)) {
+            return "SHARED";
+        }
+        return "NOT_ACCESSIBLE";
+    }
+
+    /**
+     * Check if project is shared with a specific organization
+     */
+    public boolean isSharedWithOrganization(String organizationId) {
+        if (this.sharedWithOrganizations == null || this.sharedWithOrganizations.isEmpty()) {
+            return false;
+        }
+        // Simple contains check - in production, you'd want proper JSON parsing
+        return this.sharedWithOrganizations.contains("\"" + organizationId + "\"");
     }
 
     // Getters and Setters
@@ -429,5 +482,30 @@ public class Project {
 
     public boolean isSharedWith(String organizationId) {
         return this.organizationId.equals(organizationId) && this.isSharedProject;
+    }
+
+    // New getters and setters for credit and sharing functionality
+    public Double getAllocatedCredits() {
+        return allocatedCredits;
+    }
+
+    public void setAllocatedCredits(Double allocatedCredits) {
+        this.allocatedCredits = allocatedCredits;
+    }
+
+    public Double getRemainingCredits() {
+        return remainingCredits;
+    }
+
+    public void setRemainingCredits(Double remainingCredits) {
+        this.remainingCredits = remainingCredits;
+    }
+
+    public String getSharedWithOrganizations() {
+        return sharedWithOrganizations;
+    }
+
+    public void setSharedWithOrganizations(String sharedWithOrganizations) {
+        this.sharedWithOrganizations = sharedWithOrganizations;
     }
 }

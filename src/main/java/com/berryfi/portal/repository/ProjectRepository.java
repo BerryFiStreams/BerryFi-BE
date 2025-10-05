@@ -174,4 +174,23 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
      */
     @Query("SELECT p FROM Project p WHERE p.organizationId = :organizationId ORDER BY p.updatedAt DESC")
     List<Project> findByOrganizationIdOrderByUpdatedAtDesc(@Param("organizationId") String organizationId, Pageable pageable);
+
+    /**
+     * Find projects owned by or shared with an organization
+     */
+    @Query("SELECT p FROM Project p WHERE p.organizationId = :organizationId OR " +
+           "(p.sharedWithOrganizations IS NOT NULL AND p.sharedWithOrganizations LIKE CONCAT('%\"', :organizationId, '\"%'))")
+    Page<Project> findOwnedAndSharedProjects(@Param("organizationId") String organizationId, Pageable pageable);
+
+    /**
+     * Find projects shared with a specific organization
+     */
+    @Query("SELECT p FROM Project p WHERE p.organizationId != :organizationId AND " +
+           "p.sharedWithOrganizations IS NOT NULL AND p.sharedWithOrganizations LIKE CONCAT('%\"', :organizationId, '\"%')")
+    Page<Project> findSharedWithOrganization(@Param("organizationId") String organizationId, Pageable pageable);
+
+    /**
+     * Find projects owned by an organization
+     */
+    Page<Project> findByOrganizationIdAndSharedWithOrganizationsIsNull(String organizationId, Pageable pageable);
 }

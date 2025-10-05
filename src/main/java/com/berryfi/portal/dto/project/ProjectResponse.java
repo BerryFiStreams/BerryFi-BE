@@ -30,6 +30,14 @@ public class ProjectResponse {
     private String branding;
     private String links;
     private String errors;
+    
+    // Sharing information
+    private String accessType; // "OWNED" or "SHARED"
+    private String sharedBy; // Organization name that shared this project (if shared)
+    
+    // Credit information
+    private Double allocatedCredits;
+    private Double remainingCredits;
 
     public ProjectResponse() {}
 
@@ -53,6 +61,9 @@ public class ProjectResponse {
         this.branding = project.getBranding();
         this.links = project.getLinks();
         this.errors = project.getErrors();
+        this.allocatedCredits = project.getAllocatedCredits();
+        this.remainingCredits = project.getRemainingCredits();
+        // accessType and sharedBy will be set by service layer based on context
     }
 
     // Static factory method
@@ -211,5 +222,37 @@ public class ProjectResponse {
 
     public void setErrors(String errors) {
         this.errors = errors;
+    }
+
+    public String getAccessType() {
+        return accessType;
+    }
+
+    public void setAccessType(String accessType) {
+        this.accessType = accessType;
+    }
+
+    public String getSharedBy() {
+        return sharedBy;
+    }
+
+    public void setSharedBy(String sharedBy) {
+        this.sharedBy = sharedBy;
+    }
+
+    public Double getAllocatedCredits() {
+        return allocatedCredits;
+    }
+
+    public void setAllocatedCredits(Double allocatedCredits) {
+        this.allocatedCredits = allocatedCredits;
+    }
+
+    public Double getRemainingCredits() {
+        return remainingCredits;
+    }
+
+    public void setRemainingCredits(Double remainingCredits) {
+        this.remainingCredits = remainingCredits;
     }
 }

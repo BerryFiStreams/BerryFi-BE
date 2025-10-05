@@ -146,4 +146,38 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
      */
     @Query("SELECT s FROM VmSession s JOIN FETCH s.vmInstance WHERE s.status IN ('ACTIVE', 'STARTING') ORDER BY s.lastHeartbeat ASC")
     List<VmSession> findActiveSessionsForSync();
+
+    /**
+     * Get session statistics for a project by organization
+     */
+    @Query("SELECT " +
+           "COUNT(s) as totalSessions, " +
+           "COALESCE(SUM(s.creditsUsed), 0.0) as totalCreditsUsed, " +
+           "MAX(s.startTime) as lastUsed " +
+           "FROM VmSession s " +
+           "WHERE s.projectId = :projectId AND s.organizationId = :organizationId " +
+           "AND s.status IN ('COMPLETED', 'TERMINATED')")
+    Object[] getProjectUsageByOrganization(@Param("projectId") String projectId, 
+                                         @Param("organizationId") String organizationId);
+
+    /**
+     * Count sessions for a project by organization
+     */
+    @Query("SELECT COUNT(s) FROM VmSession s WHERE s.projectId = :projectId AND s.organizationId = :organizationId AND s.status IN ('COMPLETED', 'TERMINATED')")
+    Long countSessionsByProjectAndOrganization(@Param("projectId") String projectId, 
+                                             @Param("organizationId") String organizationId);
+
+    /**
+     * Get total credits used for a project by organization
+     */
+    @Query("SELECT COALESCE(SUM(s.creditsUsed), 0.0) FROM VmSession s WHERE s.projectId = :projectId AND s.organizationId = :organizationId AND s.status IN ('COMPLETED', 'TERMINATED')")
+    Double getTotalCreditsUsedByProjectAndOrganization(@Param("projectId") String projectId, 
+                                                      @Param("organizationId") String organizationId);
+
+    /**
+     * Get last usage date for a project by organization
+     */
+    @Query("SELECT MAX(s.startTime) FROM VmSession s WHERE s.projectId = :projectId AND s.organizationId = :organizationId AND s.status IN ('COMPLETED', 'TERMINATED')")
+    LocalDateTime getLastUsageByProjectAndOrganization(@Param("projectId") String projectId, 
+                                                      @Param("organizationId") String organizationId);
 }

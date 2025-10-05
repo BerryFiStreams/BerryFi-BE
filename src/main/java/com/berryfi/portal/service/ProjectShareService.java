@@ -183,7 +183,7 @@ public class ProjectShareService {
         ProjectShare projectShare = projectShareRepository.findById(shareId)
             .orElseThrow(() -> new ResourceNotFoundException("Project share not found"));
 
-        if (!projectShare.getOwnerOrganizationId().equals(currentUser.getOrganizationId())) {
+        if (!projectShare.getSharedByOrganizationId().equals(currentUser.getOrganizationId())) {
             throw new RuntimeException("You can only revoke shares from your organization");
         }
 
@@ -202,7 +202,7 @@ public class ProjectShareService {
             .orElseThrow(() -> new ResourceNotFoundException("Project share not found"));
 
         // Check access
-        if (!projectShare.getOwnerOrganizationId().equals(currentUser.getOrganizationId()) &&
+        if (!projectShare.getSharedByOrganizationId().equals(currentUser.getOrganizationId()) &&
             !projectShare.getSharedWithOrganizationId().equals(currentUser.getOrganizationId())) {
             throw new RuntimeException("Access denied to project share");
         }
@@ -232,7 +232,7 @@ public class ProjectShareService {
             throw new RuntimeException("Access denied to organization's outgoing VM access shares");
         }
 
-        Page<ProjectShare> shares = projectShareRepository.findByOwnerOrganizationId(organizationId, pageable);
+        Page<ProjectShare> shares = projectShareRepository.findBySharedByOrganizationId(organizationId, pageable);
         return shares.map(this::mapToResponse);
     }
 
@@ -322,7 +322,7 @@ public class ProjectShareService {
         response.setProjectId(share.getProjectId());
         // Note: Project name would need to be fetched from Project entity
         response.setProjectName(null);
-        response.setSharingOrganizationId(share.getOwnerOrganizationId());
+        response.setSharingOrganizationId(share.getSharedByOrganizationId());
         // Note: Organization names would need to be fetched from Organization entities
         response.setSharingOrganizationName(null);
         response.setTargetOrganizationId(share.getSharedWithOrganizationId());

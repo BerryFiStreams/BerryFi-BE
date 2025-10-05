@@ -15,8 +15,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "project_shares", indexes = {
     @Index(name = "idx_project_share_project", columnList = "projectId"),
-    @Index(name = "idx_project_share_owner", columnList = "ownerOrganizationId"),
-    @Index(name = "idx_project_share_shared", columnList = "sharedWithOrganizationId"),
+    @Index(name = "idx_project_share_shared_by", columnList = "sharedByOrganizationId"),
+    @Index(name = "idx_project_share_shared_with", columnList = "sharedWithOrganizationId"),
     @Index(name = "idx_project_share_status", columnList = "status")
 })
 public class ProjectShare {
@@ -29,9 +29,9 @@ public class ProjectShare {
     @Column(name = "project_id", nullable = false)
     private String projectId;
 
-    @NotBlank(message = "Owner organization ID is required")
-    @Column(name = "owner_organization_id", nullable = false)
-    private String ownerOrganizationId;
+    @NotBlank(message = "Shared by organization ID is required")
+    @Column(name = "shared_by_organization_id", nullable = false)
+    private String sharedByOrganizationId;
 
     @NotBlank(message = "Shared with organization ID is required")
     @Column(name = "shared_with_organization_id", nullable = false)
@@ -132,11 +132,11 @@ public class ProjectShare {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public ProjectShare(String projectId, String ownerOrganizationId, String sharedWithOrganizationId, 
+    public ProjectShare(String projectId, String sharedByOrganizationId, String sharedWithOrganizationId, 
                        ShareType shareType, String createdBy) {
         this();
         this.projectId = projectId;
-        this.ownerOrganizationId = ownerOrganizationId;
+        this.sharedByOrganizationId = sharedByOrganizationId;
         this.sharedWithOrganizationId = sharedWithOrganizationId;
         this.shareType = shareType;
         this.createdBy = createdBy;
@@ -263,12 +263,12 @@ public class ProjectShare {
         this.projectId = projectId;
     }
 
-    public String getOwnerOrganizationId() {
-        return ownerOrganizationId;
+    public String getSharedByOrganizationId() {
+        return sharedByOrganizationId;
     }
 
-    public void setOwnerOrganizationId(String ownerOrganizationId) {
-        this.ownerOrganizationId = ownerOrganizationId;
+    public void setSharedByOrganizationId(String sharedByOrganizationId) {
+        this.sharedByOrganizationId = sharedByOrganizationId;
     }
 
     public String getSharedWithOrganizationId() {

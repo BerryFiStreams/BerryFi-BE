@@ -14,9 +14,6 @@ public class CreateProjectRequest {
 
     private String description;
 
-    @NotBlank(message = "Organization ID is required")
-    private String organizationId;
-
     @NotNull(message = "Account type is required")
     private AccountType accountType;
 
@@ -26,10 +23,9 @@ public class CreateProjectRequest {
 
     public CreateProjectRequest() {}
 
-    public CreateProjectRequest(String name, String description, String organizationId, AccountType accountType) {
+    public CreateProjectRequest(String name, String description, AccountType accountType) {
         this.name = name;
         this.description = description;
-        this.organizationId = organizationId;
         this.accountType = accountType;
     }
 
@@ -48,14 +44,6 @@ public class CreateProjectRequest {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public String getOrganizationId() {
-        return organizationId;
-    }
-
-    public void setOrganizationId(String organizationId) {
-        this.organizationId = organizationId;
     }
 
     public AccountType getAccountType() {

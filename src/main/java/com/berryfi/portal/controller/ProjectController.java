@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * REST Controller for project management operations.
  */
@@ -68,7 +70,8 @@ public class ProjectController {
             @Valid @RequestBody CreateProjectRequest request,
             @AuthenticationPrincipal User currentUser) {
 
-        logger.info("Creating project: {} for organization: {}", request.getName(), request.getOrganizationId());
+        String organizationId = currentUser.getOrganizationId();
+        logger.info("Creating project: {} for organization: {}", request.getName(), organizationId);
 
         ProjectResponse project = projectService.createProject(request, currentUser);
 
@@ -287,6 +290,77 @@ public class ProjectController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    /**
+     * Share a project with another organization with credit allocation.
+     * Only organization admins (ORG_OWNER, ORG_ADMIN, SUPER_ADMIN) can share projects.
+     * POST /api/projects/{projectId}/share
+     */
+    @PostMapping("/{projectId}/share")
+    public ResponseEntity<Void> shareProject(
+            @PathVariable String projectId,
+            @Valid @RequestBody ShareProjectRequest request,
+            @AuthenticationPrincipal User currentUser) {
+
+        logger.info("Sharing project {} with request: {}", projectId, request);
+
+        projectService.shareProject(projectId, request, currentUser);
+
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Unshare a project from an organization.
+     * Only organization admins (ORG_OWNER, ORG_ADMIN, SUPER_ADMIN) can unshare projects.
+     * DELETE /api/projects/{projectId}/share/{organizationId}
+     */
+    @DeleteMapping("/{projectId}/share/{organizationId}")
+    public ResponseEntity<Void> unshareProject(
+            @PathVariable String projectId,
+            @PathVariable String organizationId,
+            @AuthenticationPrincipal User currentUser) {
+
+        logger.info("Unsharing project {} from organization: {}", projectId, organizationId);
+
+        projectService.unshareProject(projectId, organizationId, currentUser);
+
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Allocate credits to a project.
+     * POST /api/projects/{projectId}/credits
+     */
+    @PostMapping("/{projectId}/credits")
+    public ResponseEntity<ProjectResponse> allocateCredits(
+            @PathVariable String projectId,
+            @Valid @RequestBody AllocateCreditsRequest request,
+            @AuthenticationPrincipal User currentUser) {
+
+        logger.info("Allocating {} credits to project: {}", request.getCredits(), projectId);
+
+        ProjectResponse project = projectService.allocateCredits(projectId, request.getCredits(), currentUser);
+
+        return ResponseEntity.ok(project);
+    }
+
+    /**
+     * Get all projects shared by the current organization with usage statistics.
+     * Returns both direct shares (projects owned by this org) and indirect shares (projects reshared by this org).
+     * Includes organization names, admin emails, credits used, and session counts for each shared project.
+     * Only organization admins can access this endpoint.
+     * GET /api/projects/shared-usage
+     */
+    @GetMapping("/shared-usage")
+    public ResponseEntity<List<SharedProjectUsageResponse>> getSharedProjectUsage(
+            @AuthenticationPrincipal User currentUser) {
+
+        logger.info("Getting shared project usage for organization: {}", currentUser.getOrganizationId());
+
+        List<SharedProjectUsageResponse> sharedUsage = projectService.getSharedProjectUsage(currentUser);
+
+        return ResponseEntity.ok(sharedUsage);
     }
 
 }
