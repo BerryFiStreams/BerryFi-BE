@@ -82,10 +82,11 @@ public class TeamController {
     /**
      * Get team invitations with optional status filter.
      * GET /api/team/invitations
+     * Supports both InvitationStatus values (PENDING, ACCEPTED, etc.) and UserStatus aliases (INVITED = PENDING)
      */
     @GetMapping("/invitations")
     public ResponseEntity<?> getTeamInvitations(
-            @RequestParam(required = false) InvitationStatus status,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal User currentUser) {
@@ -95,13 +96,47 @@ public class TeamController {
             String organizationId = currentUser.getOrganizationId();
             Pageable pageable = PageRequest.of(page, size);
 
-            Page<TeamInvitationResponse> invitations = teamMemberService.getTeamInvitations(organizationId, status, pageable);
+            // Map status string to InvitationStatus, supporting aliases
+            InvitationStatus invitationStatus = mapStatusParameter(status);
+            
+            Page<TeamInvitationResponse> invitations = teamMemberService.getTeamInvitations(organizationId, invitationStatus, pageable);
             return ResponseEntity.ok(invitations);
         } catch (RuntimeException e) {
             logger.error("Error getting team invitations: {}", e.getMessage());
             return ResponseEntity.badRequest().body(
                 new ErrorResponse("Failed to get team invitations: " + e.getMessage())
             );
+        }
+    }
+
+    /**
+     * Map status parameter string to InvitationStatus enum.
+     * Supports both InvitationStatus values and UserStatus aliases for backward compatibility.
+     */
+    private InvitationStatus mapStatusParameter(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return null;
+        }
+        
+        String upperStatus = status.trim().toUpperCase();
+        
+        // Handle UserStatus aliases for backward compatibility
+        switch (upperStatus) {
+            case "INVITED":
+                return InvitationStatus.PENDING;
+            case "ACTIVE":
+                return InvitationStatus.ACCEPTED;
+            case "DISABLED":
+                // Could map to DECLINED, EXPIRED, or CANCELLED - using DECLINED as default
+                return InvitationStatus.DECLINED;
+            default:
+                // Try to parse as InvitationStatus
+                try {
+                    return InvitationStatus.valueOf(upperStatus);
+                } catch (IllegalArgumentException e) {
+                    throw new RuntimeException("Invalid status parameter: " + status + 
+                        ". Valid values are: PENDING, ACCEPTED, DECLINED, EXPIRED, CANCELLED, or INVITED (alias for PENDING)");
+                }
         }
     }
 
@@ -149,6 +184,49 @@ public class TeamController {
             logger.error("Error cancelling team invitation: {}", e.getMessage());
             return ResponseEntity.badRequest().body(
                 new ErrorResponse("Failed to cancel team invitation: " + e.getMessage())
+            );
+        }
+    }
+
+    /**
+     * Get team invitation by token (public endpoint for email links).
+     * GET /api/team/invitations/token/{token}
+     * This endpoint allows unauthenticated access so users can view invitation details from email links.
+     */
+    @GetMapping("/invitations/token/{token}")
+    public ResponseEntity<?> getInvitationByToken(@PathVariable String token) {
+        logger.info("Getting invitation details by token: {}", token);
+
+        try {
+            TeamMemberResponse response = teamMemberService.getInvitationByToken(token);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            logger.error("Error getting invitation by token: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                new ErrorResponse("Failed to get invitation: " + e.getMessage())
+            );
+        }
+    }
+
+    /**
+     * Accept team invitation by token (public endpoint for email links).
+     * POST /api/team/invitations/token/{token}/accept
+     * This endpoint requires authentication but accepts the token from URL.
+     */
+    @PostMapping("/invitations/token/{token}/accept")
+    public ResponseEntity<?> acceptInvitationByToken(
+            @PathVariable String token,
+            @AuthenticationPrincipal User currentUser) {
+        logger.info("Accepting invitation by token: {} for user: {}", token, currentUser.getId());
+
+        try {
+            String userId = currentUser.getId();
+            TeamMemberResponse response = teamMemberService.acceptInvitationByToken(token, userId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            logger.error("Error accepting invitation by token: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                new ErrorResponse("Failed to accept invitation: " + e.getMessage())
             );
         }
     }

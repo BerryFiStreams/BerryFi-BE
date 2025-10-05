@@ -103,6 +103,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/invitations/*/decline").permitAll() // Decline invitation
                 .requestMatchers(HttpMethod.POST, "/api/invitations/*/resend").permitAll() // Resend invitation
                 
+                // Team invitation endpoints - public access for invitation token operations
+                .requestMatchers(HttpMethod.GET, "/api/team/invitations/token/*").permitAll() // Get invitation details by token
+                .requestMatchers(HttpMethod.GET, "/api/team/members/invitations/*").permitAll() // Alternative endpoint for invitation details
+                
                 // Authentication required endpoints
                 .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()
                 

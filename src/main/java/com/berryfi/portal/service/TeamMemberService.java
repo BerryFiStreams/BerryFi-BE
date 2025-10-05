@@ -24,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +55,7 @@ public class TeamMemberService {
     @Autowired
     private InvitationEmailService invitationEmailService;
     
-    @Value("${app.frontend.url:https://localhost:5173}")
+    @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
     /**
@@ -293,7 +295,8 @@ public class TeamMemberService {
         response.setId(invitation.getId());
         response.setUserEmail(invitation.getInviteEmail());
         response.setRole(invitation.getRole());
-        response.setStatus(UserStatus.INVITED);
+        // Map InvitationStatus to UserStatus for consistency
+        response.setStatus(mapInvitationStatusToUserStatus(invitation.getStatus()));
         response.setInvitedAt(invitation.getCreatedAt());
         response.setInvitedBy(invitation.getInvitedByUserId());
         
@@ -304,6 +307,24 @@ public class TeamMemberService {
         }
         
         return response;
+    }
+
+    /**
+     * Map InvitationStatus to UserStatus for consistent status representation.
+     */
+    private UserStatus mapInvitationStatusToUserStatus(InvitationStatus invitationStatus) {
+        switch (invitationStatus) {
+            case PENDING:
+                return UserStatus.INVITED;
+            case ACCEPTED:
+                return UserStatus.ACTIVE;
+            case DECLINED:
+            case EXPIRED:
+            case CANCELLED:
+                return UserStatus.DISABLED;
+            default:
+                return UserStatus.INVITED;
+        }
     }
 
     /**
@@ -601,6 +622,7 @@ public class TeamMemberService {
 
     /**
      * Get team invitations for an organization with pagination and optional status filter.
+     * Optimized to avoid N+1 query problem by batch loading organizations and users.
      */
     public Page<com.berryfi.portal.dto.team.TeamInvitationResponse> getTeamInvitations(
             String organizationId, InvitationStatus status, Pageable pageable) {
@@ -613,11 +635,36 @@ public class TeamMemberService {
             invitations = teamMemberInvitationRepository.findByOrganizationIdOrderByCreatedAtDesc(organizationId, pageable);
         }
         
-        return invitations.map(this::mapInvitationToResponse);
+        // Extract all unique organization IDs and user IDs
+        List<String> orgIds = invitations.getContent().stream()
+            .map(TeamMemberInvitation::getOrganizationId)
+            .distinct()
+            .toList();
+        
+        List<String> userIds = invitations.getContent().stream()
+            .map(TeamMemberInvitation::getInvitedByUserId)
+            .distinct()
+            .toList();
+        
+        logger.debug("Optimizing queries: {} invitations, {} unique orgs, {} unique users", 
+                    invitations.getContent().size(), orgIds.size(), userIds.size());
+        
+        // Batch load organizations and users to avoid N+1 queries
+        List<Organization> organizations = organizationRepository.findAllById(orgIds);
+        List<User> users = userRepository.findAllById(userIds);
+        
+        // Create lookup maps for O(1) access
+        Map<String, Organization> orgMap = organizations.stream()
+            .collect(Collectors.toMap(Organization::getId, org -> org));
+        Map<String, User> userMap = users.stream()
+            .collect(Collectors.toMap(User::getId, user -> user));
+        
+        return invitations.map(invitation -> mapInvitationToResponseOptimized(invitation, orgMap, userMap));
     }
 
     /**
      * Map TeamMemberInvitation entity to TeamInvitationResponse DTO.
+     * DEPRECATED: Use mapInvitationToResponseOptimized for better performance.
      */
     private com.berryfi.portal.dto.team.TeamInvitationResponse mapInvitationToResponse(TeamMemberInvitation invitation) {
         com.berryfi.portal.dto.team.TeamInvitationResponse response = new com.berryfi.portal.dto.team.TeamInvitationResponse();
@@ -648,6 +695,48 @@ public class TeamMemberService {
         Optional<User> inviterOpt = userRepository.findById(invitation.getInvitedByUserId());
         if (inviterOpt.isPresent()) {
             User inviter = inviterOpt.get();
+            response.setInviterName(inviter.getName());
+            response.setInviterEmail(inviter.getEmail());
+        }
+        
+        return response;
+    }
+
+    /**
+     * Optimized mapping method that uses pre-loaded data to avoid N+1 queries.
+     */
+    private com.berryfi.portal.dto.team.TeamInvitationResponse mapInvitationToResponseOptimized(
+            TeamMemberInvitation invitation, 
+            Map<String, Organization> orgMap, 
+            Map<String, User> userMap) {
+        
+        com.berryfi.portal.dto.team.TeamInvitationResponse response = new com.berryfi.portal.dto.team.TeamInvitationResponse();
+        
+        response.setId(invitation.getId());
+        response.setUserEmail(invitation.getInviteEmail());
+        response.setOrganizationId(invitation.getOrganizationId());
+        response.setRole(invitation.getRole());
+        response.setRoleName(getRoleDisplayName(invitation.getRole()));
+        response.setStatus(invitation.getStatus());
+        response.setInviteToken(invitation.getInviteToken());
+        response.setInvitedByUserId(invitation.getInvitedByUserId());
+        response.setMessage(invitation.getMessage());
+        response.setCreatedAt(invitation.getCreatedAt());
+        response.setExpiresAt(invitation.getExpiresAt());
+        response.setAcceptedAt(invitation.getAcceptedAt());
+        
+        // Build invitation link
+        response.setInvitationLink(buildTeamInvitationUrl(invitation.getInviteToken()));
+        
+        // Load organization details from pre-loaded map (O(1) lookup)
+        Organization org = orgMap.get(invitation.getOrganizationId());
+        if (org != null) {
+            response.setOrganizationName(org.getName());
+        }
+        
+        // Load inviter details from pre-loaded map (O(1) lookup)
+        User inviter = userMap.get(invitation.getInvitedByUserId());
+        if (inviter != null) {
             response.setInviterName(inviter.getName());
             response.setInviterEmail(inviter.getEmail());
         }
