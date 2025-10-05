@@ -32,7 +32,7 @@ public class ReportsController {
         try {
             String organizationId = currentUser.getOrganizationId();
             AnalyticsReportResponse report = reportsService.getAnalyticsReport(
-                    organizationId, null, dateRange, reportType);
+                    organizationId, dateRange, reportType);
             return ResponseEntity.ok(report);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

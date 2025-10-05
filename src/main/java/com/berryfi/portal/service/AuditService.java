@@ -277,8 +277,6 @@ public class AuditService {
             auditLog.getUserName(),
             auditLog.getUserEmail(),
             auditLog.getOrganizationId(),
-            null,
-            null, // organizationName not available in VMSessionAuditLog
             auditLog.getProjectId(),
             auditLog.getProjectName(),
             auditLog.getSessionId(),

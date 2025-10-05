@@ -1,7 +1,6 @@
 package com.berryfi.portal.service;
 
 import com.berryfi.portal.dto.dashboard.*;
-import java.util.Collections;
 import com.berryfi.portal.entity.User;
 
 import com.berryfi.portal.entity.Project;
@@ -57,7 +56,7 @@ public class DashboardService {
                 // Get recent 5 projects
         List<RecentProject> recentProjects = getRecentProjects(organizationId);
         
-        return new DashboardResponse(summary, Collections.emptyList(), recentProjects);
+        return new DashboardResponse(summary, recentProjects);
     }
 
     /**

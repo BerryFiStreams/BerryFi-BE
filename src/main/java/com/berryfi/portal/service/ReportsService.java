@@ -52,7 +52,6 @@ public class ReportsService {
         // Convert DashboardResponse to DashboardReportResponse
         return new DashboardReportResponse(
             dashboardData.getSummary(),
-            Collections.emptyList(), // Organizations list - to be implemented
             dashboardData.getRecentProjects()
         );
     }
