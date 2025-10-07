@@ -123,7 +123,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/usage/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_AUDITOR")
                 .requestMatchers("/api/reports/**").hasAnyRole("SUPER_ADMIN", "ORG_OWNER", "ORG_ADMIN", "ORG_REPORTER")
                 
-                // All other requests require authentication
+                // Allow all non-API requests (static files, frontend routes, etc.)
+                .requestMatchers(request -> !request.getRequestURI().startsWith("/api/")).permitAll()
+                
+                // All other requests (remaining /api/* endpoints) require authentication
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
