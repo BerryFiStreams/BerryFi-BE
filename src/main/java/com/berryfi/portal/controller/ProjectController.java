@@ -26,7 +26,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/projects")
-@CrossOrigin(origins = "*", maxAge = 3600)
 @Tag(name = "Projects", description = "Project management operations")
 public class ProjectController {
 

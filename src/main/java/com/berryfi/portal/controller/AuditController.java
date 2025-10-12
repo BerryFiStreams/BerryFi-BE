@@ -23,7 +23,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/audit")
-@CrossOrigin(origins = "*")
 public class AuditController {
 
     @Autowired

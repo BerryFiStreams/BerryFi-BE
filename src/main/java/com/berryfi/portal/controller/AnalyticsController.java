@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/analytics")
-@CrossOrigin(origins = "*")
 public class AnalyticsController {
 
     @Autowired

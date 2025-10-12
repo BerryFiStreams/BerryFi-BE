@@ -23,7 +23,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/invitations")
-@CrossOrigin(origins = "*", maxAge = 3600)
 @Tag(name = "Invitations", description = "Project invitation and registration operations")
 public class InvitationController {
 

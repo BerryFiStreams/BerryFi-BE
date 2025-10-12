@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "*")
 public class AdminController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);

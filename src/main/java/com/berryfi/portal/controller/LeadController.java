@@ -23,7 +23,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/team/leads")
-@CrossOrigin(origins = "*")
 public class LeadController {
     
     @Autowired

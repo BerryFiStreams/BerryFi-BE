@@ -35,7 +35,6 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/vm")
-@CrossOrigin(origins = "*")
 @Tag(name = "VM Session Management", description = "VM session lifecycle operations (public and authenticated endpoints)")
 public class VmController {
 

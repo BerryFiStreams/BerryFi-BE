@@ -24,7 +24,6 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/billing")
-@CrossOrigin(origins = "*")
 @Tag(name = "Billing", description = "Billing and payment operations")
 public class BillingController {
 

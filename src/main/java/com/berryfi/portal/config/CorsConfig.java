@@ -19,21 +19,15 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(@NonNull CorsRegistry registry) {
                 String[] origins = allowedOrigins.split(",");
-                if ("*".equals(allowedOrigins)) {
-                    registry.addMapping("/api/**")
-                            .allowedOriginPatterns("*")
-                            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
-                            .allowedHeaders("*")
-                            .allowCredentials(true)
-                            .maxAge(3600);
-                } else {
-                    registry.addMapping("/api/**")
-                            .allowedOrigins(origins)
-                            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
-                            .allowedHeaders("*")
-                            .allowCredentials(true)
-                            .maxAge(3600);
-                }
+                
+                // Always use allowedOriginPatterns when credentials are enabled
+                // This avoids the conflict with allowCredentials=true and allowedOrigins="*"
+                registry.addMapping("/api/**")
+                        .allowedOriginPatterns(origins)
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                        .allowedHeaders("*")
+                        .allowCredentials(true)
+                        .maxAge(3600);
             }
         };
     }

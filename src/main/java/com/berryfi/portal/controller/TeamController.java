@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/team")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class TeamController {
 
     private static final Logger logger = LoggerFactory.getLogger(TeamController.class);

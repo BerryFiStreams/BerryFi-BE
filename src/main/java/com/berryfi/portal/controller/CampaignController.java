@@ -20,7 +20,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/team/campaigns")
-@CrossOrigin(origins = "*")
 public class CampaignController {
     
     @Autowired

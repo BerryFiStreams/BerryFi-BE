@@ -38,7 +38,6 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/admin/vm-instances")
-@CrossOrigin(origins = "*")
 @Tag(name = "VM Instance Administration", description = "VM instance management operations (SUPER_ADMIN only)")
 public class VmInstanceController {
 
