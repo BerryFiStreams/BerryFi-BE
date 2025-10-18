@@ -1232,9 +1232,16 @@ public class TeamMemberService {
             
         int expiredCount = 0;
         for (TeamMemberInvitation invitation : expiredInvitations) {
-            invitation.expireInvitation();
-            teamMemberInvitationRepository.save(invitation);
-            expiredCount++;
+            // Double-check that we only expire PENDING invitations
+            if (invitation.getStatus() == InvitationStatus.PENDING && invitation.shouldBeExpired()) {
+                invitation.expireInvitation();
+                teamMemberInvitationRepository.save(invitation);
+                expiredCount++;
+                logger.debug("Expired invitation: {} for email: {}", invitation.getId(), invitation.getInviteEmail());
+            } else {
+                logger.warn("Skipped expiring invitation {} with status {} - only PENDING invitations should be expired", 
+                           invitation.getId(), invitation.getStatus());
+            }
         }
         
         logger.info("Expired {} old invitations", expiredCount);

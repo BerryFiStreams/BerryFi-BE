@@ -133,7 +133,27 @@ public class TeamMemberInvitation {
     }
 
     public boolean isExpired() {
-        return this.status == InvitationStatus.EXPIRED || LocalDateTime.now().isAfter(this.expiresAt);
+        // If already marked as expired, return true
+        if (this.status == InvitationStatus.EXPIRED) {
+            return true;
+        }
+        
+        // Only check time-based expiration for pending invitations
+        // Accepted, declined, or cancelled invitations should not be considered "expired"
+        if (this.status == InvitationStatus.PENDING) {
+            return LocalDateTime.now().isAfter(this.expiresAt);
+        }
+        
+        // For any other status (ACCEPTED, DECLINED), they are not expired
+        return false;
+    }
+
+    /**
+     * Check if this PENDING invitation should be expired based on time.
+     * This method is specifically for checking if a pending invitation needs to be marked as expired.
+     */
+    public boolean shouldBeExpired() {
+        return this.status == InvitationStatus.PENDING && LocalDateTime.now().isAfter(this.expiresAt);
     }
 
     // Status change methods
