@@ -386,6 +386,85 @@ public class VmInstanceController {
     }
 
     /**
+     * Update VM instance details
+     * Only SUPER_ADMIN users can update VM instance information
+     */
+    @Operation(
+        summary = "Update VM instance details",
+        description = "Updates VM instance name, region, and description. Only SUPER_ADMIN users can perform this operation.",
+        security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200", 
+            description = "VM instance updated successfully"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403", 
+            description = "Access denied - SUPER_ADMIN role required"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "404", 
+            description = "VM instance not found"
+        )
+    })
+    @PutMapping("/{vmInstanceId}")
+    public ResponseEntity<ApiResponse<VmInstance>> updateVmInstance(
+            @PathVariable String vmInstanceId,
+            @RequestBody @Valid UpdateVmInstanceRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        try {
+            // Check if user has SUPER_ADMIN role
+            if (!isSuperAdmin(userDetails)) {
+                logger.warn("Unauthorized VM instance update attempt by user: {}", 
+                    userDetails != null ? userDetails.getUsername() : "anonymous");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Access denied. Only system administrators can update VM instances."));
+            }
+            
+            Optional<VmInstance> vmInstanceOpt = vmInstanceRepository.findById(vmInstanceId);
+            if (vmInstanceOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            VmInstance vmInstance = vmInstanceOpt.get();
+            
+            // Update VM instance details
+            if (request.getVmName() != null && !request.getVmName().trim().isEmpty()) {
+                vmInstance.setVmName(request.getVmName().trim());
+            }
+            if (request.getVmType() != null) {
+                logger.warn("VM type update requested for VM {}: {} -> {}. This does not affect actual Azure VM configuration.", 
+                    vmInstanceId, vmInstance.getVmType(), request.getVmType());
+                vmInstance.setVmType(request.getVmType());
+            }
+            if (request.getProjectId() != null && !request.getProjectId().trim().isEmpty()) {
+                logger.warn("Project ID update requested for VM {}: {} -> {}. This affects session allocation and billing.", 
+                    vmInstanceId, vmInstance.getProjectId(), request.getProjectId());
+                vmInstance.setProjectId(request.getProjectId().trim());
+            }
+            if (request.getAzureRegion() != null && !request.getAzureRegion().trim().isEmpty()) {
+                vmInstance.setAzureRegion(request.getAzureRegion().trim());
+            }
+            if (request.getDescription() != null) {
+                vmInstance.setDescription(request.getDescription().trim());
+            }
+
+            vmInstance = vmInstanceRepository.save(vmInstance);
+            
+            logger.info("Updated VM instance details: {}", vmInstanceId);
+            
+            return ResponseEntity.ok(ApiResponse.success("VM instance updated successfully", vmInstance));
+
+        } catch (Exception e) {
+            logger.error("Failed to update VM instance {}: {}", vmInstanceId, e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                .body(ApiResponse.error("Failed to update VM instance: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Get VM instance details
      * Only SUPER_ADMIN users can view detailed VM instance information
      */
@@ -861,5 +940,41 @@ public class VmInstanceController {
         
         public String getAzureResourceGroup() { return azureResourceGroup; }
         public void setAzureResourceGroup(String azureResourceGroup) { this.azureResourceGroup = azureResourceGroup; }
+    }
+
+    @Schema(description = "Request payload for updating VM instance details")
+    public static class UpdateVmInstanceRequest {
+        @Schema(description = "VM name", example = "BerryFi-Dev-VM-001")
+        private String vmName;
+        
+        @Schema(description = "VM type (T4 or A10 only). WARNING: This doesn't change the actual Azure VM size - only the database record.", 
+                example = "T4", allowableValues = {"T4", "A10"})
+        private VmType vmType;
+        
+        @Schema(description = "Project ID. WARNING: Changing this affects session allocation and billing history.", 
+                example = "proj_12345")
+        private String projectId;
+        
+        @Schema(description = "Azure region", example = "East US")
+        private String azureRegion;
+        
+        @Schema(description = "VM description", example = "Development VM for BerryFi project")
+        private String description;
+
+        // Getters and setters
+        public String getVmName() { return vmName; }
+        public void setVmName(String vmName) { this.vmName = vmName; }
+        
+        public VmType getVmType() { return vmType; }
+        public void setVmType(VmType vmType) { this.vmType = vmType; }
+        
+        public String getProjectId() { return projectId; }
+        public void setProjectId(String projectId) { this.projectId = projectId; }
+        
+        public String getAzureRegion() { return azureRegion; }
+        public void setAzureRegion(String azureRegion) { this.azureRegion = azureRegion; }
+        
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
     }
 }
