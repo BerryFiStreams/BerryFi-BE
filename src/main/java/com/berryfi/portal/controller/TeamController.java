@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -252,31 +254,72 @@ public class TeamController {
         /**
      * Accept a team invitation using the invitation token.
      * POST /api/team/invitations/token/{token}/accept
-     * This endpoint is for existing users who are already logged in.
-     * For new users who need to register, use POST /api/team/invitations/register instead.
+     * This endpoint works without authentication and will:
+     * - If user exists: Accept the invitation for existing user
+     * - If user doesn't exist: Redirect to registration endpoint
      */
     @PostMapping("/invitations/token/{token}/accept")
-    public ResponseEntity<?> acceptInvitationByToken(
-            @PathVariable String token,
-            @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<?> acceptInvitationByToken(@PathVariable String token) {
         
-        // Check if user is authenticated
-        if (currentUser == null) {
-            logger.warn("Unauthenticated user attempted to accept team invitation with token: {}", token);
-            return ResponseEntity.status(401).body(
-                new ErrorResponse("Authentication required. If you don't have an account, please use the registration endpoint: POST /api/team/invitations/register")
-            );
-        }
-        
-        logger.info("Accepting team invitation for token: {} by user: {}", token, currentUser.getId());
+        logger.info("Accepting team invitation for token: {}", token);
         
         try {
-            TeamMemberResponse response = teamMemberService.acceptInvitationByTokenForUser(token, currentUser.getId());
+            // Try to accept invitation without authentication (for existing users)
+            TeamMemberResponse response = teamMemberService.acceptInvitationByToken(token);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
+            logger.info("Could not accept invitation without authentication: {}", e.getMessage());
+            
+            // If user doesn't exist, provide guidance to use registration endpoint
+            if (e.getMessage().contains("No user found with email")) {
+                return ResponseEntity.status(422).body(
+                    new ErrorResponse("User not found. Please register first using: POST /api/team/invitations/register with your invitation token and user details.")
+                );
+            }
+            
+            // If user is already a team member
+            if (e.getMessage().contains("User is already a team member")) {
+                return ResponseEntity.status(409).body(
+                    new ErrorResponse("User is already a team member. The invitation has already been accepted.")
+                );
+            }
+            
+            // If invitation is not pending
+            if (e.getMessage().contains("Invitation is not pending")) {
+                return ResponseEntity.status(410).body(
+                    new ErrorResponse("This invitation is no longer valid. It may have already been processed or expired.")
+                );
+            }
+            
+            // For other errors, return bad request
             logger.error("Error accepting team invitation by token: {}", e.getMessage());
             return ResponseEntity.badRequest().body(
                 new ErrorResponse("Failed to accept team invitation: " + e.getMessage())
+            );
+        }
+    }
+
+    /**
+     * Expire old invitations manually.
+     * POST /api/team/invitations/expire-old
+     * This endpoint can be used to manually expire invitations that are past their expiration time.
+     */
+    @PostMapping("/invitations/expire-old")
+    public ResponseEntity<?> expireOldInvitations() {
+        
+        logger.info("Manual expiration of old invitations requested");
+        
+        try {
+            int expiredCount = teamMemberService.expireOldInvitations();
+            return ResponseEntity.ok(Map.of(
+                "message", "Successfully expired old invitations",
+                "expiredCount", expiredCount,
+                "timestamp", System.currentTimeMillis()
+            ));
+        } catch (Exception e) {
+            logger.error("Error expiring old invitations: {}", e.getMessage());
+            return ResponseEntity.status(500).body(
+                new ErrorResponse("Failed to expire old invitations: " + e.getMessage())
             );
         }
     }

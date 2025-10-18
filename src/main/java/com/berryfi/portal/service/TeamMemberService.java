@@ -119,11 +119,26 @@ public class TeamMemberService {
 
                 // Check if there's already a pending invitation
         logger.debug("Checking for existing pending invitations for {} in organization {}", userEmail, organizationId);
-        Optional<TeamMemberInvitation> existingInvitation = teamMemberInvitationRepository
+        
+        // First, check if there's any pending invitation for this email and organization
+        Optional<TeamMemberInvitation> existingInvitationOpt = teamMemberInvitationRepository
             .findByInviteEmailAndOrganizationIdAndStatus(userEmail, organizationId, InvitationStatus.PENDING);
-        if (existingInvitation.isPresent()) {
-            logger.warn("User {} already has a pending invitation in organization {}", userEmail, organizationId);
-            throw new RuntimeException("User already has a pending invitation");
+            
+        if (existingInvitationOpt.isPresent()) {
+            TeamMemberInvitation existingInvitation = existingInvitationOpt.get();
+            
+            // Check if the existing invitation is expired
+            if (existingInvitation.isExpired()) {
+                logger.info("Found expired invitation for {} in organization {}. Marking it as expired.", 
+                           userEmail, organizationId);
+                existingInvitation.expireInvitation();
+                teamMemberInvitationRepository.save(existingInvitation);
+                logger.debug("Expired invitation has been marked as EXPIRED, proceeding with new invitation");
+            } else {
+                // Invitation exists and is still valid
+                logger.warn("User {} already has a valid pending invitation in organization {}", userEmail, organizationId);
+                throw new RuntimeException("User already has a pending invitation");
+            }
         }
         logger.debug("No existing pending invitations found for {}", userEmail);
 
@@ -351,14 +366,107 @@ public class TeamMemberService {
     }
 
     /**
+     * Accept team invitation by token without authentication.
+     * This method finds the user by invitation email and accepts the invitation.
+     * For existing users only - does not create new users.
+     */
+    @Transactional
+    public TeamMemberResponse acceptInvitationByToken(String inviteToken) {
+        logger.info("Accepting team invitation by token without authentication: {}", inviteToken);
+        
+        try {
+            // Find invitation by token first, then check status
+            TeamMemberInvitation invitation = teamMemberInvitationRepository.findByInviteToken(inviteToken)
+                .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
+            
+            logger.info("Found invitation for email: {} in organization: {}, status: {}", 
+                       invitation.getInviteEmail(), invitation.getOrganizationId(), invitation.getStatus());
+            
+            if (invitation.getStatus() != InvitationStatus.PENDING) {
+                throw new RuntimeException("Invitation is not pending - current status: " + invitation.getStatus());
+            }
+                
+            // Check if invitation is expired
+            if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Invitation has expired");
+            }
+
+            // Find user by invitation email
+            Optional<User> userOpt = userRepository.findByEmail(invitation.getInviteEmail());
+            if (!userOpt.isPresent()) {
+                logger.warn("No user found with email: {}", invitation.getInviteEmail());
+                throw new RuntimeException(
+                    String.format("No user found with email '%s'. Please register first using the registration endpoint.", 
+                                 invitation.getInviteEmail())
+                );
+            }
+            
+            User user = userOpt.get();
+            logger.info("Found user: ID={}, Email={}", user.getId(), user.getEmail());
+
+            // Check if user is already a team member
+            Optional<TeamMember> existingMemberOpt = teamMemberRepository.findByUserIdAndOrganizationId(
+                user.getId(), invitation.getOrganizationId());
+            if (existingMemberOpt.isPresent()) {
+                logger.warn("User {} is already a team member in organization {}", user.getId(), invitation.getOrganizationId());
+                throw new RuntimeException("User is already a team member");
+            }
+
+            // Create team member
+            TeamMember teamMember = new TeamMember();
+            teamMember.setId("tm_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)); // Generate unique ID
+            teamMember.setUserId(user.getId());
+            teamMember.setOrganizationId(invitation.getOrganizationId());
+            teamMember.setRole(invitation.getRole());
+            teamMember.setStatus(UserStatus.ACTIVE);
+            teamMember.setJoinedAt(LocalDateTime.now());
+            teamMember.setInvitedBy(invitation.getInvitedByUserId());
+            
+            logger.info("About to save team member: userId={}, orgId={}, role={}", 
+                       teamMember.getUserId(), teamMember.getOrganizationId(), teamMember.getRole());
+            
+            try {
+                teamMember = teamMemberRepository.save(teamMember);
+                logger.info("Successfully saved team member: {}", teamMember.getId());
+            } catch (Exception e) {
+                logger.error("Failed to save team member: {}", e.getMessage(), e);
+                throw new RuntimeException("Failed to save team member: " + e.getMessage(), e);
+            }
+
+            // Update invitation status
+            logger.info("About to update invitation status to ACCEPTED");
+            try {
+                invitation.acceptInvitation(user.getId());
+                teamMemberInvitationRepository.save(invitation);
+                logger.info("Successfully updated invitation status");
+            } catch (Exception e) {
+                logger.error("Failed to update invitation status: {}", e.getMessage(), e);
+                throw new RuntimeException("Failed to update invitation status: " + e.getMessage(), e);
+            }
+            
+            logger.info("Successfully accepted invitation for user: {}", user.getId());
+            return mapToResponse(teamMember);
+            
+        } catch (Exception e) {
+            logger.error("Error in acceptInvitationByToken: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
      * Accept team invitation by token for existing user.
      * For existing users, adds them to the team.
      */
     @Transactional
     public TeamMemberResponse acceptInvitationByTokenForUser(String inviteToken, String userId) {
+        logger.info("Accepting team invitation by token: {} for user: {}", inviteToken, userId);
+        
         // Find invitation by token first, then check status
         TeamMemberInvitation invitation = teamMemberInvitationRepository.findByInviteToken(inviteToken)
             .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
+        
+        logger.info("Found invitation for email: {} in organization: {}", 
+                   invitation.getInviteEmail(), invitation.getOrganizationId());
         
         if (invitation.getStatus() != InvitationStatus.PENDING) {
             throw new RuntimeException("Invitation is not pending");
@@ -373,9 +481,19 @@ public class TeamMemberService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Verify user email matches invitation
-        if (!user.getEmail().equals(invitation.getInviteEmail())) {
-            throw new RuntimeException("User email does not match invitation");
+        logger.info("User details: ID={}, Email={}", user.getId(), user.getEmail());
+
+        // Verify user email matches invitation (case-insensitive)
+        String userEmail = user.getEmail().toLowerCase().trim();
+        String inviteEmail = invitation.getInviteEmail().toLowerCase().trim();
+        
+        if (!userEmail.equals(inviteEmail)) {
+            logger.error("Email mismatch: User email '{}' does not match invitation email '{}'", 
+                        user.getEmail(), invitation.getInviteEmail());
+            throw new RuntimeException(
+                String.format("User email does not match invitation. Invitation was sent to '%s' but you are logged in as '%s'", 
+                             invitation.getInviteEmail(), user.getEmail())
+            );
         }
 
         // Check if user is already a team member
@@ -1100,5 +1218,26 @@ public class TeamMemberService {
     public boolean checkUserExistsByEmail(String email) {
         logger.info("Checking if user exists by email: {}", email);
         return userRepository.findByEmail(email).isPresent();
+    }
+
+    /**
+     * Expire all invitations that are past their expiration time.
+     * This method can be called periodically to clean up expired invitations.
+     */
+    @Transactional
+    public int expireOldInvitations() {
+        logger.info("Starting to expire old invitations");
+        List<TeamMemberInvitation> expiredInvitations = teamMemberInvitationRepository
+            .findExpiredInvitations(LocalDateTime.now());
+            
+        int expiredCount = 0;
+        for (TeamMemberInvitation invitation : expiredInvitations) {
+            invitation.expireInvitation();
+            teamMemberInvitationRepository.save(invitation);
+            expiredCount++;
+        }
+        
+        logger.info("Expired {} old invitations", expiredCount);
+        return expiredCount;
     }
 }
