@@ -91,20 +91,31 @@ public class TeamMemberService {
         logger.info("Inviting user: {} to organization: {} with role: {} by: {}", userEmail, organizationId, role, invitedBy);
         logger.info("Message: {}", message);
         
-        // Check if user is already a team member
-        // Check by finding users in organization first
-        logger.debug("Checking if user {} is already a team member in organization {}", userEmail, organizationId);
-        List<User> usersWithEmail = userRepository.findByEmail(userEmail).map(List::of).orElse(List.of());
-        logger.debug("Found {} users with email {}", usersWithEmail.size(), userEmail);
+        // Check if user already exists and is a team member in any organization
+        logger.debug("Checking if user {} already exists in the system", userEmail);
+        Optional<User> existingUserOpt = userRepository.findByEmail(userEmail);
         
-        List<TeamMember> existingMembers = usersWithEmail.stream()
-            .flatMap(user -> teamMemberRepository.findByUserIdAndOrganizationId(user.getId(), organizationId).stream())
-            .toList();
-        if (!existingMembers.isEmpty()) {
-            logger.warn("User {} is already a team member in organization {}", userEmail, organizationId);
-            throw new RuntimeException("User is already a team member");
+        if (existingUserOpt.isPresent()) {
+            User existingUser = existingUserOpt.get();
+            logger.debug("Found existing user: {} with ID: {}", userEmail, existingUser.getId());
+            
+            // Check if user is already a team member in ANY organization
+            List<TeamMember> userTeamMemberships = teamMemberRepository.findActiveOrganizationsForUser(existingUser.getId());
+            if (!userTeamMemberships.isEmpty()) {
+                TeamMember existingMembership = userTeamMemberships.get(0); // Get first membership
+                logger.warn("User {} is already a team member in organization: {}. Cannot invite to multiple organizations.", 
+                           userEmail, existingMembership.getOrganizationId());
+                throw new RuntimeException("User is already a team member in another organization");
+            }
+            
+            // If user exists but has no team memberships, check if they're inviting to the user's own organization
+            if (existingUser.getOrganizationId() != null && !existingUser.getOrganizationId().equals(organizationId)) {
+                logger.warn("User {} belongs to organization {} but invitation is for organization {}. Cannot cross-invite.", 
+                           userEmail, existingUser.getOrganizationId(), organizationId);
+                throw new RuntimeException("User already belongs to a different organization");
+            }
         }
-        logger.debug("User {} is not a team member, proceeding with invitation", userEmail);
+        logger.debug("User {} is not an existing team member, proceeding with invitation", userEmail);
 
                 // Check if there's already a pending invitation
         logger.debug("Checking for existing pending invitations for {} in organization {}", userEmail, organizationId);
