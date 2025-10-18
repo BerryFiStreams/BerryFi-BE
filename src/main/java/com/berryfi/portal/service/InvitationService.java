@@ -253,6 +253,14 @@ public class InvitationService {
         user.setRefreshToken(refreshToken);
         userRepository.save(user);
 
+        // Send welcome email
+        try {
+            invitationEmailService.sendWelcomeEmail(user.getEmail(), user.getName(), organization.getName());
+        } catch (Exception e) {
+            // Log error but don't fail registration if welcome email fails
+            // This will be handled gracefully in the sendWelcomeEmail method
+        }
+
         logger.info("Successfully registered user {} and organization {} through invitation", 
                    user.getEmail(), organization.getName());
 

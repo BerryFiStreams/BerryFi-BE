@@ -43,6 +43,9 @@ public class AuthService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private InvitationEmailService invitationEmailService;
+
     /**
      * Authenticate user and return tokens.
      */
@@ -119,6 +122,14 @@ public class AuthService {
         savedUser.setRefreshToken(refreshToken);
         savedUser.setLastLogin(LocalDateTime.now());
         userRepository.save(savedUser);
+
+        // Send welcome email
+        try {
+            invitationEmailService.sendWelcomeEmail(savedUser.getEmail(), savedUser.getName(), "BerryFi Studio");
+        } catch (Exception e) {
+            // Log error but don't fail registration if welcome email fails
+            // This will be handled gracefully in the sendWelcomeEmail method
+        }
 
         // Return response
         UserDto userDto = UserDto.fromUser(savedUser);

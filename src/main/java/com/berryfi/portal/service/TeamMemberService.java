@@ -1200,6 +1200,14 @@ public class TeamMemberService {
         logger.info("Successfully registered user {} through team invitation and added to organization {}", 
                    newUser.getEmail(), organization.getName());
 
+        // Send welcome email
+        try {
+            invitationEmailService.sendWelcomeEmail(newUser.getEmail(), newUser.getName(), organization.getName());
+        } catch (Exception e) {
+            // Log error but don't fail registration if welcome email fails
+            // This will be handled gracefully in the sendWelcomeEmail method
+        }
+
         logger.info("Step 4: Mapping team member to response");
         try {
             TeamMemberResponse response = mapToResponse(teamMember);

@@ -261,4 +261,37 @@ public class InvitationEmailService {
         
         sendProjectInvitationEmail(invitation, project, invitedByUser, invitedByOrganization);
     }
+
+    /**
+     * Send welcome email to newly registered user.
+     */
+    public void sendWelcomeEmail(String userEmail, String userName, String organizationName) {
+        logger.info("Sending welcome email to: {} for organization: {}", userEmail, organizationName);
+        
+        try {
+            // Generate welcome email content
+            String htmlContent = emailTemplateService.generateWelcomeEmail(userName, organizationName);
+            
+            // Create and send email
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            helper.setTo(userEmail);
+            helper.setSubject("Welcome to BerryFi Studio!");
+            helper.setText("Welcome to BerryFi Studio, " + userName + "!", htmlContent);
+            helper.setFrom("no-reply@berryfi.com");
+            
+            mailSender.send(message);
+            
+            logger.info("Welcome email sent successfully to: {}", userEmail);
+            
+        } catch (MessagingException e) {
+            logger.error("Failed to send welcome email to {}: {}", userEmail, e.getMessage(), e);
+            // Don't throw exception - welcome email failure shouldn't break registration
+            // Just log the error and continue
+        } catch (Exception e) {
+            logger.error("Unexpected error sending welcome email to {}: {}", userEmail, e.getMessage(), e);
+            // Don't throw exception - welcome email failure shouldn't break registration
+        }
+    }
 }
