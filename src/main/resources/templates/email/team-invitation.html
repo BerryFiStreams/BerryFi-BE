@@ -8,10 +8,10 @@
 <body style="
   margin: 0; 
   padding: 20px; 
-  background: radial-gradient(circle at 20% 80%, oklch(0.7 0.28 25 / 0.08) 0%, transparent 50%), 
-              radial-gradient(circle at 80% 20%, oklch(0.7 0.2 225 / 0.08) 0%, transparent 50%), 
-              radial-gradient(circle at 40% 40%, oklch(0.3 0.02 50 / 0.04) 0%, transparent 50%),
-              oklch(0.99 0.005 60); 
+  background: radial-gradient(circle at 20% 80%, rgba(255, 107, 0, 0.08) 0%, transparent 50%), 
+              radial-gradient(circle at 80% 20%, rgba(0, 149, 255, 0.08) 0%, transparent 50%), 
+              radial-gradient(circle at 40% 40%, rgba(128, 128, 128, 0.04) 0%, transparent 50%),
+              #fefefe; 
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -23,17 +23,17 @@
   <div style="
     max-width: 600px; 
     margin: 0 auto; 
-    background: oklch(1 0 0 / 0.92);
+    background: rgba(255, 255, 255, 0.92);
     border-radius: 12px;
     overflow: hidden;
-    border: 1px solid oklch(0.1 0.02 50 / 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
     backdrop-filter: blur(12px);
   ">
     
     <!-- Header -->
     <header style="
-      background: linear-gradient(135deg, oklch(0.7 0.28 25) 0%, oklch(0.75 0.28 25) 100%); 
+      background: linear-gradient(135deg, #ff6b00 0%, #ff7a0d 100%); 
       padding: 32px 24px; 
       text-align: center;
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
@@ -54,91 +54,242 @@
     </header>
 
     <!-- Main Content -->
-    <div style="padding: 40px 32px;">
+    <div style="padding: 48px 40px;">
       
       <!-- Invitation Header -->
-      <div style="text-align: center; margin-bottom: 32px;">
+      <div style="text-align: center; margin-bottom: 40px;">
         <div style="
-          width: 80px; 
-          height: 80px; 
-          margin: 0 auto 20px auto; 
-          background: oklch(0.7 0.28 25 / 0.1); 
+          width: 96px; 
+          height: 96px; 
+          margin: 0 auto 24px auto; 
+          background: linear-gradient(135deg, rgba(255, 107, 0, 0.15) 0%, rgba(0, 149, 255, 0.1) 100%); 
           border-radius: 50%; 
           display: inline-flex; 
           align-items: center; 
           justify-content: center;
-          border: 1px solid oklch(0.7 0.28 25 / 0.2);
+          border: 2px solid rgba(255, 107, 0, 0.2);
+          box-shadow: 0 8px 25px -5px rgba(255, 107, 0, 0.3), 0 0 0 1px rgba(255, 107, 0, 0.05);
+          position: relative;
         ">
-          <span style="font-size: 32px;">👥</span>
+          <span style="font-size: 40px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">🏢</span>
+          <div style="
+            position: absolute; 
+            top: -4px; 
+            right: -4px; 
+            width: 24px; 
+            height: 24px; 
+            background: #ff6b00; 
+            border-radius: 50%; 
+            border: 3px solid #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <span style="font-size: 12px; color: white;">👥</span>
+          </div>
         </div>
         <h2 style="
-          color: oklch(0.15 0.03 50); 
-          font-size: 28px; 
-          font-weight: 700; 
-          margin: 0 0 12px 0;
-          letter-spacing: -0.025em;
+          color: #2d2d2d; 
+          font-size: 32px; 
+          font-weight: 800; 
+          margin: 0 0 16px 0;
+          letter-spacing: -0.03em;
+          background: linear-gradient(135deg, #2d2d2d 0%, #ff6b00 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         ">Join Our Team!</h2>
-        <p style="
-          color: oklch(0.4 0.03 50); 
-          font-size: 18px; 
-          margin: 0;
-          line-height: 1.5;
-        "><strong style="color: oklch(0.15 0.03 50);">{inviter_name}</strong> has invited you to join <strong style="color: oklch(0.7 0.28 25);">{organization_name}</strong> as a team member</p>
+        <div style="
+          background: rgba(252, 252, 252, 0.8); 
+          padding: 20px 24px; 
+          border-radius: 16px; 
+          border: 1px solid rgba(255, 107, 0, 0.1);
+          backdrop-filter: blur(8px);
+          margin: 0 auto;
+          max-width: 480px;
+        ">
+          <p style="
+            color: #4a4a4a; 
+            font-size: 18px; 
+            margin: 0;
+            line-height: 1.6;
+            font-weight: 500;
+          "><strong style="color: #ff6b00; font-weight: 700;">{inviter_name}</strong> has invited you to join <strong style="color: #2d2d2d; font-weight: 700;">{organization_name}</strong></p>
+        </div>
       </div>
       
       <!-- CTA Button -->
-      <div style="text-align: center; margin: 40px 0;">
-        <a href="{invitation_link}" style="
-          display: inline-block; 
-          background: linear-gradient(135deg, oklch(0.7 0.28 25) 0%, oklch(0.75 0.28 25) 100%); 
-          color: #ffffff; 
-          text-decoration: none; 
-          padding: 16px 32px; 
-          border-radius: 12px; 
-          font-weight: 600; 
-          font-size: 18px;
-          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1), 0 0 20px -5px oklch(0.7 0.28 25 / 0.4);
-          transition: all 0.2s ease;
-        ">Accept Invitation →</a>
+      <div style="text-align: center; margin: 48px 0;">
+        <div style="
+          background: linear-gradient(135deg, #fcfcfc 0%, #f5f5f5 100%);
+          padding: 32px;
+          border-radius: 20px;
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          backdrop-filter: blur(16px);
+          box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+          margin: 0 auto;
+          max-width: 400px;
+        ">
+          <h3 style="
+            color: #2d2d2d; 
+            font-size: 20px; 
+            font-weight: 700; 
+            margin: 0 0 16px 0;
+            letter-spacing: -0.02em;
+          ">Ready to collaborate?</h3>
+          <p style="
+            color: #666666; 
+            font-size: 16px; 
+            margin: 0 0 24px 0;
+            line-height: 1.5;
+          ">Accept your invitation and start working with your new team</p>
+          <a href="{invitation_link}" style="
+            display: inline-block; 
+            background: linear-gradient(135deg, #ff6b00 0%, #ff7a0d 100%); 
+            color: #ffffff; 
+            text-decoration: none; 
+            padding: 18px 36px; 
+            border-radius: 16px; 
+            font-weight: 700; 
+            font-size: 18px;
+            box-shadow: 0 8px 25px -5px rgba(255, 107, 0, 0.4), 0 4px 12px -2px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            letter-spacing: -0.01em;
+            position: relative;
+            overflow: hidden;
+          ">
+            <span style="position: relative; z-index: 1;">Accept Invitation →</span>
+          </a>
+        </div>
       </div>
 
       <!-- Team Details -->
       <div style="
-        background: oklch(0.96 0.01 50 / 0.92); 
-        border-radius: 12px; 
-        padding: 24px; 
-        margin: 32px 0;
-        border-left: 4px solid oklch(0.7 0.28 25);
-        border: 1px solid oklch(0.1 0.02 50 / 0.08);
-        backdrop-filter: blur(8px);
+        background: linear-gradient(135deg, rgba(252, 252, 252, 0.95) 0%, rgba(245, 245, 245, 0.9) 100%); 
+        border-radius: 20px; 
+        padding: 32px; 
+        margin: 40px 0;
+        border-left: 6px solid #ff6b00;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        position: relative;
+        overflow: hidden;
       ">
-        <h3 style="
-          color: oklch(0.15 0.03 50); 
-          font-size: 18px; 
-          font-weight: 600; 
-          margin: 0 0 16px 0;
-          display: flex;
-          align-items: center;
-        ">👥 Team Details</h3>
+        <!-- Decorative elements -->
+        <div style="
+          position: absolute; 
+          top: -50%; 
+          right: -20px; 
+          width: 100px; 
+          height: 100px; 
+          background: rgba(255, 107, 0, 0.05); 
+          border-radius: 50%; 
+          transform: rotate(45deg);
+        "></div>
         
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="color: oklch(0.4 0.03 50); padding: 8px 16px 8px 0; font-size: 16px; font-weight: 500;">Organization:</td>
-            <td style="color: oklch(0.15 0.03 50); font-weight: 600; padding: 8px 0; font-size: 16px;">{organization_name}</td>
-          </tr>
-          <tr>
-            <td style="color: oklch(0.4 0.03 50); padding: 8px 16px 8px 0; font-size: 16px; font-weight: 500;">Role:</td>
-            <td style="color: oklch(0.15 0.03 50); font-weight: 600; padding: 8px 0; font-size: 16px;">{role_name}</td>
-          </tr>
-          <tr>
-            <td style="color: oklch(0.4 0.03 50); padding: 8px 16px 8px 0; font-size: 16px; font-weight: 500;">Invited by:</td>
-            <td style="color: oklch(0.15 0.03 50); font-weight: 600; padding: 8px 0; font-size: 16px;">{inviter_name}</td>
-          </tr>
-          <tr>
-            <td style="color: oklch(0.4 0.03 50); padding: 8px 16px 8px 0; font-size: 16px; font-weight: 500;">Expires:</td>
-            <td style="color: oklch(0.55 0.02 50); padding: 8px 0; font-size: 16px; font-weight: 500;">{expires_at}</td>
-          </tr>
-        </table>
+        <div style="position: relative; z-index: 1;">
+          <h3 style="
+            color: #2d2d2d; 
+            font-size: 22px; 
+            font-weight: 700; 
+            margin: 0 0 24px 0;
+            display: flex;
+            align-items: center;
+            letter-spacing: -0.02em;
+          ">
+            <span style="
+              background: rgba(255, 107, 0, 0.1); 
+              padding: 8px; 
+              border-radius: 10px; 
+              margin-right: 12px;
+              border: 1px solid rgba(255, 107, 0, 0.2);
+            ">🏢</span>
+            Team Details
+          </h3>
+          
+          <div style="
+            background: rgba(255, 255, 255, 0.7); 
+            border-radius: 16px; 
+            padding: 24px; 
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(8px);
+          ">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="
+                  color: #666666; 
+                  padding: 12px 20px 12px 0; 
+                  font-size: 16px; 
+                  font-weight: 600;
+                  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+                ">Organization:</td>
+                <td style="
+                  color: #2d2d2d; 
+                  font-weight: 700; 
+                  padding: 12px 0; 
+                  font-size: 16px;
+                  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+                ">{organization_name}</td>
+              </tr>
+              <tr>
+                <td style="
+                  color: #666666; 
+                  padding: 12px 20px 12px 0; 
+                  font-size: 16px; 
+                  font-weight: 600;
+                  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+                ">Your Role:</td>
+                <td style="
+                  color: #ff6b00; 
+                  font-weight: 700; 
+                  padding: 12px 0; 
+                  font-size: 16px;
+                  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+                ">
+                  <span style="
+                    background: rgba(255, 107, 0, 0.1); 
+                    padding: 4px 12px; 
+                    border-radius: 20px; 
+                    border: 1px solid rgba(255, 107, 0, 0.2);
+                    font-size: 14px;
+                    font-weight: 600;
+                  ">{role_name}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="
+                  color: #666666; 
+                  padding: 12px 20px 12px 0; 
+                  font-size: 16px; 
+                  font-weight: 600;
+                  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+                ">Invited by:</td>
+                <td style="
+                  color: #2d2d2d; 
+                  font-weight: 700; 
+                  padding: 12px 0; 
+                  font-size: 16px;
+                  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+                ">{inviter_name}</td>
+              </tr>
+              <tr>
+                <td style="
+                  color: #666666; 
+                  padding: 12px 20px 12px 0; 
+                  font-size: 16px; 
+                  font-weight: 600;
+                ">Expires:</td>
+                <td style="
+                  color: #8a8a8a; 
+                  padding: 12px 0; 
+                  font-size: 16px; 
+                  font-weight: 500;
+                ">{expires_at}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- Personal Message (if provided) -->
@@ -146,15 +297,15 @@
 
       <!-- Role Description -->
       <div style="
-        background: oklch(0.98 0.005 60 / 0.95); 
+        background: rgba(252, 252, 252, 0.95); 
         border-radius: 12px; 
         padding: 20px; 
         margin: 24px 0;
-        border: 1px solid oklch(0.1 0.02 50 / 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.05);
         backdrop-filter: blur(4px);
       ">
         <h4 style="
-          color: oklch(0.15 0.03 50); 
+          color: #2d2d2d; 
           font-size: 16px; 
           font-weight: 600; 
           margin: 0 0 12px 0;
@@ -162,7 +313,7 @@
           align-items: center;
         ">🎯 Your Role & Permissions</h4>
         <p style="
-          color: oklch(0.4 0.03 50); 
+          color: #666666; 
           font-size: 16px; 
           margin: 0;
           line-height: 1.6;
@@ -171,15 +322,15 @@
 
       <!-- Getting Started -->
       <div style="
-        background: oklch(0.98 0.005 60 / 0.95); 
+        background: rgba(252, 252, 252, 0.95); 
         border-radius: 12px; 
         padding: 20px; 
         margin: 24px 0;
-        border: 1px solid oklch(0.1 0.02 50 / 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.05);
         backdrop-filter: blur(4px);
       ">
         <h4 style="
-          color: oklch(0.15 0.03 50); 
+          color: #2d2d2d; 
           font-size: 16px; 
           font-weight: 600; 
           margin: 0 0 12px 0;
@@ -187,7 +338,7 @@
           align-items: center;
         ">🚀 Getting Started</h4>
         <ul style="
-          color: oklch(0.4 0.03 50); 
+          color: #666666; 
           font-size: 16px; 
           margin: 0;
           padding-left: 20px;
@@ -203,12 +354,12 @@
       <!-- Support -->
       <div style="text-align: center; margin-top: 40px;">
         <p style="
-          color: oklch(0.4 0.03 50); 
+          color: #666666; 
           font-size: 16px; 
           margin: 0 0 8px 0;
         ">Need help? Contact your team admin:</p>
         <p style="
-          color: oklch(0.7 0.28 25); 
+          color: #ff6b00; 
           font-size: 16px; 
           font-weight: 600; 
           margin: 0;
@@ -219,27 +370,27 @@
 
     <!-- Footer -->
     <footer style="
-      background: oklch(0.96 0.01 50 / 0.95); 
+      background: rgba(245, 245, 245, 0.95); 
       padding: 24px; 
       text-align: center; 
-      border-top: 1px solid oklch(0.1 0.02 50 / 0.08);
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
       backdrop-filter: blur(8px);
     ">
       <p style="
-        color: oklch(0.4 0.03 50); 
+        color: #666666; 
         font-size: 14px; 
         margin: 0 0 8px 0;
         line-height: 1.5;
       ">This invitation was sent by BerryFi Studio on behalf of {organization_name}.</p>
       <p style="
-        color: oklch(0.4 0.03 50); 
+        color: #666666; 
         font-size: 14px; 
         margin: 0 0 16px 0;
         line-height: 1.5;
       ">If you weren't expecting this invitation, you can safely ignore this email.</p>
       <div style="margin-top: 16px;">
         <p style="
-          color: oklch(0.55 0.02 50); 
+          color: #8a8a8a; 
           font-size: 12px; 
           margin: 0;
         ">© 2025 BerryFi Studio. All rights reserved.</p>
