@@ -5,6 +5,7 @@ import com.berryfi.portal.dto.tenant.TenantConfigResponse;
 import com.berryfi.portal.entity.Project;
 import com.berryfi.portal.repository.ProjectRepository;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,16 +35,23 @@ public class TenantController {
      * GET /api/tenant/config
      */
     @GetMapping("/config")
-    public ResponseEntity<TenantConfigResponse> getTenantConfig() {
-        logger.info("Getting tenant config from context: {}", TenantContext.getContextSummary());
+    public ResponseEntity<TenantConfigResponse> getTenantConfig(HttpServletRequest request) {
+        String host = request.getHeader("Host");
+        String subdomain = TenantContext.getTenantSubdomain();
+        String projectId = TenantContext.getProjectId();
+        
+        logger.info("GET /api/tenant/config - Host: {}, Thread: {}, Context: {}", 
+                   host, Thread.currentThread().getName(), TenantContext.getContextSummary());
+        logger.debug("TenantContext details - subdomain: {}, projectId: {}, hasContext: {}", 
+                    subdomain, projectId, TenantContext.hasTenantContext());
 
         // Check if we're in a tenant context
         if (!TenantContext.hasTenantContext()) {
+            logger.warn("No tenant context found for Host: {}. Returning default config.", host);
             // Return default/portal configuration
             return ResponseEntity.ok(createDefaultConfig());
         }
 
-        String projectId = TenantContext.getProjectId();
         Optional<Project> projectOpt = projectRepository.findById(projectId);
 
         if (projectOpt.isEmpty()) {
