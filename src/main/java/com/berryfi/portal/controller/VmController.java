@@ -288,6 +288,63 @@ public class VmController {
     }
 
     /**
+     * Update session user details and location
+     */
+    @Operation(
+        summary = "Update session details",
+        description = "Updates user information and location for an active VM session"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200", 
+            description = "Session details updated successfully"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400", 
+            description = "Invalid request or session not found"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "500", 
+            description = "Internal server error"
+        )
+    })
+    @PutMapping("/sessions/{sessionId}/details")
+    @VMSessionAudit(action = "VM_SESSION_UPDATE", description = "Update VM session details")
+    public ResponseEntity<ApiResponse<VmSessionResponseDto>> updateSessionDetails(
+            @Parameter(description = "VM session ID", required = true, example = "session_67890")
+            @PathVariable String sessionId,
+            @RequestBody @Valid UpdateSessionDetailsRequest request) {
+        
+        try {
+            VmSessionResult result = vmSessionService.updateSessionDetails(
+                sessionId,
+                request.getFirstName(),
+                request.getLastName(),
+                request.getEmail(),
+                request.getPhone(),
+                request.getLatitude(),
+                request.getLongitude()
+            );
+
+            if (result.isSuccess()) {
+                VmSessionResponseDto response = new VmSessionResponseDto(
+                    result.getSession(), 
+                    result.getVmInstance()
+                );
+                return ResponseEntity.ok(ApiResponse.success("Session details updated successfully", response));
+            } else {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(result.getMessage()));
+            }
+
+        } catch (Exception e) {
+            logger.error("Failed to update session details: " + e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                .body(ApiResponse.error("Failed to update session details: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Force terminate session (admin endpoint)
      */
     @PostMapping("/sessions/{sessionId}/terminate")
@@ -324,7 +381,7 @@ public class VmController {
         @NotBlank(message = "Project ID is required")
         private String projectId;
         
-        @Schema(description = "VM type (T4 or A10 only)", example = "T4", required = true, allowableValues = {"T4", "A10"})
+        @Schema(description = "VM type (T4 or A10). If not specified, an available VM will be automatically selected", example = "T4", required = false, allowableValues = {"T4", "A10"})
         private VmType vmType;
 
         // Optional user fields for non-authenticated access
@@ -364,6 +421,45 @@ public class VmController {
 
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
+    }
+
+    @Schema(description = "Request payload for updating VM session details")
+    public static class UpdateSessionDetailsRequest {
+        @Schema(description = "User first name", example = "John")
+        private String firstName;
+        
+        @Schema(description = "User last name", example = "Doe")
+        private String lastName;
+        
+        @Schema(description = "User email", example = "john.doe@example.com")
+        private String email;
+        
+        @Schema(description = "User phone number", example = "+1234567890")
+        private String phone;
+        
+        @Schema(description = "User location latitude (if allowed by user)", example = "40.7128")
+        private Double latitude;
+        
+        @Schema(description = "User location longitude (if allowed by user)", example = "-74.0060")
+        private Double longitude;
+
+        public String getFirstName() { return firstName; }
+        public void setFirstName(String firstName) { this.firstName = firstName; }
+
+        public String getLastName() { return lastName; }
+        public void setLastName(String lastName) { this.lastName = lastName; }
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+
+        public String getPhone() { return phone; }
+        public void setPhone(String phone) { this.phone = phone; }
+
+        public Double getLatitude() { return latitude; }
+        public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+        public Double getLongitude() { return longitude; }
+        public void setLongitude(Double longitude) { this.longitude = longitude; }
     }
 
     @Schema(description = "Request payload for VM session heartbeat")
@@ -416,9 +512,14 @@ public class VmController {
         
         // Client tracking information
         private String username;
+        private String userFirstName;
+        private String userLastName;
+        private String userPhone;
         private String clientIpAddress;
         private String clientCountry;
         private String clientCity;
+        private Double clientLatitude;
+        private Double clientLongitude;
         private String userAgent;
 
         public VmSessionResponseDto(VmSession session, VmInstance vmInstance) {
@@ -432,9 +533,14 @@ public class VmController {
             
             // Client tracking information
             this.username = session.getUsername();
+            this.userFirstName = session.getUserFirstName();
+            this.userLastName = session.getUserLastName();
+            this.userPhone = session.getUserPhone();
             this.clientIpAddress = session.getClientIpAddress();
             this.clientCountry = session.getClientCountry();
             this.clientCity = session.getClientCity();
+            this.clientLatitude = session.getClientLatitude();
+            this.clientLongitude = session.getClientLongitude();
             this.userAgent = session.getUserAgent();
             
             // VM Connection details from session (if available) or VM instance
@@ -479,9 +585,14 @@ public class VmController {
         
         // Getters for client tracking fields
         public String getUsername() { return username; }
+        public String getUserFirstName() { return userFirstName; }
+        public String getUserLastName() { return userLastName; }
+        public String getUserPhone() { return userPhone; }
         public String getClientIpAddress() { return clientIpAddress; }
         public String getClientCountry() { return clientCountry; }
         public String getClientCity() { return clientCity; }
+        public Double getClientLatitude() { return clientLatitude; }
+        public Double getClientLongitude() { return clientLongitude; }
         public String getUserAgent() { return userAgent; }
     }
 }

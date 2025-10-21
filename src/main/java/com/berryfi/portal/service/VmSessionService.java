@@ -73,9 +73,6 @@ public class VmSessionService {
             if (userId == null || userId.isEmpty()) {
                 return VmSessionResult.error("User ID cannot be null or empty");
             }
-            if (vmType == null) {
-                return VmSessionResult.error("VM type cannot be null");
-            }
 
             // Get project and validate
             Optional<Project> projectOpt = projectRepository.findById(projectId);
@@ -100,10 +97,24 @@ public class VmSessionService {
                 return VmSessionResult.error("User already has an active session: " + existingSession.get().getId());
             }
 
-            // Find available VM of requested type for this project
-            List<VmInstance> availableVms = vmInstanceRepository.findAvailableVmsByTypeForProject(projectId, vmType.getValue());
-            if (availableVms.isEmpty()) {
-                return VmSessionResult.error("No available VMs of type " + vmType.getValue() + " for this project");
+            // Find available VM - either of specified type or any available type
+            List<VmInstance> availableVms;
+            String vmTypeStr;
+            if (vmType != null) {
+                // User specified a VM type
+                availableVms = vmInstanceRepository.findAvailableVmsByTypeForProject(projectId, vmType.getValue());
+                vmTypeStr = vmType.getValue();
+                if (availableVms.isEmpty()) {
+                    return VmSessionResult.error("No available VMs of type " + vmTypeStr + " for this project");
+                }
+            } else {
+                // Auto-select any available VM
+                availableVms = vmInstanceRepository.findAvailableVmsForProject(projectId);
+                if (availableVms.isEmpty()) {
+                    return VmSessionResult.error("No available VMs for this project");
+                }
+                vmTypeStr = availableVms.get(0).getVmType().getValue();
+                logger.info("Auto-selected VM type: {} for project: {}", vmTypeStr, projectId);
             }
 
             VmInstance vm = availableVms.get(0); // Take the first available VM
@@ -122,19 +133,20 @@ public class VmSessionService {
                 // Try to find another available VM (remove the first one from the list and try again)
                 availableVms.remove(0);
                 if (availableVms.isEmpty()) {
-                    return VmSessionResult.error("No available VMs of type " + vmType.getValue() + " for this project (all are currently in use)");
+                    return VmSessionResult.error("No available VMs" + (vmType != null ? " of type " + vmTypeStr : "") + " for this project (all are currently in use)");
                 }
                 vm = availableVms.get(0);
+                vmTypeStr = vm.getVmType().getValue(); // Update type in case it changed
                 
                 // Re-check the new VM
                 activeSessionForVm = vmSessionRepository.findActiveSessionForVm(vm.getId());
                 if (activeSessionForVm.isPresent()) {
-                    return VmSessionResult.error("No available VMs of type " + vmType.getValue() + " for this project (all are currently in use)");
+                    return VmSessionResult.error("No available VMs" + (vmType != null ? " of type " + vmTypeStr : "") + " for this project (all are currently in use)");
                 }
             }
 
             // Check organization has sufficient credits (estimate for 1 minute initially)
-            Double estimatedCredits = pricingService.calculateVmUsageCredits(vmType.getValue(), 60.0);
+            Double estimatedCredits = pricingService.calculateVmUsageCredits(vmTypeStr, 60.0);
             BillingBalanceDto balance = billingService.getBillingBalance(organizationId);
             if (balance.getCurrentBalance() < estimatedCredits) {
                 return VmSessionResult.error("Insufficient credits in organization for VM session");
@@ -144,7 +156,7 @@ public class VmSessionService {
             VmSession session = new VmSession(vm.getId(), projectId, userId);
             session.setOrganizationId(organizationId);
             session.setUserEmail(userEmail);
-            session.setCreditsPerMinute(pricingService.getCurrentCreditsPerMinuteForVm(vmType.getValue()));
+            session.setCreditsPerMinute(pricingService.getCurrentCreditsPerMinuteForVm(vmTypeStr));
             
             // Set client tracking information
             session.setUsername(username);
@@ -362,6 +374,69 @@ public class VmSessionService {
      */
     public Optional<VmSession> getUserActiveSession(String userId) {
         return vmSessionRepository.findUserActiveSession(userId);
+    }
+
+    /**
+     * Update session user details and location
+     */
+    public VmSessionResult updateSessionDetails(String sessionId, String firstName, String lastName, 
+                                                String email, String phone, Double latitude, Double longitude) {
+        try {
+            Optional<VmSession> sessionOpt = vmSessionRepository.findById(sessionId);
+            if (sessionOpt.isEmpty()) {
+                return VmSessionResult.error("Session not found: " + sessionId);
+            }
+
+            VmSession session = sessionOpt.get();
+            
+            // Check if session is still active
+            if (session.isCompleted()) {
+                return VmSessionResult.error("Cannot update completed session");
+            }
+
+            // Update user details if provided
+            if (firstName != null && !firstName.isEmpty()) {
+                session.setUserFirstName(firstName);
+            }
+            
+            if (lastName != null && !lastName.isEmpty()) {
+                session.setUserLastName(lastName);
+            }
+            
+            // Update username if both names are provided
+            if ((firstName != null && !firstName.isEmpty()) && (lastName != null && !lastName.isEmpty())) {
+                session.setUsername(firstName + " " + lastName);
+            }
+            
+            if (email != null && !email.isEmpty()) {
+                session.setUserEmail(email);
+                // Update userId if email is provided (since userId is email in this system)
+                session.setUserId(email);
+            }
+            
+            if (phone != null && !phone.isEmpty()) {
+                session.setUserPhone(phone);
+            }
+            
+            // Update location if provided
+            if (latitude != null) {
+                session.setClientLatitude(latitude);
+            }
+            
+            if (longitude != null) {
+                session.setClientLongitude(longitude);
+            }
+
+            // Save updated session
+            session = vmSessionRepository.save(session);
+            
+            logger.info("Updated session details for: {}", sessionId);
+            return VmSessionResult.success(session, null);
+
+        } catch (Exception e) {
+            logger.error("Failed to update session details: " + e.getMessage(), e);
+            return VmSessionResult.error("Internal error: " + e.getMessage());
+        }
     }
 
     /**

@@ -53,6 +53,15 @@ public class VmSession {
     @Column(name = "username")
     private String username;
     
+    @Column(name = "user_phone")
+    private String userPhone;
+    
+    @Column(name = "user_first_name")
+    private String userFirstName;
+    
+    @Column(name = "user_last_name")
+    private String userLastName;
+    
     @Column(name = "client_ip_address")
     private String clientIpAddress;
     
@@ -61,6 +70,12 @@ public class VmSession {
     
     @Column(name = "client_city") 
     private String clientCity;
+    
+    @Column(name = "client_latitude")
+    private Double clientLatitude;
+    
+    @Column(name = "client_longitude")
+    private Double clientLongitude;
     
     @Column(name = "user_agent", columnDefinition = "TEXT")
     private String userAgent;
@@ -294,6 +309,30 @@ public class VmSession {
         this.username = username;
     }
 
+    public String getUserPhone() {
+        return userPhone;
+    }
+
+    public void setUserPhone(String userPhone) {
+        this.userPhone = userPhone;
+    }
+
+    public String getUserFirstName() {
+        return userFirstName;
+    }
+
+    public void setUserFirstName(String userFirstName) {
+        this.userFirstName = userFirstName;
+    }
+
+    public String getUserLastName() {
+        return userLastName;
+    }
+
+    public void setUserLastName(String userLastName) {
+        this.userLastName = userLastName;
+    }
+
     public String getClientIpAddress() {
         return clientIpAddress;
     }
@@ -316,6 +355,22 @@ public class VmSession {
 
     public void setClientCity(String clientCity) {
         this.clientCity = clientCity;
+    }
+
+    public Double getClientLatitude() {
+        return clientLatitude;
+    }
+
+    public void setClientLatitude(Double clientLatitude) {
+        this.clientLatitude = clientLatitude;
+    }
+
+    public Double getClientLongitude() {
+        return clientLongitude;
+    }
+
+    public void setClientLongitude(Double clientLongitude) {
+        this.clientLongitude = clientLongitude;
     }
 
     public String getUserAgent() {
