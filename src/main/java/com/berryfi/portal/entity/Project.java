@@ -130,6 +130,9 @@ public class Project {
     @Column(name = "brand_app_name", length = 100)
     private String brandAppName; // Custom app name to display
 
+    @Column(name = "brand_youtube_url", length = 500)
+    private String brandYoutubeUrl; // YouTube channel or video URL
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -588,5 +591,13 @@ public class Project {
 
     public void setBrandAppName(String brandAppName) {
         this.brandAppName = brandAppName;
+    }
+
+    public String getBrandYoutubeUrl() {
+        return brandYoutubeUrl;
+    }
+
+    public void setBrandYoutubeUrl(String brandYoutubeUrl) {
+        this.brandYoutubeUrl = brandYoutubeUrl;
     }
 }

@@ -123,6 +123,7 @@ public class TenantController {
         config.setBrandFaviconUrl(project.getBrandFaviconUrl());
         config.setBrandAppName(project.getBrandAppName() != null ? 
                               project.getBrandAppName() : project.getName());
+        config.setBrandYoutubeUrl(project.getBrandYoutubeUrl());
         
         return config;
     }

@@ -18,6 +18,7 @@ public class TenantConfigResponse {
     private String brandSecondaryColor;
     private String brandFaviconUrl;
     private String brandAppName;
+    private String brandYoutubeUrl;
 
     // Constructors
     public TenantConfigResponse() {
@@ -108,5 +109,13 @@ public class TenantConfigResponse {
 
     public void setBrandAppName(String brandAppName) {
         this.brandAppName = brandAppName;
+    }
+
+    public String getBrandYoutubeUrl() {
+        return brandYoutubeUrl;
+    }
+
+    public void setBrandYoutubeUrl(String brandYoutubeUrl) {
+        this.brandYoutubeUrl = brandYoutubeUrl;
     }
 }
