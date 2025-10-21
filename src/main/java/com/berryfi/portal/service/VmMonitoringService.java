@@ -42,6 +42,7 @@ public class VmMonitoringService {
     @Scheduled(fixedRate = 10000) // 10 seconds
     public void monitorTimedOutSessions() {
         try {
+            logger.debug("Checking for timed-out sessions...");
             List<VmSession> timedOutSessions = vmSessionService.getTimedOutSessions();
             
             if (!timedOutSessions.isEmpty()) {

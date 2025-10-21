@@ -286,6 +286,8 @@ public class AzureStatusSyncService {
                 return false;
             }
             
+            boolean statusUpdated = false;
+            
             // Update VM status in database if it differs from Azure
             if (currentStatus != azureStatus && shouldUpdateVmStatus(currentStatus, azureStatus)) {
                 logger.info("Full sync #{}: Updating VM {} status from {} to {} (Azure sync)", 
@@ -295,14 +297,37 @@ public class AzureStatusSyncService {
                 vm.setLastSyncTime(LocalDateTime.now());
                 vmInstanceRepository.save(vm);
                 
-                return true;
+                statusUpdated = true;
+            }
+            
+            // If VM is stopped (not deallocated) and not in use, deallocate it to save costs
+            if (azureStatus == VmStatus.STOPPED && !vm.isInUse()) {
+                logger.info("Full sync #{}: VM {} is STOPPED but not deallocated, sending deallocate command to save costs", 
+                    syncRun, vm.getId());
+                
+                try {
+                    boolean deallocated = azureVmService.stopVm(vm);
+                    if (deallocated) {
+                        logger.info("Full sync #{}: Successfully deallocated VM {}", syncRun, vm.getId());
+                        vm.setStatus(VmStatus.DEALLOCATED);
+                        vm.setLastSyncTime(LocalDateTime.now());
+                        vmInstanceRepository.save(vm);
+                        statusUpdated = true;
+                    } else {
+                        logger.warn("Full sync #{}: Failed to deallocate VM {}", syncRun, vm.getId());
+                    }
+                } catch (Exception e) {
+                    logger.error("Full sync #{}: Error deallocating VM {}: {}", syncRun, vm.getId(), e.getMessage(), e);
+                }
             }
             
             // Update last sync time even if no status change
-            vm.setLastSyncTime(LocalDateTime.now());
-            vmInstanceRepository.save(vm);
+            if (!statusUpdated) {
+                vm.setLastSyncTime(LocalDateTime.now());
+                vmInstanceRepository.save(vm);
+            }
             
-            return false;
+            return statusUpdated;
             
         } catch (Exception e) {
             logger.error("Full sync #{}: Error syncing VM {}: {}", syncRun, vm.getId(), e.getMessage(), e);
@@ -387,6 +412,25 @@ public class AzureStatusSyncService {
             } else {
                 logger.error("Active sync #{}: Failed to terminate session {} despite Azure VM being stopped: {}", 
                     syncRun, session.getId(), result.getMessage());
+            }
+        } else if (azureStatus == VmStatus.STOPPED && session.getStatus() != SessionStatus.ACTIVE) {
+            // VM is only powered off but not deallocated, and session is not active
+            // Deallocate it to save costs
+            logger.info("Active sync #{}: Azure VM {} is STOPPED (not deallocated) with inactive session, sending deallocate command", 
+                syncRun, vm.getId());
+            
+            try {
+                boolean deallocated = azureVmService.stopVm(vm);
+                if (deallocated) {
+                    logger.info("Active sync #{}: Successfully deallocated VM {} to save costs", syncRun, vm.getId());
+                    vm.setStatus(VmStatus.DEALLOCATED);
+                    vm.setLastSyncTime(LocalDateTime.now());
+                    vmInstanceRepository.save(vm);
+                } else {
+                    logger.warn("Active sync #{}: Failed to deallocate VM {}", syncRun, vm.getId());
+                }
+            } catch (Exception e) {
+                logger.error("Active sync #{}: Error deallocating VM {}: {}", syncRun, vm.getId(), e.getMessage(), e);
             }
         }
     }

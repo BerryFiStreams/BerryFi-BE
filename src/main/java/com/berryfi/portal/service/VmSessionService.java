@@ -2,6 +2,8 @@ package com.berryfi.portal.service;
 
 import com.berryfi.portal.entity.*;
 import com.berryfi.portal.enums.VmType;
+import com.berryfi.portal.enums.SessionStatus;
+import com.berryfi.portal.enums.VmStatus;
 import com.berryfi.portal.repository.*;
 import com.berryfi.portal.dto.billing.BillingTransactionDto;
 import com.berryfi.portal.dto.billing.BillingBalanceDto;
@@ -184,8 +186,9 @@ public class VmSessionService {
                 return VmSessionResult.error("Failed to start VM in Azure");
             }
 
-            // Update session status
+            // Update session status and set start time now that VM has actually started
             session.markAsStarting();
+            session.setStartTime(LocalDateTime.now());
             session = vmSessionRepository.save(session);
 
             logger.info("VM session started successfully: {}", session.getId());
@@ -213,21 +216,20 @@ public class VmSessionService {
 
             Optional<VmSession> sessionOpt = vmSessionRepository.findById(sessionId);
             if (sessionOpt.isEmpty()) {
+                logger.error("Session not found: {}", sessionId);
                 return VmSessionResult.error("Session not found: " + sessionId);
             }
 
             VmSession session = sessionOpt.get();
-
-            // Validate user owns this session
-            if (!session.getUserId().equals(userId)) {
-                return VmSessionResult.error("User does not own this session");
-            }
+            logger.debug("Found session: {} with status: {}", sessionId, session.getStatus());
 
             // Check session is active
             if (!session.isActive()) {
+                logger.warn("Session {} is not active (status: {}), cannot stop", sessionId, session.getStatus());
                 return VmSessionResult.error("Session is not active: " + session.getStatus());
             }
 
+            logger.info("Session {} is active, proceeding to stop", sessionId);
             return stopSessionInternal(session, "User requested stop");
 
         } catch (Exception e) {
@@ -241,6 +243,8 @@ public class VmSessionService {
      */
     private VmSessionResult stopSessionInternal(VmSession session, String reason) {
         try {
+            logger.info("stopSessionInternal called for session: {} (reason: {})", session.getId(), reason);
+            
             // Get VM
             Optional<VmInstance> vmOpt = vmInstanceRepository.findById(session.getVmInstanceId());
             if (vmOpt.isEmpty()) {
@@ -249,23 +253,33 @@ public class VmSessionService {
             }
 
             VmInstance vm = vmOpt.get();
+            logger.info("Found VM: {} (type: {}, status: {}) for session: {}", 
+                vm.getVmName(), vm.getVmType(), vm.getStatus(), session.getId());
 
             // Mark session as terminating
             session.markAsTerminating(reason);
             vmSessionRepository.save(session);
+            logger.debug("Session {} marked as terminating", session.getId());
 
             // Stop VM in Azure
             vm.markAsStopping();
             vmInstanceRepository.save(vm);
+            logger.debug("VM {} marked as stopping in database", vm.getVmName());
 
+            logger.info("Calling azureVmService.stopVm() for VM: {}", vm.getVmName());
             boolean azureStopped = azureVmService.stopVm(vm);
             if (!azureStopped) {
                 logger.warn("Failed to stop VM in Azure, but continuing with session cleanup");
+            } else {
+                logger.info("Azure VM stop completed successfully for: {}", vm.getVmName());
             }
 
             // Calculate usage and bill
             Long durationSeconds = session.getDurationInSeconds();
             Double creditsUsed = pricingService.calculateVmUsageCredits(vm.getVmType().getValue(), durationSeconds.doubleValue());
+            
+            // Round credits to 2 decimal places
+            creditsUsed = Math.round(creditsUsed * 100.0) / 100.0;
 
             // Create billing transaction
             BillingTransactionDto billing = billingService.recordVmUsage(
@@ -367,6 +381,86 @@ public class VmSessionService {
      */
     public Optional<VmSession> getSession(String sessionId) {
         return vmSessionRepository.findById(sessionId);
+    }
+
+    /**
+     * Get session with real-time Azure VM status
+     */
+    public Optional<VmSession> getSessionWithRealTimeStatus(String sessionId) {
+        Optional<VmSession> sessionOpt = vmSessionRepository.findById(sessionId);
+        
+        if (sessionOpt.isEmpty()) {
+            return sessionOpt;
+        }
+        
+        VmSession session = sessionOpt.get();
+        
+        // Fetch VM instance to populate session details from database
+        try {
+            Optional<VmInstance> vmOpt = vmInstanceRepository.findById(session.getVmInstanceId());
+            if (vmOpt.isPresent()) {
+                VmInstance vm = vmOpt.get();
+                logger.debug("Found VM instance {} with IP: {}, Port: {}, ConnectionURL: {}", 
+                    vm.getId(), vm.getIpAddress(), vm.getPort(), vm.getConnectionUrl());
+                logger.debug("Session {} has IP: {}, Port: {}, ConnectionURL: {}", 
+                    session.getId(), session.getVmIpAddress(), session.getVmPort(), session.getConnectionUrl());
+                
+                boolean vmUpdated = false;
+                boolean sessionUpdated = false;
+                
+                // Only fetch real-time status for active/starting sessions
+                if (session.getStatus() == SessionStatus.ACTIVE || 
+                    session.getStatus() == SessionStatus.STARTING) {
+                    
+                    // Get real-time Azure VM status
+                    VmStatus azureStatus = azureVmService.getVmStatus(vm);
+                    
+                    // Update VM status if different
+                    if (vm.getStatus() != azureStatus) {
+                        logger.info("Updating VM {} status from {} to {} (real-time check)", 
+                            vm.getVmName(), vm.getStatus(), azureStatus);
+                        vm.setStatus(azureStatus);
+                        vmUpdated = true;
+                    }
+                    
+                    if (vmUpdated) {
+                        vm = vmInstanceRepository.save(vm);
+                    }
+                }
+                
+                // Copy VM connection details to session if not already set
+                if (session.getVmIpAddress() == null && vm.getIpAddress() != null) {
+                    logger.info("Copying IP address from VM {} to session {}: {}", 
+                        vm.getId(), session.getId(), vm.getIpAddress());
+                    session.setVmIpAddress(vm.getIpAddress());
+                    sessionUpdated = true;
+                }
+                if (session.getVmPort() == null && vm.getPort() != null) {
+                    logger.info("Copying port from VM {} to session {}: {}", 
+                        vm.getId(), session.getId(), vm.getPort());
+                    session.setVmPort(vm.getPort());
+                    sessionUpdated = true;
+                }
+                if (session.getConnectionUrl() == null && vm.getConnectionUrl() != null) {
+                    logger.info("Copying connection URL from VM {} to session {}: {}", 
+                        vm.getId(), session.getId(), vm.getConnectionUrl());
+                    session.setConnectionUrl(vm.getConnectionUrl());
+                    sessionUpdated = true;
+                }
+                
+                if (sessionUpdated) {
+                    logger.info("Saving session {} with updated connection details", session.getId());
+                    session = vmSessionRepository.save(session);
+                } else {
+                    logger.debug("No session updates needed - session already has connection details or VM has none");
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to fetch real-time Azure status for session {}: {}", 
+                sessionId, e.getMessage());
+        }
+        
+        return Optional.of(session);
     }
 
     /**

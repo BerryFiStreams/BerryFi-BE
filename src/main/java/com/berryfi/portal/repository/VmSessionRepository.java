@@ -56,13 +56,15 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
     List<VmSession> findByStatusOrderByStartTimeDesc(SessionStatus status);
 
     /**
-     * Find ACTIVE sessions that have timed out (no heartbeat for 30+ seconds)
-     * Only targets sessions that are in ACTIVE status (VM is running) to avoid 
-     * terminating VMs that are still starting up. Also ensures the session has been
-     * active for at least 30 seconds before considering it for termination.
+     * Find ACTIVE and STARTING sessions that have timed out (no heartbeat for 30+ seconds)
+     * Targets sessions that are in ACTIVE or STARTING status. Sessions without any heartbeat
+     * are considered timed out if they've been active for at least minActiveTime.
+     * Sessions with heartbeats are timed out if the last heartbeat was before cutoffTime.
+     * Ensures startTime has been updated after VM actually started (not equal to createdAt).
      */
-    @Query("SELECT s FROM VmSession s WHERE s.status = 'ACTIVE' " +
-           "AND s.updatedAt < :minActiveTime " +
+    @Query("SELECT s FROM VmSession s WHERE s.status IN ('ACTIVE', 'STARTING') " +
+           "AND s.startTime <> s.createdAt " +
+           "AND (s.startTime < :minActiveTime) " +
            "AND (s.lastHeartbeat IS NULL OR s.lastHeartbeat < :cutoffTime)")
     List<VmSession> findTimedOutSessions(@Param("cutoffTime") LocalDateTime cutoffTime, 
                                         @Param("minActiveTime") LocalDateTime minActiveTime);

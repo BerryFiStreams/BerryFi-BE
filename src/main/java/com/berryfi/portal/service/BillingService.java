@@ -38,15 +38,50 @@ public class BillingService {
     @Autowired
     private PricingService pricingService;
 
+    @Autowired
+    private OrganizationRepository organizationRepository;
+
 
 
     /**
      * Get billing balance for organization
+     * Auto-syncs from organization credits if no billing transactions exist
      */
     public BillingBalanceDto getBillingBalance(String organizationId) {
         // Get current balance from latest transaction
         Optional<BillingTransaction> lastTransaction = billingTransactionRepository
                 .findFirstByOrganizationIdOrderByDateDesc(organizationId);
+        
+        // Auto-sync: If no billing transactions exist, create initial transaction from organization credits
+        if (lastTransaction.isEmpty()) {
+            Optional<Organization> orgOptional = organizationRepository.findById(organizationId);
+            if (orgOptional.isPresent()) {
+                Organization org = orgOptional.get();
+                Double totalCredits = org.getRemainingCredits() != null ? org.getRemainingCredits() : 0.0;
+                
+                if (totalCredits > 0) {
+                    // Create initial billing transaction from organization credits
+                    String description = String.format("Auto-sync: Initial credits from organization " +
+                            "(Gifted: %.2f, Purchased: %.2f)", 
+                            org.getGiftedCredits() != null ? org.getGiftedCredits() : 0.0,
+                            org.getPurchasedCredits() != null ? org.getPurchasedCredits() : 0.0);
+                    
+                    BillingTransaction initialTransaction = new BillingTransaction();
+                    initialTransaction.setId("txn_autosync_" + UUID.randomUUID().toString().substring(0, 8));
+                    initialTransaction.setOrganizationId(organizationId);
+                    initialTransaction.setType(TransactionType.CREDIT_ADDED);
+                    initialTransaction.setAmount(totalCredits);
+                    initialTransaction.setResultingBalance(totalCredits);
+                    initialTransaction.setDescription(description);
+                    initialTransaction.setProcessedBy("system");
+                    initialTransaction.setDate(LocalDateTime.now());
+                    initialTransaction.setStatus("completed");
+                    
+                    billingTransactionRepository.save(initialTransaction);
+                    lastTransaction = Optional.of(initialTransaction);
+                }
+            }
+        }
         
         Double currentBalance = lastTransaction.map(BillingTransaction::getResultingBalance).orElse(0.0);
 
@@ -192,6 +227,7 @@ public class BillingService {
     /**
      * Record VM usage transaction based on VM type and duration (Step 4 in your process)
      * This method automatically calculates credits based on VM type and duration
+     * Uses gifted credits first, then purchased credits
      */
     public BillingTransactionDto recordVmUsage(String organizationId, String vmType, 
                                              Double durationInSeconds, String sessionId) {
@@ -203,6 +239,9 @@ public class BillingService {
             // Get current balance
             Double currentBalance = getCurrentBalance(organizationId);
             Double newBalance = currentBalance - creditsUsed;
+            
+            // Deduct from organization credits (gifted first, then purchased)
+            deductCreditsFromOrganization(organizationId, creditsUsed);
             
             // Create detailed description for audit trail
             double minutes = durationInSeconds / 60.0;
@@ -239,6 +278,42 @@ public class BillingService {
         Optional<BillingTransaction> lastTransaction = billingTransactionRepository
                 .findFirstByOrganizationIdOrderByDateDesc(organizationId);
         return lastTransaction.map(BillingTransaction::getResultingBalance).orElse(0.0);
+    }
+
+    /**
+     * Deduct credits from organization, using gifted credits first, then purchased credits
+     * This ensures gifted credits are consumed before purchased credits
+     */
+    private void deductCreditsFromOrganization(String organizationId, Double creditsToDeduct) {
+        Optional<Organization> orgOptional = organizationRepository.findById(organizationId);
+        if (orgOptional.isEmpty()) {
+            return; // Organization not found, skip update
+        }
+        
+        Organization org = orgOptional.get();
+        Double remainingToDeduct = creditsToDeduct;
+        
+        // Step 1: Use gifted credits first
+        Double giftedCredits = org.getGiftedCredits() != null ? org.getGiftedCredits() : 0.0;
+        if (giftedCredits > 0) {
+            Double deductFromGifted = Math.min(giftedCredits, remainingToDeduct);
+            org.setGiftedCredits(giftedCredits - deductFromGifted);
+            remainingToDeduct -= deductFromGifted;
+        }
+        
+        // Step 2: Use purchased credits if gifted credits were not enough
+        if (remainingToDeduct > 0) {
+            Double purchasedCredits = org.getPurchasedCredits() != null ? org.getPurchasedCredits() : 0.0;
+            Double deductFromPurchased = Math.min(purchasedCredits, remainingToDeduct);
+            org.setPurchasedCredits(purchasedCredits - deductFromPurchased);
+            remainingToDeduct -= deductFromPurchased;
+        }
+        
+        // Update total and used credits
+        org.updateCredits(creditsToDeduct);
+        
+        // Save organization
+        organizationRepository.save(org);
     }
 
     /**

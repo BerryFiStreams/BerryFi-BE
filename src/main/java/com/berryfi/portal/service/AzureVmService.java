@@ -1,6 +1,7 @@
 package com.berryfi.portal.service;
 
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.HttpClient;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.resourcemanager.AzureResourceManager;
 import com.azure.core.management.AzureEnvironment;
@@ -11,6 +12,7 @@ import com.berryfi.portal.entity.VmInstance;
 import com.berryfi.portal.enums.VmStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -35,9 +37,14 @@ public class AzureVmService {
     
     @Value("${azure.api.timeout.seconds:30}")
     private int azureApiTimeoutSeconds;
+    
+    // Inject the custom HttpClient bean with increased header size
+    @Autowired
+    private HttpClient azureHttpClient;
 
     /**
-     * Start a VM in Azure using its specific credentials
+     * Start a VM in Azure using its specific credentials (ASYNC - returns immediately)
+     * The VM will start in the background. Use Azure Status Sync to monitor actual status.
      */
     public boolean startVm(VmInstance vm) {
         try {
@@ -51,11 +58,11 @@ public class AzureVmService {
             
             AzureResourceManager azure = getOrCreateAzureClient(vm);
             VirtualMachine virtualMachine = azure.virtualMachines()
-                .getByResourceGroup(vm.getAzureResourceGroup(), vm.getAzureResourceId());
+                .getByResourceGroup(vm.getAzureResourceGroup(), vm.getVmName());
                 
             if (virtualMachine == null) {
                 logger.error("VM not found in Azure: {} in resource group: {}", 
-                    vm.getAzureResourceId(), vm.getAzureResourceGroup());
+                    vm.getVmName(), vm.getAzureResourceGroup());
                 return false;
             }
             
@@ -69,9 +76,14 @@ public class AzureVmService {
                 return true;
             }
             
-            // Start the VM
-            virtualMachine.start();
-            logger.info("VM start command sent successfully for: {}", vm.getVmName());
+            // Start the VM asynchronously (non-blocking)
+            // This returns immediately without waiting for the VM to fully start
+            virtualMachine.startAsync().subscribe(
+                success -> logger.info("VM {} started successfully in Azure", vm.getVmName()),
+                error -> logger.error("Failed to start VM {} in Azure: {}", vm.getVmName(), error.getMessage())
+            );
+            
+            logger.info("VM start command sent successfully for: {} (starting asynchronously)", vm.getVmName());
             return true;
             
         } catch (Exception e) {
@@ -81,7 +93,8 @@ public class AzureVmService {
     }
 
     /**
-     * Stop a VM in Azure using its specific credentials
+     * Stop a VM in Azure using its specific credentials (ASYNC - returns immediately)
+     * The VM will stop in the background. Use Azure Status Sync to monitor actual status.
      */
     public boolean stopVm(VmInstance vm) {
         try {
@@ -95,11 +108,11 @@ public class AzureVmService {
             
             AzureResourceManager azure = getOrCreateAzureClient(vm);
             VirtualMachine virtualMachine = azure.virtualMachines()
-                .getByResourceGroup(vm.getAzureResourceGroup(), vm.getAzureResourceId());
+                .getByResourceGroup(vm.getAzureResourceGroup(), vm.getVmName());
                 
             if (virtualMachine == null) {
                 logger.error("VM not found in Azure: {} in resource group: {}", 
-                    vm.getAzureResourceId(), vm.getAzureResourceGroup());
+                    vm.getVmName(), vm.getAzureResourceGroup());
                 return false;
             }
             
@@ -115,10 +128,14 @@ public class AzureVmService {
                 return true;
             }
             
-            // Stop and deallocate the VM to save costs
-            virtualMachine.powerOff();
-            virtualMachine.deallocate();
-            logger.info("VM stop and deallocate command sent successfully for: {}", vm.getVmName());
+            // Stop and deallocate the VM asynchronously to save costs
+            logger.info("Sending deallocate command to VM: {} (async)", vm.getVmName());
+            virtualMachine.deallocateAsync().subscribe(
+                success -> logger.info("VM {} deallocated successfully in Azure", vm.getVmName()),
+                error -> logger.error("Failed to deallocate VM {} in Azure: {}", vm.getVmName(), error.getMessage())
+            );
+            
+            logger.info("VM deallocate command sent successfully for: {} (stopping asynchronously)", vm.getVmName());
             return true;
             
         } catch (Exception e) {
@@ -167,11 +184,11 @@ public class AzureVmService {
             
             AzureResourceManager azure = getOrCreateAzureClient(vm);
             VirtualMachine virtualMachine = azure.virtualMachines()
-                .getByResourceGroup(vm.getAzureResourceGroup(), vm.getAzureResourceId());
+                .getByResourceGroup(vm.getAzureResourceGroup(), vm.getVmName());
                 
             if (virtualMachine == null) {
                 logger.error("VM not found in Azure: {} in resource group: {}", 
-                    vm.getAzureResourceId(), vm.getAzureResourceGroup());
+                    vm.getVmName(), vm.getAzureResourceGroup());
                 return VmStatus.ERROR;
             }
             
@@ -231,7 +248,10 @@ public class AzureVmService {
                 AzureProfile profile = new AzureProfile(vm.getAzureTenantId(), 
                     vm.getAzureSubscriptionId(), AzureEnvironment.AZURE);
                 
-                return AzureResourceManager.authenticate(credential, profile)
+                // Use the custom HttpClient with increased header size
+                return AzureResourceManager.configure()
+                    .withHttpClient(azureHttpClient)  // KEY FIX: Use custom HTTP client
+                    .authenticate(credential, profile)
                     .withSubscription(vm.getAzureSubscriptionId());
                     
             } catch (Exception e) {
@@ -239,6 +259,15 @@ public class AzureVmService {
                 throw new RuntimeException("Failed to create Azure client", e);
             }
         });
+    }
+    
+    /**
+     * Clear the Azure client cache to force recreation with new HTTP client settings.
+     * This should be called after configuration changes.
+     */
+    public void clearClientCache() {
+        logger.info("Clearing Azure client cache ({} cached clients)", azureClientCache.size());
+        azureClientCache.clear();
     }
     
     /**

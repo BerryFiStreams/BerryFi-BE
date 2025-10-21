@@ -133,9 +133,10 @@ public class VmSession {
     // Constructors
     public VmSession() {
         this.id = generateSessionId();
-        this.startTime = LocalDateTime.now();
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        this.startTime = now; // Set initially to satisfy DB constraint
+        this.createdAt = now;
+        this.updatedAt = now;
     }
 
     public VmSession(String vmInstanceId, String projectId, String userId) {
@@ -144,9 +145,11 @@ public class VmSession {
         this.projectId = projectId;
         this.userId = userId;
         this.status = SessionStatus.STARTING;
-        this.startTime = LocalDateTime.now();
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        // Set startTime initially to satisfy DB constraint, will be updated when VM actually starts
+        this.startTime = now;
+        this.createdAt = now;
+        this.updatedAt = now;
     }
 
     @PreUpdate

@@ -5,6 +5,7 @@ import com.berryfi.portal.dto.ApiResponse;
 import com.berryfi.portal.entity.VmSession;
 import com.berryfi.portal.entity.VmInstance;
 import com.berryfi.portal.enums.VmType;
+import com.berryfi.portal.repository.VmInstanceRepository;
 import com.berryfi.portal.service.VmSessionService;
 import com.berryfi.portal.service.VmSessionService.VmSessionResult;
 import com.berryfi.portal.service.IpGeolocationService;
@@ -42,6 +43,9 @@ public class VmController {
 
     @Autowired
     private VmSessionService vmSessionService;
+
+    @Autowired
+    private VmInstanceRepository vmInstanceRepository;
 
     @Autowired
     private IpGeolocationService ipGeolocationService;
@@ -232,14 +236,15 @@ public class VmController {
     }
 
     /**
-     * Get session status
+     * Get session status with real-time Azure VM status
      */
     @GetMapping("/sessions/{sessionId}")
     public ResponseEntity<ApiResponse<VmSessionResponseDto>> getSession(
             @PathVariable String sessionId) {
         
         try {
-            Optional<VmSession> sessionOpt = vmSessionService.getSession(sessionId);
+            logger.debug("Getting session {} with real-time Azure status", sessionId);
+            Optional<VmSession> sessionOpt = vmSessionService.getSessionWithRealTimeStatus(sessionId);
             
             if (sessionOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
@@ -247,7 +252,14 @@ public class VmController {
 
             VmSession session = sessionOpt.get();
             
-            VmSessionResponseDto response = new VmSessionResponseDto(session, null);
+            // Fetch VM instance to populate DTO with VM details
+            VmInstance vmInstance = null;
+            if (session.getVmInstanceId() != null) {
+                Optional<VmInstance> vmOpt = vmInstanceRepository.findById(session.getVmInstanceId());
+                vmInstance = vmOpt.orElse(null);
+            }
+            
+            VmSessionResponseDto response = new VmSessionResponseDto(session, vmInstance);
             return ResponseEntity.ok(ApiResponse.success("Session retrieved successfully", response));
 
         } catch (Exception e) {

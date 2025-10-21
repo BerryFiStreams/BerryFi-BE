@@ -38,6 +38,9 @@ public class OrganizationService {
     @Autowired
     private TeamMemberRepository teamMemberRepository;
 
+    @Autowired
+    private BillingService billingService;
+
     /**
      * Create a new organization.
      */
@@ -164,14 +167,30 @@ public class OrganizationService {
      */
     @PreAuthorize("hasPermission('organization', 'manage_credits')")
     public OrganizationResponse addCredits(String organizationId, AddCreditsRequest request, User currentUser) {
-        logger.info("Adding {} credits to organization: {}", request.getCredits(), organizationId);
+        logger.info("Adding {} credits to organization: {} (purchased: {})", 
+                request.getCredits(), organizationId, request.isPurchased());
 
         Organization organization = findOrganizationWithAccess(organizationId, currentUser);
 
+        // Update organization credits tracking
         organization.addCredits(request.getCredits(), request.isPurchased());
-        
         Organization updatedOrganization = organizationRepository.save(organization);
-        logger.info("Added {} credits to organization: {}", request.getCredits(), organizationId);
+        
+        // IMPORTANT: Also create billing transaction for credit tracking system
+        String description = request.isPurchased() 
+            ? String.format("Purchased credits: %.2f credits", request.getCredits())
+            : String.format("Gifted credits: %.2f credits", request.getCredits());
+        
+        try {
+            billingService.addCredits(organizationId, request.getCredits(), description);
+            logger.info("Created billing transaction for {} credits to organization: {}", 
+                    request.getCredits(), organizationId);
+        } catch (Exception e) {
+            logger.error("Failed to create billing transaction, but organization credits updated", e);
+            // Continue - organization credits are already updated
+        }
+        
+        logger.info("Successfully added {} credits to organization: {}", request.getCredits(), organizationId);
         return mapToResponse(updatedOrganization);
     }
 
