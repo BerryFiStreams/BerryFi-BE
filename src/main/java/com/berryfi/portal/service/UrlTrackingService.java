@@ -35,6 +35,9 @@ public class UrlTrackingService {
     @Value("${app.base-url}")
     private String baseUrl;
 
+    @Value("${app.domain}")
+    private String appDomain;
+
     @Autowired
     private AuditLogRepository auditLogRepository;
 
@@ -48,10 +51,52 @@ public class UrlTrackingService {
     private ObjectMapper objectMapper;
 
     /**
-     * Generate a user-specific tracking URL for a project using configured base URL.
+     * Build the base URL for a project based on custom domain or subdomain.
+     * Priority: customDomain (if verified) > subdomain > default base URL
+     */
+    private String buildProjectBaseUrl(Project project) {
+        // Use custom domain if verified
+        if (project.getCustomDomain() != null && 
+            Boolean.TRUE.equals(project.getCustomDomainVerified())) {
+            return "https://" + project.getCustomDomain();
+        }
+        
+        // Use subdomain if available
+        if (project.getSubdomain() != null && !project.getSubdomain().trim().isEmpty()) {
+            return "https://" + project.getSubdomain() + "." + appDomain;
+        }
+        
+        // Fallback to default base URL
+        return this.baseUrl;
+    }
+
+    /**
+     * Generate a user-specific tracking URL for a project using project's subdomain/custom domain.
      */
     public String generateTrackingUrl(String projectId, String userId) {
-        return generateShortTrackingUrl(projectId, userId, this.baseUrl);
+        // Fetch project to determine base URL
+        Project project = projectRepository.findById(projectId).orElse(null);
+        if (project == null) {
+            logger.warn("Project not found for tracking URL generation: {}", projectId);
+            return this.baseUrl;
+        }
+        
+        String projectBaseUrl = buildProjectBaseUrl(project);
+        return generateShortTrackingUrl(projectId, userId, projectBaseUrl);
+    }
+
+    /**
+     * Generate a user-specific tracking URL for a project using project's subdomain/custom domain.
+     * This overload accepts the Project object directly to avoid redundant DB queries.
+     */
+    public String generateTrackingUrl(Project project, String userId) {
+        if (project == null) {
+            logger.warn("Project is null for tracking URL generation");
+            return this.baseUrl;
+        }
+        
+        String projectBaseUrl = buildProjectBaseUrl(project);
+        return generateShortTrackingUrl(project.getId(), userId, projectBaseUrl);
     }
 
     /**

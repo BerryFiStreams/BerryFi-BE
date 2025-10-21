@@ -154,10 +154,10 @@ public class ProjectService {
                     summary.setSessionsCount(sessionsCount != null ? sessionsCount.intValue() : 0);
                     summary.setUptime(uptime);
                     
-                    // Generate user-specific tracking URL
+                    // Generate user-specific tracking URL using project's subdomain or custom domain
                     if (project.getLinks() != null && !project.getLinks().trim().isEmpty()) {
                         String trackingUrl = urlTrackingService.generateTrackingUrl(
-                            project.getId(), currentUser.getId());
+                            project, currentUser.getId());
                         summary.setTrackingUrl(trackingUrl);
                     }
                     return summary;
@@ -429,10 +429,10 @@ public class ProjectService {
                     summary.setSessionsCount(sessionsCount != null ? sessionsCount.intValue() : 0);
                     summary.setUptime(uptime);
                     
-                    // Generate user-specific tracking URL
+                    // Generate user-specific tracking URL using project's subdomain or custom domain
                     if (project.getLinks() != null && !project.getLinks().trim().isEmpty()) {
                         String trackingUrl = urlTrackingService.generateTrackingUrl(
-                            project.getId(), currentUser.getId());
+                            project, currentUser.getId());
                         summary.setTrackingUrl(trackingUrl);
                     }
                     return summary;
