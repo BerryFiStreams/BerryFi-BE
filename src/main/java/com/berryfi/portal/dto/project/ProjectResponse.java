@@ -15,7 +15,6 @@ public class ProjectResponse {
     private String name;
     private String description;
     private ProjectStatus status;
-    private String productionUrl;
     private String organizationId;
     private AccountType accountType;
     private Double totalCreditsUsed;
@@ -49,7 +48,6 @@ public class ProjectResponse {
         this.name = project.getName();
         this.description = project.getDescription();
         this.status = project.getStatus();
-        this.productionUrl = project.getProductionUrl();
         this.organizationId = project.getOrganizationId();
         this.accountType = project.getAccountType();
         this.totalCreditsUsed = project.getTotalCreditsUsed();
@@ -133,14 +131,6 @@ public class ProjectResponse {
 
     public void setStatus(ProjectStatus status) {
         this.status = status;
-    }
-
-    public String getProductionUrl() {
-        return productionUrl;
-    }
-
-    public void setProductionUrl(String productionUrl) {
-        this.productionUrl = productionUrl;
     }
 
     public String getOrganizationId() {

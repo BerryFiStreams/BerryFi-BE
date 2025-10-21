@@ -15,7 +15,6 @@ public class ProjectSummary {
     private String name;
     private String description;
     private ProjectStatus status;
-    private String productionUrl;
     private String trackingUrl; // User-specific tracking URL
     private String organizationId;
     private AccountType accountType;
@@ -43,7 +42,6 @@ public class ProjectSummary {
         this.name = project.getName();
         this.description = project.getDescription();
         this.status = project.getStatus();
-        this.productionUrl = project.getLinks(); // Return links as productionUrl
         this.trackingUrl = null; // Will be set by service layer for user-specific URLs
         this.organizationId = project.getOrganizationId();
         this.accountType = project.getAccountType();
@@ -93,14 +91,6 @@ public class ProjectSummary {
 
     public void setStatus(ProjectStatus status) {
         this.status = status;
-    }
-
-    public String getProductionUrl() {
-        return productionUrl;
-    }
-
-    public void setProductionUrl(String productionUrl) {
-        this.productionUrl = productionUrl;
     }
 
     public String getTrackingUrl() {

@@ -36,9 +36,6 @@ public class Project {
     @Column(name = "status", nullable = false)
     private ProjectStatus status = ProjectStatus.STOPPED;
 
-    @Column(name = "production_url")
-    private String productionUrl;
-
     @NotBlank(message = "Organization ID is required")
     @Column(name = "organization_id", nullable = false)
     private String organizationId;
@@ -286,14 +283,6 @@ public class Project {
 
     public void setStatus(ProjectStatus status) {
         this.status = status;
-    }
-
-    public String getProductionUrl() {
-        return productionUrl;
-    }
-
-    public void setProductionUrl(String productionUrl) {
-        this.productionUrl = productionUrl;
     }
 
     public String getOrganizationId() {

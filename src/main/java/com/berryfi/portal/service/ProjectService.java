@@ -383,7 +383,6 @@ public class ProjectService {
 
         project.updateStatus(ProjectStatus.STOPPED);
         project.setCurrentCCU(0);
-        project.setProductionUrl(null);
 
         Project savedProject = projectRepository.save(project);
         logger.info("Stopped project: {}", projectId);
@@ -482,7 +481,6 @@ public class ProjectService {
                 if (project != null && project.getStatus() == ProjectStatus.DEPLOYING) {
                     // Simulate successful deployment
                     project.updateStatus(ProjectStatus.RUNNING);
-                    project.setProductionUrl("https://" + project.getId() + ".berryfi.app");
                     project.setLastDeployed(LocalDateTime.now());
                     projectRepository.save(project);
 
