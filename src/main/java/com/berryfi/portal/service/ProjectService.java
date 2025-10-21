@@ -28,6 +28,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -47,9 +48,8 @@ public class ProjectService {
     @Autowired
     private ProjectRepository projectRepository;
 
-
-
-
+    @Autowired
+    private TenantService tenantService;
 
     @Autowired
     private UrlTrackingService urlTrackingService;
@@ -97,8 +97,13 @@ public class ProjectService {
         project.setBranding(request.getBranding());
         project.setLinks(request.getLinks());
 
+        // Auto-generate unique subdomain for multi-tenant support
+        String subdomain = tenantService.generateUniqueSubdomain(request.getName());
+        project.setSubdomain(subdomain);
+
         Project savedProject = projectRepository.save(project);
-        logger.info("Created project: {} with ID: {}", savedProject.getName(), savedProject.getId());
+        logger.info("Created project: {} with ID: {} and subdomain: {}", 
+                   savedProject.getName(), savedProject.getId(), subdomain);
 
         return ProjectResponse.from(savedProject);
     }
@@ -242,6 +247,61 @@ public class ProjectService {
 
         if (request.getLinks() != null) {
             project.setLinks(request.getLinks());
+        }
+
+        // Handle tenant configuration
+        if (request.getTenantConfig() != null) {
+            ProjectTenantConfigDTO tenantConfigDTO = request.getTenantConfig();
+            
+            // Update subdomain
+            if (tenantConfigDTO.getSubdomain() != null && !tenantConfigDTO.getSubdomain().trim().isEmpty()) {
+                String newSubdomain = tenantConfigDTO.getSubdomain().trim().toLowerCase();
+                
+                // Check if subdomain is already taken by another project
+                if (!newSubdomain.equals(project.getSubdomain())) {
+                    Optional<Project> existingProject = projectRepository.findBySubdomain(newSubdomain);
+                    if (existingProject.isPresent()) {
+                        throw new IllegalArgumentException("Subdomain '" + newSubdomain + "' is already taken by another project");
+                    }
+                }
+                
+                project.setSubdomain(newSubdomain);
+            }
+            
+            // Update branding information
+            if (tenantConfigDTO.getBranding() != null) {
+                ProjectTenantConfigDTO.TenantBranding branding = tenantConfigDTO.getBranding();
+                
+                if (branding.getAppName() != null) {
+                    project.setBrandAppName(branding.getAppName());
+                }
+                if (branding.getPrimaryColor() != null) {
+                    project.setBrandPrimaryColor(branding.getPrimaryColor());
+                }
+                if (branding.getSecondaryColor() != null) {
+                    project.setBrandSecondaryColor(branding.getSecondaryColor());
+                }
+                if (branding.getLogoUrl() != null) {
+                    project.setBrandLogoUrl(branding.getLogoUrl());
+                }
+                if (branding.getFaviconUrl() != null) {
+                    project.setBrandFaviconUrl(branding.getFaviconUrl());
+                }
+            }
+            
+            // Update custom domain information
+            if (tenantConfigDTO.getCustomDomain() != null) {
+                ProjectTenantConfigDTO.CustomDomainConfig customDomain = tenantConfigDTO.getCustomDomain();
+                
+                if (customDomain.getDomain() != null) {
+                    project.setCustomDomain(customDomain.getDomain());
+                }
+                if (customDomain.getVerified() != null) {
+                    project.setCustomDomainVerified(customDomain.getVerified());
+                }
+            }
+            
+            logger.info("Updated tenant configuration for project: {}", projectId);
         }
 
         Project updatedProject = projectRepository.save(project);

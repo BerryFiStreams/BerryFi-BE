@@ -97,6 +97,11 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health").permitAll() // Health check
                 .requestMatchers("/api/vm/**").permitAll() // VM controller endpoints - no authentication required
                 
+                // Tenant configuration endpoints - public access for initial page load
+                .requestMatchers("/api/tenant/config").permitAll() // Get tenant config (context-based)
+                .requestMatchers("/api/tenant/config/*").permitAll() // Get tenant config by subdomain
+                .requestMatchers("/api/tenant/check-subdomain").permitAll() // Check subdomain availability
+                
                 // Invitation endpoints - public access for specific operations
                 .requestMatchers(HttpMethod.GET, "/api/invitations/*").permitAll() // Get invitation details by token
                 .requestMatchers(HttpMethod.POST, "/api/invitations/register").permitAll() // Register through invitation

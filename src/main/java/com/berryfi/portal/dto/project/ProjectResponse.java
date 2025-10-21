@@ -31,6 +31,9 @@ public class ProjectResponse {
     private String links;
     private String errors;
     
+    // Tenant configuration
+    private ProjectTenantConfigDTO tenantConfig;
+    
     // Sharing information
     private String accessType; // "OWNED" or "SHARED"
     private String sharedBy; // Organization name that shared this project (if shared)
@@ -63,6 +66,34 @@ public class ProjectResponse {
         this.errors = project.getErrors();
         this.allocatedCredits = project.getAllocatedCredits();
         this.remainingCredits = project.getRemainingCredits();
+        
+        // Build tenant configuration from project fields
+        if (project.getSubdomain() != null || project.getBrandAppName() != null || project.getCustomDomain() != null) {
+            ProjectTenantConfigDTO tenantDto = new ProjectTenantConfigDTO();
+            tenantDto.setSubdomain(project.getSubdomain());
+            
+            // Set branding if any branding fields exist
+            if (project.getBrandAppName() != null || project.getBrandPrimaryColor() != null) {
+                ProjectTenantConfigDTO.TenantBranding branding = new ProjectTenantConfigDTO.TenantBranding();
+                branding.setAppName(project.getBrandAppName());
+                branding.setPrimaryColor(project.getBrandPrimaryColor());
+                branding.setSecondaryColor(project.getBrandSecondaryColor());
+                branding.setLogoUrl(project.getBrandLogoUrl());
+                branding.setFaviconUrl(project.getBrandFaviconUrl());
+                tenantDto.setBranding(branding);
+            }
+            
+            // Set custom domain if it exists
+            if (project.getCustomDomain() != null) {
+                ProjectTenantConfigDTO.CustomDomainConfig customDomain = new ProjectTenantConfigDTO.CustomDomainConfig();
+                customDomain.setDomain(project.getCustomDomain());
+                customDomain.setVerified(project.getCustomDomainVerified());
+                tenantDto.setCustomDomain(customDomain);
+            }
+            
+            this.tenantConfig = tenantDto;
+        }
+        
         // accessType and sharedBy will be set by service layer based on context
     }
 
@@ -254,5 +285,13 @@ public class ProjectResponse {
 
     public void setRemainingCredits(Double remainingCredits) {
         this.remainingCredits = remainingCredits;
+    }
+
+    public ProjectTenantConfigDTO getTenantConfig() {
+        return tenantConfig;
+    }
+
+    public void setTenantConfig(ProjectTenantConfigDTO tenantConfig) {
+        this.tenantConfig = tenantConfig;
     }
 }

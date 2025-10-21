@@ -15,7 +15,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "projects", indexes = {
     @Index(name = "idx_project_organization", columnList = "organizationId"),
-    @Index(name = "idx_project_status", columnList = "status")
+    @Index(name = "idx_project_status", columnList = "status"),
+    @Index(name = "idx_project_subdomain", columnList = "subdomain", unique = true)
 })
 public class Project {
 
@@ -105,6 +106,32 @@ public class Project {
 
     @Column(name = "visibility")
     private String visibility = "PRIVATE"; // PRIVATE, ORGANIZATION, PUBLIC
+
+    // Multi-tenant fields
+    @Column(name = "subdomain", unique = true, length = 63)
+    private String subdomain; // e.g., "myproject" for myproject.berryfi.in
+
+    @Column(name = "custom_domain", length = 255)
+    private String customDomain; // e.g., "myclient.com" for custom domain mapping
+
+    @Column(name = "custom_domain_verified")
+    private Boolean customDomainVerified = false;
+
+    // Tenant branding and customization
+    @Column(name = "brand_logo_url", length = 500)
+    private String brandLogoUrl;
+
+    @Column(name = "brand_primary_color", length = 7)
+    private String brandPrimaryColor; // Hex color code
+
+    @Column(name = "brand_secondary_color", length = 7)
+    private String brandSecondaryColor;
+
+    @Column(name = "brand_favicon_url", length = 500)
+    private String brandFaviconUrl;
+
+    @Column(name = "brand_app_name", length = 100)
+    private String brandAppName; // Custom app name to display
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -507,5 +534,70 @@ public class Project {
 
     public void setSharedWithOrganizations(String sharedWithOrganizations) {
         this.sharedWithOrganizations = sharedWithOrganizations;
+    }
+
+    // Multi-tenant getters and setters
+    public String getSubdomain() {
+        return subdomain;
+    }
+
+    public void setSubdomain(String subdomain) {
+        this.subdomain = subdomain;
+    }
+
+    public String getCustomDomain() {
+        return customDomain;
+    }
+
+    public void setCustomDomain(String customDomain) {
+        this.customDomain = customDomain;
+    }
+
+    public Boolean getCustomDomainVerified() {
+        return customDomainVerified;
+    }
+
+    public void setCustomDomainVerified(Boolean customDomainVerified) {
+        this.customDomainVerified = customDomainVerified;
+    }
+
+    public String getBrandLogoUrl() {
+        return brandLogoUrl;
+    }
+
+    public void setBrandLogoUrl(String brandLogoUrl) {
+        this.brandLogoUrl = brandLogoUrl;
+    }
+
+    public String getBrandPrimaryColor() {
+        return brandPrimaryColor;
+    }
+
+    public void setBrandPrimaryColor(String brandPrimaryColor) {
+        this.brandPrimaryColor = brandPrimaryColor;
+    }
+
+    public String getBrandSecondaryColor() {
+        return brandSecondaryColor;
+    }
+
+    public void setBrandSecondaryColor(String brandSecondaryColor) {
+        this.brandSecondaryColor = brandSecondaryColor;
+    }
+
+    public String getBrandFaviconUrl() {
+        return brandFaviconUrl;
+    }
+
+    public void setBrandFaviconUrl(String brandFaviconUrl) {
+        this.brandFaviconUrl = brandFaviconUrl;
+    }
+
+    public String getBrandAppName() {
+        return brandAppName;
+    }
+
+    public void setBrandAppName(String brandAppName) {
+        this.brandAppName = brandAppName;
     }
 }

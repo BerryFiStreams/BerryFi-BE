@@ -10,6 +10,7 @@ public class UpdateProjectRequest {
     private String config;
     private String branding;
     private String links;
+    private ProjectTenantConfigDTO tenantConfig;
 
     public UpdateProjectRequest() {}
 
@@ -57,5 +58,13 @@ public class UpdateProjectRequest {
 
     public void setLinks(String links) {
         this.links = links;
+    }
+
+    public ProjectTenantConfigDTO getTenantConfig() {
+        return tenantConfig;
+    }
+
+    public void setTenantConfig(ProjectTenantConfigDTO tenantConfig) {
+        this.tenantConfig = tenantConfig;
     }
 }

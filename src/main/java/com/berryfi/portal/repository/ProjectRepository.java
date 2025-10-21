@@ -194,4 +194,24 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
      * Find projects owned by an organization
      */
     Page<Project> findByOrganizationIdAndSharedWithOrganizationsIsNull(String organizationId, Pageable pageable);
+
+    /**
+     * Find project by subdomain (for multi-tenant routing).
+     */
+    Optional<Project> findBySubdomain(String subdomain);
+
+    /**
+     * Find project by custom domain (for multi-tenant routing).
+     */
+    Optional<Project> findByCustomDomainAndCustomDomainVerified(String customDomain, Boolean verified);
+
+    /**
+     * Check if subdomain already exists.
+     */
+    boolean existsBySubdomain(String subdomain);
+
+    /**
+     * Check if custom domain already exists.
+     */
+    boolean existsByCustomDomain(String customDomain);
 }

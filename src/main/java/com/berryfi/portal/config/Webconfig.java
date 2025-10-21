@@ -1,10 +1,13 @@
 package com.berryfi.portal.config;
 
+import com.berryfi.portal.interceptor.TenantInterceptor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.PathResourceResolver;
@@ -13,6 +16,9 @@ import java.io.IOException;
 
 @Configuration
 public class Webconfig implements WebMvcConfigurer {
+
+    @Autowired
+    private TenantInterceptor tenantInterceptor;
 
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
@@ -62,5 +68,18 @@ public class Webconfig implements WebMvcConfigurer {
                         return null;
                     }
                 });
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        // Register tenant interceptor for all requests
+        registry.addInterceptor(tenantInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                    "/actuator/**",  // Exclude actuator endpoints
+                    "/error/**",     // Exclude error pages
+                    "/swagger-ui/**", // Exclude Swagger UI
+                    "/v3/api-docs/**" // Exclude API docs
+                );
     }
 }
