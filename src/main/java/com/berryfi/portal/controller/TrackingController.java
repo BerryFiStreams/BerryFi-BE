@@ -73,9 +73,9 @@ public class TrackingController {
         
         // Get project and redirect
         Project project = urlTrackingService.getProjectByShortCode(shortCode);
-        if (project != null && project.getLinks() != null && !project.getLinks().trim().isEmpty()) {
+        if (project != null && project.getSubdomain() != null && !project.getSubdomain().trim().isEmpty()) {
             logger.info("Redirecting to project URL: {} for short code: {}", project.getLinks(), shortCode);
-            response.sendRedirect(project.getLinks());
+            response.sendRedirect(project.getSubdomain());
         } else {
             logger.warn("Project not found or no URL for short code: {}", shortCode);
             response.sendRedirect(baseUrl);
