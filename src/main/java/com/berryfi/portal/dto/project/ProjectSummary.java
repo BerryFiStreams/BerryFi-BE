@@ -45,14 +45,24 @@ public class ProjectSummary {
         this.trackingUrl = null; // Will be set by service layer for user-specific URLs
         this.organizationId = project.getOrganizationId();
         this.accountType = project.getAccountType();
-        this.totalCreditsUsed = project.getTotalCreditsUsed();
+        this.totalCreditsUsed = roundToTwoDecimals(project.getTotalCreditsUsed());
         this.sessionsCount = project.getSessionsCount();
         this.lastDeployed = project.getLastDeployed();
         this.currentCCU = project.getCurrentCCU();
-        this.uptime = project.getUptime();
+        this.uptime = roundToTwoDecimals(project.getUptime());
         this.createdAt = project.getCreatedAt();
         this.updatedAt = project.getUpdatedAt();
         this.createdBy = project.getCreatedBy();
+    }
+    
+    /**
+     * Round a double value to 2 decimal places
+     */
+    private Double roundToTwoDecimals(Double value) {
+        if (value == null) {
+            return null;
+        }
+        return Math.round(value * 100.0) / 100.0;
     }
 
     // Static factory method
@@ -122,7 +132,7 @@ public class ProjectSummary {
     }
 
     public void setTotalCreditsUsed(Double totalCreditsUsed) {
-        this.totalCreditsUsed = totalCreditsUsed;
+        this.totalCreditsUsed = roundToTwoDecimals(totalCreditsUsed);
     }
 
     public Integer getSessionsCount() {
@@ -154,7 +164,7 @@ public class ProjectSummary {
     }
 
     public void setUptime(Double uptime) {
-        this.uptime = uptime;
+        this.uptime = roundToTwoDecimals(uptime);
     }
 
     public LocalDateTime getCreatedAt() {
@@ -202,7 +212,7 @@ public class ProjectSummary {
     }
 
     public void setAllocatedCredits(Double allocatedCredits) {
-        this.allocatedCredits = allocatedCredits;
+        this.allocatedCredits = roundToTwoDecimals(allocatedCredits);
     }
 
     public Double getRemainingCredits() {
@@ -210,6 +220,6 @@ public class ProjectSummary {
     }
 
     public void setRemainingCredits(Double remainingCredits) {
-        this.remainingCredits = remainingCredits;
+        this.remainingCredits = roundToTwoDecimals(remainingCredits);
     }
 }

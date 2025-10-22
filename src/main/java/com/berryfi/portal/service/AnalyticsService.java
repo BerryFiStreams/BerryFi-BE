@@ -1,9 +1,16 @@
 package com.berryfi.portal.service;
 
 import com.berryfi.portal.dto.analytics.*;
+import com.berryfi.portal.entity.VmSession;
+import com.berryfi.portal.repository.VmSessionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service for analytics operations.
@@ -11,31 +18,121 @@ import java.util.*;
 @Service
 public class AnalyticsService {
 
+    @Autowired
+    private VmSessionRepository vmSessionRepository;
+
     /**
      * Get usage analytics data with optional filters.
      */
     public UsageAnalyticsResponse getUsageAnalytics(String dateRange, String filterType, 
                                                    String selectedFilter, String projectId) {
-        // Mock implementation - replace with actual data retrieval logic
-        Map<String, Object> summary = new HashMap<>();
-        summary.put("totalSessions", 1250L);
-        summary.put("totalCreditsUsed", 45600.0);
-        summary.put("averageSessionDuration", 18.5);
-        summary.put("uniqueUsers", 342L);
-
+        // Parse date range
+        LocalDateTime[] dateRangeParsed = parseDateRange(dateRange);
+        LocalDateTime startDate = dateRangeParsed[0];
+        LocalDateTime endDate = dateRangeParsed[1];
+        
+        // Get sessions based on filters
+        List<VmSession> sessions;
+        if ("project".equals(filterType) && selectedFilter != null) {
+            sessions = vmSessionRepository.findSessionsByDateRange(startDate, endDate, org.springframework.data.domain.Pageable.unpaged())
+                    .getContent().stream()
+                    .filter(s -> selectedFilter.equals(s.getProjectId()))
+                    .collect(Collectors.toList());
+        } else {
+            sessions = vmSessionRepository.findSessionsByDateRange(startDate, endDate, org.springframework.data.domain.Pageable.unpaged())
+                    .getContent();
+        }
+        
+        // Calculate metrics
+        long totalSessions = sessions.size();
+        double totalCreditsUsed = roundToTwoDecimals(sessions.stream()
+                .mapToDouble(s -> s.getCreditsUsed() != null ? s.getCreditsUsed() : 0.0)
+                .sum());
+        
+        double averageSessionDuration = roundToTwoDecimals(sessions.stream()
+                .filter(s -> s.getDurationSeconds() != null)
+                .mapToLong(VmSession::getDurationSeconds)
+                .average()
+                .orElse(0.0));
+        
+        long uniqueUsers = sessions.stream()
+                .map(VmSession::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+        
+        // Group by date for chart data
+        Map<LocalDate, List<VmSession>> sessionsByDate = sessions.stream()
+                .filter(s -> s.getStartTime() != null)
+                .collect(Collectors.groupingBy(s -> s.getStartTime().toLocalDate()));
+        
         List<Map<String, Object>> chartData = new ArrayList<>();
-        Map<String, Object> dataPoint = new HashMap<>();
-        dataPoint.put("date", "2024-01-15");
-        dataPoint.put("sessions", 120);
-        dataPoint.put("credits", 2400.0);
-        chartData.add(dataPoint);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        
+        // Generate data for all dates in range, not just dates with sessions
+        LocalDate currentDate = startDate.toLocalDate();
+        LocalDate lastDate = endDate.toLocalDate();
+        
+        while (!currentDate.isAfter(lastDate)) {
+            Map<String, Object> dataPoint = new HashMap<>();
+            dataPoint.put("date", currentDate.format(formatter));
+            
+            // Get sessions for this date, or use empty list if none
+            List<VmSession> sessionsForDate = sessionsByDate.getOrDefault(currentDate, Collections.emptyList());
+            dataPoint.put("sessions", sessionsForDate.size());
+            double creditsForDate = sessionsForDate.stream()
+                    .mapToDouble(s -> s.getCreditsUsed() != null ? s.getCreditsUsed() : 0.0)
+                    .sum();
+            dataPoint.put("credits", roundToTwoDecimals(creditsForDate));
+            
+            chartData.add(dataPoint);
+            currentDate = currentDate.plusDays(1);
+        }
+        
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalSessions", totalSessions);
+        summary.put("totalCreditsUsed", totalCreditsUsed);
+        summary.put("averageSessionDuration", averageSessionDuration);
+        summary.put("uniqueUsers", uniqueUsers);
 
         Map<String, Object> filters = new HashMap<>();
         filters.put("dateRange", dateRange);
         filters.put("filterType", filterType);
         filters.put("selectedFilter", selectedFilter);
 
-        return new UsageAnalyticsResponse(summary, chartData, filters, 1250L, 45600.0, 18.5);
+        return new UsageAnalyticsResponse(summary, chartData, filters, totalSessions, totalCreditsUsed, averageSessionDuration);
+    }
+    
+    /**
+     * Parse date range string (e.g., "7d", "30d", "90d") to LocalDateTime range
+     */
+    private LocalDateTime[] parseDateRange(String dateRange) {
+        LocalDateTime endDate = LocalDateTime.now();
+        LocalDateTime startDate;
+        
+        if (dateRange == null || dateRange.isEmpty()) {
+            startDate = endDate.minusDays(30); // Default 30 days
+        } else if (dateRange.endsWith("d")) {
+            int days = Integer.parseInt(dateRange.substring(0, dateRange.length() - 1));
+            startDate = endDate.minusDays(days);
+        } else if (dateRange.endsWith("m")) {
+            int months = Integer.parseInt(dateRange.substring(0, dateRange.length() - 1));
+            startDate = endDate.minusMonths(months);
+        } else if (dateRange.endsWith("y")) {
+            int years = Integer.parseInt(dateRange.substring(0, dateRange.length() - 1));
+            startDate = endDate.minusYears(years);
+        } else {
+            startDate = endDate.minusDays(30); // Default 30 days
+        }
+        
+        return new LocalDateTime[]{startDate, endDate};
+    }
+    
+    /**
+     * Round a double value to 2 decimal places
+     */
+    private double roundToTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     /**
