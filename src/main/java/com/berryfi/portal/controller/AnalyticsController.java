@@ -22,13 +22,15 @@ public class AnalyticsController {
      */
     @GetMapping("/usage")
     public ResponseEntity<UsageAnalyticsResponse> getUsageAnalytics(
-            @RequestParam String dateRange,
+            @RequestParam(required = false) String dateRange,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo,
             @RequestParam(required = false) String filterType,
             @RequestParam(required = false) String selectedFilter,
             @RequestParam(required = false) String projectId) {
         try {
             UsageAnalyticsResponse analytics = analyticsService.getUsageAnalytics(
-                    dateRange, filterType, selectedFilter, projectId);
+                    dateRange, dateFrom, dateTo, filterType, selectedFilter, projectId);
             return ResponseEntity.ok(analytics);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

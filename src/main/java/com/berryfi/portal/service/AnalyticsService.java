@@ -24,10 +24,18 @@ public class AnalyticsService {
     /**
      * Get usage analytics data with optional filters.
      */
-    public UsageAnalyticsResponse getUsageAnalytics(String dateRange, String filterType, 
-                                                   String selectedFilter, String projectId) {
-        // Parse date range
-        LocalDateTime[] dateRangeParsed = parseDateRange(dateRange);
+    public UsageAnalyticsResponse getUsageAnalytics(String dateRange, String dateFrom, String dateTo,
+                                                   String filterType, String selectedFilter, String projectId) {
+        // Parse date range - support both dateRange format (7d, 30d) and dateFrom/dateTo format
+        LocalDateTime[] dateRangeParsed;
+        if (dateFrom != null && dateTo != null) {
+            // Parse ISO date strings (yyyy-MM-dd)
+            dateRangeParsed = parseDateFromTo(dateFrom, dateTo);
+        } else {
+            // Use dateRange format (7d, 30d, etc.)
+            dateRangeParsed = parseDateRange(dateRange);
+        }
+        
         LocalDateTime startDate = dateRangeParsed[0];
         LocalDateTime endDate = dateRangeParsed[1];
         
@@ -96,7 +104,13 @@ public class AnalyticsService {
         summary.put("uniqueUsers", uniqueUsers);
 
         Map<String, Object> filters = new HashMap<>();
-        filters.put("dateRange", dateRange);
+        // Include the actual date range used
+        if (dateFrom != null && dateTo != null) {
+            filters.put("dateFrom", dateFrom);
+            filters.put("dateTo", dateTo);
+        } else {
+            filters.put("dateRange", dateRange);
+        }
         filters.put("filterType", filterType);
         filters.put("selectedFilter", selectedFilter);
 
@@ -123,6 +137,25 @@ public class AnalyticsService {
             startDate = endDate.minusYears(years);
         } else {
             startDate = endDate.minusDays(30); // Default 30 days
+        }
+        
+        return new LocalDateTime[]{startDate, endDate};
+    }
+    
+    /**
+     * Parse dateFrom and dateTo strings (yyyy-MM-dd format) to LocalDateTime range
+     */
+    private LocalDateTime[] parseDateFromTo(String dateFrom, String dateTo) {
+        LocalDateTime startDate;
+        LocalDateTime endDate;
+        
+        try {
+            startDate = LocalDate.parse(dateFrom).atStartOfDay();
+            endDate = LocalDate.parse(dateTo).atTime(23, 59, 59);
+        } catch (Exception e) {
+            // Default to last 30 days if parsing fails
+            endDate = LocalDateTime.now();
+            startDate = endDate.minusDays(30);
         }
         
         return new LocalDateTime[]{startDate, endDate};
