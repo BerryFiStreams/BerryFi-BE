@@ -30,6 +30,9 @@ public class UsageService {
     
     @Autowired
     private TeamMemberRepository teamMemberRepository;
+    
+    @Autowired
+    private ProjectRepository projectRepository;
 
 
 
@@ -233,7 +236,16 @@ public class UsageService {
         dto.setId(vmSession.getId());
         dto.setOrganizationId(vmSession.getOrganizationId());
         dto.setProjectId(vmSession.getProjectId());
-        dto.setProjectName(null); // Will be set separately if needed
+        
+        // Fetch project name from Project entity
+        String projectName = null;
+        if (vmSession.getProjectId() != null) {
+            projectName = projectRepository.findById(vmSession.getProjectId())
+                    .map(Project::getName)
+                    .orElse(null);
+        }
+        dto.setProjectName(projectName);
+        
         dto.setUserId(vmSession.getUserId());
         dto.setSessionId(vmSession.getId()); // Use VM session ID as session ID
         dto.setStartedAt(vmSession.getStartTime());
@@ -246,8 +258,12 @@ public class UsageService {
         }
         
         dto.setCreditsUsed(vmSession.getCreditsUsed());
-        dto.setDeviceType(null); // VM sessions don't track device type currently
-        dto.setBrowser(null); // VM sessions don't track browser currently
+        
+        // Extract device type and browser from user agent
+        String userAgent = vmSession.getUserAgent();
+        dto.setDeviceType(extractDeviceType(userAgent));
+        dto.setBrowser(extractBrowser(userAgent));
+        
         dto.setCountry(vmSession.getClientCountry());
         dto.setCity(vmSession.getClientCity());
         dto.setNetworkQuality(null); // VM sessions don't track network quality currently
@@ -256,6 +272,55 @@ public class UsageService {
         dto.setErrorCount(null); // VM sessions don't track error count currently
         dto.setCreatedAt(vmSession.getCreatedAt());
         return dto;
+    }
+    
+    /**
+     * Extract browser name from user agent string
+     */
+    private String extractBrowser(String userAgent) {
+        if (userAgent == null || userAgent.isEmpty()) {
+            return null;
+        }
+        
+        userAgent = userAgent.toLowerCase();
+        
+        // Check for browsers in order of specificity
+        if (userAgent.contains("edg/") || userAgent.contains("edge")) {
+            return "Edge";
+        } else if (userAgent.contains("opr/") || userAgent.contains("opera")) {
+            return "Opera";
+        } else if (userAgent.contains("chrome") && !userAgent.contains("edg")) {
+            return "Chrome";
+        } else if (userAgent.contains("safari") && !userAgent.contains("chrome")) {
+            return "Safari";
+        } else if (userAgent.contains("firefox")) {
+            return "Firefox";
+        } else if (userAgent.contains("msie") || userAgent.contains("trident")) {
+            return "Internet Explorer";
+        }
+        
+        return "Other";
+    }
+    
+    /**
+     * Extract device type from user agent string
+     */
+    private String extractDeviceType(String userAgent) {
+        if (userAgent == null || userAgent.isEmpty()) {
+            return null;
+        }
+        
+        userAgent = userAgent.toLowerCase();
+        
+        // Check for mobile devices
+        if (userAgent.contains("mobile") || userAgent.contains("android") || 
+            userAgent.contains("iphone") || userAgent.contains("ipod")) {
+            return "Mobile";
+        } else if (userAgent.contains("tablet") || userAgent.contains("ipad")) {
+            return "Tablet";
+        }
+        
+        return "Desktop";
     }
 
     /**
