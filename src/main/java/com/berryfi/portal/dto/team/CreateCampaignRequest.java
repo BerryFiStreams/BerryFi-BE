@@ -12,13 +12,8 @@ public class CreateCampaignRequest {
     @NotBlank(message = "Name is required")
     private String name;
     
-    private String customName;
-    
     @NotBlank(message = "Project ID is required")
     private String projectId;
-    
-    @NotBlank(message = "Organization ID is required")
-    private String organizationId;
     
     @NotNull(message = "Access type is required")
     private AccessType accessType;
@@ -46,14 +41,8 @@ public class CreateCampaignRequest {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     
-    public String getCustomName() { return customName; }
-    public void setCustomName(String customName) { this.customName = customName; }
-    
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
-    
-    public String getOrganizationId() { return organizationId; }
-    public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
     
     public AccessType getAccessType() { return accessType; }
     public void setAccessType(AccessType accessType) { this.accessType = accessType; }

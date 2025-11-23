@@ -36,8 +36,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, String> {
     
     // Search campaigns by name
     @Query("SELECT c FROM Campaign c WHERE c.organizationId = :organizationId AND " +
-           "(LOWER(c.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(c.customName) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+           "LOWER(c.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Campaign> searchByName(@Param("organizationId") String organizationId, 
                                @Param("searchTerm") String searchTerm, 
                                Pageable pageable);

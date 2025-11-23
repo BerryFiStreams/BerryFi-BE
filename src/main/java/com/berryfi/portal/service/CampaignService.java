@@ -34,10 +34,8 @@ public class CampaignService {
      */
     public CampaignResponse createCampaign(CreateCampaignRequest request, String userId, String organizationId) {
         // Validate project exists
-        Project project = projectRepository.findById(request.getProjectId()).orElse(null);
-        if (project == null) {
-            throw new IllegalArgumentException("Project not found: " + request.getProjectId());
-        }
+        Project project = projectRepository.findById(request.getProjectId())
+            .orElseThrow(() -> new IllegalArgumentException("Project not found with ID: " + request.getProjectId()));
         
         // Check if campaign name already exists
         if (campaignRepository.existsByOrganizationIdAndName(organizationId, request.getName())) {
@@ -47,7 +45,6 @@ public class CampaignService {
         Campaign campaign = new Campaign();
         campaign.setId(UUID.randomUUID().toString());
         campaign.setName(request.getName());
-        campaign.setCustomName(request.getCustomName());
         campaign.setProjectId(request.getProjectId());
         campaign.setProjectName(project.getName());
         campaign.setAccessType(request.getAccessType() != null ? request.getAccessType() : AccessType.DIRECT);
@@ -89,10 +86,6 @@ public class CampaignService {
                 throw new RuntimeException("Campaign with this name already exists");
             }
             campaign.setName(request.getName());
-        }
-        
-        if (request.getCustomName() != null) {
-            campaign.setCustomName(request.getCustomName());
         }
         
         if (request.getAccessType() != null) {
@@ -293,7 +286,6 @@ public class CampaignService {
         CampaignResponse response = new CampaignResponse();
         response.setId(campaign.getId());
         response.setName(campaign.getName());
-        response.setCustomName(campaign.getCustomName());
         response.setProjectId(campaign.getProjectId());
         response.setProjectName(campaign.getProjectName());
         response.setAccessType(campaign.getAccessType());

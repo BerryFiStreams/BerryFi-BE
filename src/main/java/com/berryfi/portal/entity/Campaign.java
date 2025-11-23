@@ -17,8 +17,7 @@ import java.time.LocalDateTime;
 @Table(name = "campaigns", indexes = {
     @Index(name = "idx_campaign_organization", columnList = "organizationId"),
     @Index(name = "idx_campaign_project", columnList = "projectId"),
-    @Index(name = "idx_campaign_status", columnList = "status"),
-    @Index(name = "idx_campaign_custom_name", columnList = "customName")
+    @Index(name = "idx_campaign_status", columnList = "status")
 })
 public class Campaign {
     
@@ -29,10 +28,6 @@ public class Campaign {
     @NotBlank(message = "Name is required")
     @Column(nullable = false)
     private String name;
-    
-    @NotBlank(message = "Custom name is required")
-    @Column(unique = true, nullable = false)
-    private String customName; // URL-friendly name
     
     @NotBlank(message = "Project ID is required")
     @Column(nullable = false)
@@ -108,13 +103,12 @@ public class Campaign {
     }
     
     // Constructor with required fields
-    public Campaign(String id, String name, String customName, String projectId, 
+    public Campaign(String id, String name, String projectId, 
                    String projectName, String organizationId, AccessType accessType, 
                    CampaignStatus status, String createdBy) {
         this();
         this.id = id;
         this.name = name;
-        this.customName = customName;
         this.projectId = projectId;
         this.projectName = projectName;
         this.organizationId = organizationId;
@@ -129,9 +123,6 @@ public class Campaign {
     
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    
-    public String getCustomName() { return customName; }
-    public void setCustomName(String customName) { this.customName = customName; }
     
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }
@@ -214,6 +205,6 @@ public class Campaign {
     
     // Generate campaign URL
     public void generateUrl(String baseUrl) {
-        this.url = String.format("%s/campaign/%s", baseUrl, this.customName);
+        this.url = String.format("%s/campaign/%s", baseUrl, this.id);
     }
 }

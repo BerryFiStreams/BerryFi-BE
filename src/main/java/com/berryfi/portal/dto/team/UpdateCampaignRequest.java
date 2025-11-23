@@ -13,8 +13,6 @@ public class UpdateCampaignRequest {
     @Size(max = 100, message = "Campaign name cannot exceed 100 characters")
     private String name;
     
-    private String customName;
-    
     private AccessType accessType;
     
     private CampaignStatus status;
@@ -35,9 +33,6 @@ public class UpdateCampaignRequest {
     // Getters and Setters
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    
-    public String getCustomName() { return customName; }
-    public void setCustomName(String customName) { this.customName = customName; }
     
     public AccessType getAccessType() { return accessType; }
     public void setAccessType(AccessType accessType) { this.accessType = accessType; }

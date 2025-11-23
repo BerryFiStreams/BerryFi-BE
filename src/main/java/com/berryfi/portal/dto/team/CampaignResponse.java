@@ -12,7 +12,6 @@ public class CampaignResponse {
     
     private String id;
     private String name;
-    private String customName;
     private String projectId;
     private String projectName;
     private AccessType accessType;
@@ -47,9 +46,6 @@ public class CampaignResponse {
     
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    
-    public String getCustomName() { return customName; }
-    public void setCustomName(String customName) { this.customName = customName; }
     
     public String getProjectId() { return projectId; }
     public void setProjectId(String projectId) { this.projectId = projectId; }

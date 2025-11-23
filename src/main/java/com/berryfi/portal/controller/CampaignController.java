@@ -33,12 +33,8 @@ public class CampaignController {
             @Valid @RequestBody CreateCampaignRequest request,
             @RequestHeader("X-User-ID") String userId,
             @RequestHeader("X-Organization-ID") String organizationId) {
-        try {
-            CampaignResponse response = campaignService.createCampaign(request, userId, organizationId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        CampaignResponse response = campaignService.createCampaign(request, userId, organizationId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
     /**
