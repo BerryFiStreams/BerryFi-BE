@@ -49,13 +49,17 @@ public class TrackingController {
                                HttpServletRequest request,
                                HttpServletResponse response) throws IOException {
         
+        logger.info("Tracking request received for: {} from referrer: {}", trackingData, referrerUrl);
+        
         try {
             // Check if it's a short code (8 characters, alphanumeric) or Base64 encoded data
             if (trackingData.length() == 8 && trackingData.matches("[A-Za-z0-9]{8}")) {
                 // Handle short code
+                logger.info("Processing as short code: {}", trackingData);
                 handleShortCodeTracking(trackingData, referrerUrl, request, response);
             } else {
                 // Handle Base64 encoded tracking data (legacy format)
+                logger.info("Processing as legacy tracking data");
                 handleLegacyTracking(trackingData, referrerUrl, request, response);
             }
             
@@ -73,14 +77,15 @@ public class TrackingController {
     private void handleShortCodeTracking(String shortCode, String referrerUrl, 
                                        HttpServletRequest request, HttpServletResponse response) throws IOException {
         try {
-            // Track the URL access
+            // Track the URL access and get campaign ID if available
+            String campaignId = urlTrackingService.getCampaignIdByShortCode(shortCode);
             urlTrackingService.trackShortUrlAccess(shortCode, referrerUrl, request);
             
             // Get project information
             Project project = urlTrackingService.getProjectByShortCode(shortCode);
             if (project != null) {
-                // Set tracking cookie for the UI
-                setTrackingCookie(response, shortCode, project.getId());
+                // Set tracking cookie for the UI with campaign ID
+                setTrackingCookie(response, shortCode, project.getId(), campaignId);
                 
                 // Determine redirect URL - back to the subdomain they came from
                 String redirectUrl = determineRedirectUrl(request, project);
@@ -105,12 +110,20 @@ public class TrackingController {
     private void handleLegacyTracking(String trackingData, String referrerUrl,
                                     HttpServletRequest request, HttpServletResponse response) throws IOException {
         try {
+            // Validate Base64 format first
+            if (!isValidBase64(trackingData)) {
+                logger.warn("Invalid Base64 tracking data: {}", trackingData);
+                String redirectUrl = (baseUrl != null && !baseUrl.trim().isEmpty()) ? baseUrl : "https://berryfi.com";
+                response.sendRedirect(redirectUrl);
+                return;
+            }
+            
             // Track the URL access
             urlTrackingService.trackUrlAccess(trackingData, referrerUrl, request);
             
             // Decode tracking data to get project information
             byte[] decodedBytes = Base64.getUrlDecoder().decode(trackingData);
-            String decodedString = new String(decodedBytes);
+            String decodedString = new String(decodedBytes, StandardCharsets.UTF_8);
             
             @SuppressWarnings("unchecked")
             Map<String, String> trackingParams = objectMapper.readValue(decodedString, Map.class);
@@ -121,8 +134,8 @@ public class TrackingController {
                 // Get project
                 Project project = projectRepository.findById(projectId).orElse(null);
                 if (project != null) {
-                    // Set tracking cookie for the UI
-                    setTrackingCookie(response, trackingData, projectId);
+                    // Set tracking cookie for the UI (legacy tracking doesn't support campaigns)
+                    setTrackingCookie(response, trackingData, projectId, null);
                     
                     // Determine redirect URL - back to the subdomain they came from
                     String redirectUrl = determineRedirectUrl(request, project);
@@ -134,13 +147,30 @@ public class TrackingController {
             
             // Fallback redirect if project not found or no URL
             logger.warn("Project not found or no URL for tracking data: {}", trackingData);
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid Base64 or JSON in legacy tracking data: {}", e.getMessage());
         } catch (Exception e) {
             logger.error("Error processing legacy tracking data: {}", e.getMessage());
         }
         
-        // Final fallback redirect
+        // Fallback redirect
         String redirectUrl = (baseUrl != null && !baseUrl.trim().isEmpty()) ? baseUrl : "https://berryfi.com";
         response.sendRedirect(redirectUrl);
+    }
+    
+    /**
+     * Validate if string is valid Base64.
+     */
+    private boolean isValidBase64(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        try {
+            Base64.getUrlDecoder().decode(str);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**
@@ -167,11 +197,17 @@ public class TrackingController {
     /**
      * Set a tracking cookie for the frontend to use.
      */
-    private void setTrackingCookie(HttpServletResponse response, String trackingCode, String projectId) {
+    private void setTrackingCookie(HttpServletResponse response, String trackingCode, String projectId, String campaignId) {
         try {
-            // Create tracking info JSON
-            String trackingInfo = String.format("{\"trackingCode\":\"%s\",\"projectId\":\"%s\",\"timestamp\":%d}", 
-                                               trackingCode, projectId, System.currentTimeMillis());
+            // Create tracking info JSON with campaign ID
+            String trackingInfo;
+            if (campaignId != null && !campaignId.trim().isEmpty()) {
+                trackingInfo = String.format("{\"trackingCode\":\"%s\",\"projectId\":\"%s\",\"campaignId\":\"%s\",\"timestamp\":%d}", 
+                                           trackingCode, projectId, campaignId, System.currentTimeMillis());
+            } else {
+                trackingInfo = String.format("{\"trackingCode\":\"%s\",\"projectId\":\"%s\",\"timestamp\":%d}", 
+                                           trackingCode, projectId, System.currentTimeMillis());
+            }
             
             // Encode to Base64 for cookie value
             String encodedValue = Base64.getUrlEncoder().withoutPadding()
@@ -185,7 +221,7 @@ public class TrackingController {
             trackingCookie.setSecure(false); // Set to true in production with HTTPS
             
             response.addCookie(trackingCookie);
-            logger.debug("Set tracking cookie for project: {}", projectId);
+            logger.debug("Set tracking cookie for project: {} (campaign: {})", projectId, campaignId);
         } catch (Exception e) {
             logger.error("Error setting tracking cookie: {}", e.getMessage());
         }

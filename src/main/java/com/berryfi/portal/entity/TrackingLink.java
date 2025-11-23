@@ -6,7 +6,9 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "tracking_links")
+@Table(name = "tracking_links", indexes = {
+    @Index(name = "idx_tracking_link_lookup", columnList = "projectId,userId,campaignId,active")
+})
 public class TrackingLink {
 
     @Id
@@ -18,6 +20,9 @@ public class TrackingLink {
 
     @Column(nullable = false)
     private String userId;
+
+    @Column
+    private String campaignId;
 
     @Column(nullable = false)
     private String token;
@@ -65,6 +70,14 @@ public class TrackingLink {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public String getCampaignId() {
+        return campaignId;
+    }
+
+    public void setCampaignId(String campaignId) {
+        this.campaignId = campaignId;
     }
 
     public String getToken() {

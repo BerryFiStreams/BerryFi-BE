@@ -202,9 +202,4 @@ public class Campaign {
             this.conversionRate = (double) this.leads / this.visits * 100;
         }
     }
-    
-    // Generate campaign URL
-    public void generateUrl(String baseUrl) {
-        this.url = String.format("%s/campaign/%s", baseUrl, this.id);
-    }
 }

@@ -1,13 +1,16 @@
 package com.berryfi.portal.service;
 
 import com.berryfi.portal.entity.AuditLog;
+import com.berryfi.portal.entity.Campaign;
 import com.berryfi.portal.entity.Project;
 import com.berryfi.portal.entity.TrackingLink;
 import com.berryfi.portal.entity.User;
 import com.berryfi.portal.repository.AuditLogRepository;
+import com.berryfi.portal.repository.CampaignRepository;
 import com.berryfi.portal.repository.ProjectRepository;
 import com.berryfi.portal.repository.TrackingLinkRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.time.LocalDateTime;
 import java.security.SecureRandom;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Service for URL tracking and audit logging.
@@ -46,6 +50,9 @@ public class UrlTrackingService {
 
     @Autowired
     private TrackingLinkRepository trackingLinkRepository;
+
+    @Autowired
+    private CampaignRepository campaignRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -100,14 +107,42 @@ public class UrlTrackingService {
     }
 
     /**
+     * Generate a campaign-specific tracking URL for a project using project's subdomain/custom domain.
+     */
+    public String generateCampaignTrackingUrl(Project project, String userId, String campaignId) {
+        if (project == null) {
+            logger.warn("Project is null for campaign tracking URL generation");
+            return this.baseUrl;
+        }
+        
+        String projectBaseUrl = buildProjectBaseUrl(project);
+        return generateShortTrackingUrl(project.getId(), userId, campaignId, projectBaseUrl);
+    }
+
+    /**
      * Generate a short tracking URL for a project.
      */
     public String generateShortTrackingUrl(String projectId, String userId, String baseUrl) {
+        return generateShortTrackingUrl(projectId, userId, null, baseUrl);
+    }
+
+    /**
+     * Generate a short tracking URL for a project with optional campaign ID.
+     */
+    public String generateShortTrackingUrl(String projectId, String userId, String campaignId, String baseUrl) {
         try {
-            // Check if we already have an active tracking link for this project and user
-            TrackingLink existingLink = trackingLinkRepository
-                .findByProjectIdAndUserIdAndActive(projectId, userId, true)
-                .orElse(null);
+            // Check if we already have an active tracking link for this project, user, and campaign
+            TrackingLink existingLink = null;
+            
+            if (campaignId != null) {
+                existingLink = trackingLinkRepository
+                    .findByProjectIdAndUserIdAndCampaignIdAndActive(projectId, userId, campaignId, true)
+                    .orElse(null);
+            } else {
+                existingLink = trackingLinkRepository
+                    .findByProjectIdAndUserIdAndActive(projectId, userId, true)
+                    .orElse(null);
+            }
             
             if (existingLink != null) {
                 // Return existing short URL
@@ -120,17 +155,18 @@ public class UrlTrackingService {
 
             // Create tracking link entity
             TrackingLink trackingLink = new TrackingLink(shortCode, projectId, userId, token);
+            trackingLink.setCampaignId(campaignId);
             trackingLink.setExpiresAt(LocalDateTime.now().plusDays(365)); // 1 year expiry
             trackingLinkRepository.save(trackingLink);
 
             // Generate short tracking URL
             String trackingUrl = baseUrl + "/track/" + shortCode;
 
-            logger.debug("Generated short tracking URL for project {} and user {}: {}", projectId, userId, trackingUrl);
+            logger.debug("Generated short tracking URL for project {} and user {} (campaign: {}): {}", projectId, userId, campaignId, trackingUrl);
             return trackingUrl;
 
         } catch (Exception e) {
-            logger.error("Error generating short tracking URL for project {} and user {}: {}", projectId, userId, e.getMessage());
+            logger.error("Error generating short tracking URL for project {} and user {} (campaign: {}): {}", projectId, userId, campaignId, e.getMessage());
             // Fallback to long URL method
             return generateTrackingUrl(projectId, userId, baseUrl);
         }
@@ -199,12 +235,18 @@ public class UrlTrackingService {
 
             String projectId = trackingLink.getProjectId();
             String userId = trackingLink.getUserId();
+            String campaignId = trackingLink.getCampaignId();
 
             // Get project and validate
             Project project = projectRepository.findById(projectId).orElse(null);
             if (project == null) {
                 logger.warn("Project not found for tracking: {}", projectId);
                 return;
+            }
+
+            // Track campaign visit if this tracking link is associated with a campaign
+            if (campaignId != null && !campaignId.trim().isEmpty()) {
+                trackCampaignVisit(campaignId);
             }
 
             // Create audit log entry
@@ -227,6 +269,9 @@ public class UrlTrackingService {
             details.put("projectName", project.getName());
             details.put("shortCode", shortCode);
             details.put("trackingToken", trackingLink.getToken());
+            if (campaignId != null) {
+                details.put("campaignId", campaignId);
+            }
             details.put("method", request.getMethod());
             details.put("queryString", request.getQueryString());
 
@@ -235,11 +280,32 @@ public class UrlTrackingService {
             // Save audit log
             auditLogRepository.save(auditLog);
 
-            logger.info("Tracked short URL access for project {} by user {} from referrer: {}", 
-                       projectId, userId, referrerUrl);
+            logger.info("Tracked short URL access for project {} by user {} (campaign: {}) from referrer: {}", 
+                       projectId, userId, campaignId, referrerUrl);
 
         } catch (Exception e) {
             logger.error("Error tracking short URL access: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Track campaign visit by incrementing visit count.
+     */
+    private void trackCampaignVisit(String campaignId) {
+        try {
+            logger.info("Attempting to track visit for campaign: {}", campaignId);
+            Campaign campaign = campaignRepository.findById(campaignId).orElse(null);
+            if (campaign != null) {
+                int previousVisits = campaign.getVisits();
+                campaign.incrementVisits();
+                campaignRepository.save(campaign);
+                logger.info("Successfully tracked visit for campaign: {} (visits: {} -> {})", 
+                           campaignId, previousVisits, campaign.getVisits());
+            } else {
+                logger.warn("Campaign not found for visit tracking: {}", campaignId);
+            }
+        } catch (Exception e) {
+            logger.error("Error tracking campaign visit: {}", e.getMessage(), e);
         }
     }
 
@@ -261,14 +327,52 @@ public class UrlTrackingService {
             return null;
         }
     }
+
+    /**
+     * Get campaign ID from short code.
+     */
+    public String getCampaignIdByShortCode(String shortCode) {
+        try {
+            TrackingLink trackingLink = trackingLinkRepository
+                .findActiveByShortCode(shortCode, LocalDateTime.now())
+                .orElse(null);
+
+            if (trackingLink != null) {
+                return trackingLink.getCampaignId();
+            }
+            return null;
+        } catch (Exception e) {
+            logger.error("Error getting campaign ID by short code: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
     public void trackUrlAccess(String trackingData, String referrerUrl, HttpServletRequest request) {
         try {
-            // Decode tracking data
-            byte[] decodedBytes = Base64.getUrlDecoder().decode(trackingData);
-            String decodedString = new String(decodedBytes);
+            // Validate and decode tracking data
+            byte[] decodedBytes;
+            try {
+                decodedBytes = Base64.getUrlDecoder().decode(trackingData);
+            } catch (IllegalArgumentException e) {
+                logger.error("Invalid Base64 tracking data: {}", trackingData);
+                return;
+            }
             
-            @SuppressWarnings("unchecked")
-            Map<String, String> trackingParams = objectMapper.readValue(decodedString, Map.class);
+            String decodedString = new String(decodedBytes, StandardCharsets.UTF_8);
+            
+            // Validate JSON format
+            if (decodedString.isEmpty() || (!decodedString.trim().startsWith("{") && !decodedString.trim().startsWith("["))) {
+                logger.error("Decoded tracking data is not valid JSON: {}", decodedString);
+                return;
+            }
+            
+            Map<String, String> trackingParams;
+            try {
+                trackingParams = objectMapper.readValue(decodedString, new TypeReference<Map<String, String>>() {});
+            } catch (Exception e) {
+                logger.error("Failed to parse tracking JSON: {}", decodedString, e);
+                return;
+            }
 
             String projectId = trackingParams.get("projectId");
             String userId = trackingParams.get("userId");

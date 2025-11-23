@@ -34,6 +34,7 @@ public class CampaignResponse {
     
     private String organizationId;
     private String createdBy;
+    private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
@@ -99,6 +100,9 @@ public class CampaignResponse {
     
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+    
+    public String getCreatedByName() { return createdByName; }
+    public void setCreatedByName(String createdByName) { this.createdByName = createdByName; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

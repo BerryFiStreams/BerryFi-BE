@@ -9,6 +9,8 @@ import com.berryfi.portal.enums.AccessType;
 import com.berryfi.portal.enums.CampaignStatus;
 import com.berryfi.portal.repository.CampaignRepository;
 import com.berryfi.portal.repository.ProjectRepository;
+import com.berryfi.portal.repository.UserRepository;
+import com.berryfi.portal.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +30,12 @@ public class CampaignService {
     
     @Autowired
     private ProjectRepository projectRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private UrlTrackingService urlTrackingService;
     
     /**
      * Create a new campaign.
@@ -60,10 +68,18 @@ public class CampaignService {
         campaign.setRequirePhone(request.getRequirePhone() != null ? request.getRequirePhone() : false);
         campaign.setEnableOTP(request.getEnableOTP() != null ? request.getEnableOTP() : false);
         
-        // Generate campaign URL
-        campaign.generateUrl("https://berryfi.com"); // TODO: Make this configurable
+        // Set temporary URL to satisfy NOT NULL constraint
+        campaign.setUrl("pending");
         
+        // Save campaign first to get the ID
         Campaign savedCampaign = campaignRepository.save(campaign);
+        
+        // Generate campaign-specific tracking URL with campaign ID stored in tracking link
+        String campaignTrackingUrl = urlTrackingService.generateCampaignTrackingUrl(project, userId, savedCampaign.getId());
+        savedCampaign.setUrl(campaignTrackingUrl);
+        
+        // Update with the actual tracking URL
+        savedCampaign = campaignRepository.save(savedCampaign);
         return mapToResponse(savedCampaign);
     }
     
@@ -303,6 +319,11 @@ public class CampaignService {
         response.setConversionRate(campaign.getConversionRate());
         response.setOrganizationId(campaign.getOrganizationId());
         response.setCreatedBy(campaign.getCreatedBy());
+        
+        // Fetch and set creator's name
+        userRepository.findById(campaign.getCreatedBy())
+            .ifPresent(user -> response.setCreatedByName(user.getName()));
+        
         response.setCreatedAt(campaign.getCreatedAt());
         response.setUpdatedAt(campaign.getUpdatedAt());
         return response;

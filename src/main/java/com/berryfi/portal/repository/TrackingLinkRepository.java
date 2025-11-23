@@ -20,7 +20,13 @@ public interface TrackingLinkRepository extends JpaRepository<TrackingLink, Stri
     /**
      * Find tracking links by project ID.
      */
+    @Query("SELECT tl FROM TrackingLink tl WHERE tl.projectId = :projectId AND tl.userId = :userId AND tl.campaignId IS NULL AND tl.active = :active ORDER BY tl.createdAt DESC")
     Optional<TrackingLink> findByProjectIdAndUserIdAndActive(String projectId, String userId, boolean active);
+
+    /**
+     * Find tracking link by project, user, campaign and active status.
+     */
+    Optional<TrackingLink> findByProjectIdAndUserIdAndCampaignIdAndActive(String projectId, String userId, String campaignId, boolean active);
 
     /**
      * Check if short code exists.
