@@ -448,7 +448,12 @@ public class TeamMemberService {
             return mapToResponse(teamMember);
             
         } catch (Exception e) {
-            logger.error("Error in acceptInvitationByToken: {}", e.getMessage(), e);
+            // "No user found" is expected (user needs to register first) — log at INFO to avoid false-alarm alerts
+            if (e.getMessage() != null && e.getMessage().contains("No user found with email")) {
+                logger.info("acceptInvitationByToken: user not yet registered — {}", e.getMessage());
+            } else {
+                logger.error("Error in acceptInvitationByToken: {}", e.getMessage(), e);
+            }
             throw e;
         }
     }

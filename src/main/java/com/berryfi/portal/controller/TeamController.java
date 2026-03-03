@@ -270,10 +270,21 @@ public class TeamController {
         } catch (RuntimeException e) {
             logger.info("Could not accept invitation without authentication: {}", e.getMessage());
             
-            // If user doesn't exist, provide guidance to use registration endpoint
-            if (e.getMessage().contains("No user found with email")) {
+            // If user doesn't exist, return structured response so frontend can redirect to registration
+            if (e.getMessage() != null && e.getMessage().contains("No user found with email")) {
+                String inviteEmail = null;
+                try {
+                    TeamMemberResponse invitation = teamMemberService.getInvitationByToken(token);
+                    inviteEmail = invitation.getUserEmail();
+                } catch (Exception ignored) {
+                    // best-effort: proceed without email
+                }
                 return ResponseEntity.status(422).body(
-                    new ErrorResponse("User not found. Please register first using: POST /api/team/invitations/register with your invitation token and user details.")
+                    new RegistrationRequiredResponse(
+                        "User account not found. Please complete registration to accept this invitation.",
+                        token,
+                        inviteEmail
+                    )
                 );
             }
             
@@ -369,6 +380,27 @@ public class TeamController {
 
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
+    }
+
+    /**
+     * Response returned when invitation acceptance requires prior registration.
+     */
+    public static class RegistrationRequiredResponse {
+        private final String message;
+        private final boolean requiresRegistration = true;
+        private final String inviteToken;
+        private final String inviteEmail;
+
+        public RegistrationRequiredResponse(String message, String inviteToken, String inviteEmail) {
+            this.message = message;
+            this.inviteToken = inviteToken;
+            this.inviteEmail = inviteEmail;
+        }
+
+        public String getMessage() { return message; }
+        public boolean isRequiresRegistration() { return requiresRegistration; }
+        public String getInviteToken() { return inviteToken; }
+        public String getInviteEmail() { return inviteEmail; }
     }
 
     /**
