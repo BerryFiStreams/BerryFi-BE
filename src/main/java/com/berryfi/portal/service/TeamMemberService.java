@@ -366,96 +366,104 @@ public class TeamMemberService {
     }
 
     /**
-     * Accept team invitation by token without authentication.
-     * This method finds the user by invitation email and accepts the invitation.
-     * For existing users only - does not create new users.
+     * Accept team invitation by token. Works for both existing users and new users.
+     * When no account exists for the invitation email, one is created automatically using
+     * the provided {@code name}/{@code password} (both optional — sensible defaults apply).
+     * Returns JWT tokens when a new account is created so the caller can log the user in immediately.
      */
     @Transactional
-    public TeamMemberResponse acceptInvitationByToken(String inviteToken) {
-        logger.info("Accepting team invitation by token without authentication: {}", inviteToken);
-        
-        try {
-            // Find invitation by token first, then check status
-            TeamMemberInvitation invitation = teamMemberInvitationRepository.findByInviteToken(inviteToken)
-                .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
-            
-            logger.info("Found invitation for email: {} in organization: {}, status: {}", 
-                       invitation.getInviteEmail(), invitation.getOrganizationId(), invitation.getStatus());
-            
-            if (invitation.getStatus() != InvitationStatus.PENDING) {
-                throw new RuntimeException("Invitation is not pending - current status: " + invitation.getStatus());
-            }
-                
-            // Check if invitation is expired
-            if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
-                throw new RuntimeException("Invitation has expired");
-            }
+    public InvitationAcceptResult acceptInvitationByToken(String inviteToken, String name, String password) {
+        logger.info("Accepting team invitation by token: {}", inviteToken);
 
-            // Find user by invitation email
-            Optional<User> userOpt = userRepository.findByEmail(invitation.getInviteEmail());
-            if (!userOpt.isPresent()) {
-                logger.warn("No user found with email: {}", invitation.getInviteEmail());
-                throw new RuntimeException(
-                    String.format("No user found with email '%s'. Please register first using the registration endpoint.", 
-                                 invitation.getInviteEmail())
-                );
-            }
-            
-            User user = userOpt.get();
-            logger.info("Found user: ID={}, Email={}", user.getId(), user.getEmail());
+        // Find and validate invitation
+        TeamMemberInvitation invitation = teamMemberInvitationRepository.findByInviteToken(inviteToken)
+            .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
 
-            // Check if user is already a team member
-            Optional<TeamMember> existingMemberOpt = teamMemberRepository.findByUserIdAndOrganizationId(
-                user.getId(), invitation.getOrganizationId());
-            if (existingMemberOpt.isPresent()) {
-                logger.warn("User {} is already a team member in organization {}", user.getId(), invitation.getOrganizationId());
-                throw new RuntimeException("User is already a team member");
-            }
+        logger.info("Found invitation for email: {} in organization: {}, status: {}",
+                   invitation.getInviteEmail(), invitation.getOrganizationId(), invitation.getStatus());
 
-            // Create team member
-            TeamMember teamMember = new TeamMember();
-            teamMember.setId("tm_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)); // Generate unique ID
-            teamMember.setUserId(user.getId());
-            teamMember.setOrganizationId(invitation.getOrganizationId());
-            teamMember.setRole(invitation.getRole());
-            teamMember.setStatus(UserStatus.ACTIVE);
-            teamMember.setJoinedAt(LocalDateTime.now());
-            teamMember.setInvitedBy(invitation.getInvitedByUserId());
-            
-            logger.info("About to save team member: userId={}, orgId={}, role={}", 
-                       teamMember.getUserId(), teamMember.getOrganizationId(), teamMember.getRole());
-            
-            try {
-                teamMember = teamMemberRepository.save(teamMember);
-                logger.info("Successfully saved team member: {}", teamMember.getId());
-            } catch (Exception e) {
-                logger.error("Failed to save team member: {}", e.getMessage(), e);
-                throw new RuntimeException("Failed to save team member: " + e.getMessage(), e);
-            }
-
-            // Update invitation status
-            logger.info("About to update invitation status to ACCEPTED");
-            try {
-                invitation.acceptInvitation(user.getId());
-                teamMemberInvitationRepository.save(invitation);
-                logger.info("Successfully updated invitation status");
-            } catch (Exception e) {
-                logger.error("Failed to update invitation status: {}", e.getMessage(), e);
-                throw new RuntimeException("Failed to update invitation status: " + e.getMessage(), e);
-            }
-            
-            logger.info("Successfully accepted invitation for user: {}", user.getId());
-            return mapToResponse(teamMember);
-            
-        } catch (Exception e) {
-            // "No user found" is expected (user needs to register first) — log at INFO to avoid false-alarm alerts
-            if (e.getMessage() != null && e.getMessage().contains("No user found with email")) {
-                logger.info("acceptInvitationByToken: user not yet registered — {}", e.getMessage());
-            } else {
-                logger.error("Error in acceptInvitationByToken: {}", e.getMessage(), e);
-            }
-            throw e;
+        if (invitation.getStatus() != InvitationStatus.PENDING) {
+            throw new RuntimeException("Invitation is not pending - current status: " + invitation.getStatus());
         }
+
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Invitation has expired");
+        }
+
+        // Find existing user or auto-create one
+        Optional<User> userOpt = userRepository.findByEmail(invitation.getInviteEmail());
+        User user;
+        boolean isNewUser = false;
+        boolean isPasswordTemporary = false;
+
+        if (!userOpt.isPresent()) {
+            logger.info("No existing user for email: {} — auto-creating account", invitation.getInviteEmail());
+            String resolvedPassword = (password != null && !password.trim().isEmpty())
+                ? password
+                : UUID.randomUUID().toString();
+            if (password == null || password.trim().isEmpty()) {
+                isPasswordTemporary = true;
+            }
+            String firstName = null;
+            String lastName = null;
+            if (name != null && !name.trim().isEmpty()) {
+                String[] parts = name.trim().split("\\s+", 2);
+                firstName = parts[0];
+                lastName = parts.length > 1 ? parts[1] : null;
+            }
+            user = createUserFromInvitation(invitation, resolvedPassword, firstName, lastName);
+            isNewUser = true;
+            logger.info("Auto-created user: id={}, email={}", user.getId(), user.getEmail());
+        } else {
+            user = userOpt.get();
+            logger.info("Found existing user: ID={}, Email={}", user.getId(), user.getEmail());
+        }
+
+        // Guard: already a team member
+        Optional<TeamMember> existingMemberOpt = teamMemberRepository.findByUserIdAndOrganizationId(
+            user.getId(), invitation.getOrganizationId());
+        if (existingMemberOpt.isPresent()) {
+            throw new RuntimeException("User is already a team member");
+        }
+
+        // Create team member record
+        TeamMember teamMember = new TeamMember();
+        teamMember.setId("tm_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+        teamMember.setUserId(user.getId());
+        teamMember.setOrganizationId(invitation.getOrganizationId());
+        teamMember.setRole(invitation.getRole());
+        teamMember.setStatus(UserStatus.ACTIVE);
+        teamMember.setJoinedAt(LocalDateTime.now());
+        teamMember.setInvitedBy(invitation.getInvitedByUserId());
+
+        try {
+            teamMember = teamMemberRepository.save(teamMember);
+            logger.info("Saved team member: {}", teamMember.getId());
+        } catch (Exception e) {
+            logger.error("Failed to save team member: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to save team member: " + e.getMessage(), e);
+        }
+
+        // Mark invitation accepted
+        try {
+            invitation.acceptInvitation(user.getId());
+            teamMemberInvitationRepository.save(invitation);
+            logger.info("Invitation marked ACCEPTED");
+        } catch (Exception e) {
+            logger.error("Failed to update invitation status: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to update invitation status: " + e.getMessage(), e);
+        }
+
+        // Issue JWT tokens when a new user was just created so the UI can log them in immediately
+        String accessToken = null;
+        String refreshToken = null;
+        if (isNewUser) {
+            accessToken = jwtService.generateAccessToken(user);
+            refreshToken = jwtService.generateRefreshToken(user);
+        }
+
+        logger.info("Successfully accepted invitation for user: {} (isNewUser={})", user.getId(), isNewUser);
+        return new InvitationAcceptResult(mapToResponse(teamMember), accessToken, refreshToken, isNewUser, isPasswordTemporary);
     }
 
     /**
@@ -1259,5 +1267,34 @@ public class TeamMemberService {
         
         logger.info("Expired {} old invitations", expiredCount);
         return expiredCount;
+    }
+
+    /**
+     * Result returned from {@link #acceptInvitationByToken}.
+     * When {@code isNewUser} is true, {@code accessToken} and {@code refreshToken} are populated
+     * so the client can log the newly created user in immediately. When {@code isPasswordTemporary}
+     * is true the user should be prompted to set a permanent password.
+     */
+    public static class InvitationAcceptResult {
+        private final TeamMemberResponse teamMember;
+        private final String accessToken;
+        private final String refreshToken;
+        private final boolean isNewUser;
+        private final boolean isPasswordTemporary;
+
+        public InvitationAcceptResult(TeamMemberResponse teamMember, String accessToken,
+                                      String refreshToken, boolean isNewUser, boolean isPasswordTemporary) {
+            this.teamMember = teamMember;
+            this.accessToken = accessToken;
+            this.refreshToken = refreshToken;
+            this.isNewUser = isNewUser;
+            this.isPasswordTemporary = isPasswordTemporary;
+        }
+
+        public TeamMemberResponse getTeamMember() { return teamMember; }
+        public String getAccessToken() { return accessToken; }
+        public String getRefreshToken() { return refreshToken; }
+        public boolean isNewUser() { return isNewUser; }
+        public boolean isPasswordTemporary() { return isPasswordTemporary; }
     }
 }

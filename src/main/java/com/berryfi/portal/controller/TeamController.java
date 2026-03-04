@@ -254,49 +254,51 @@ public class TeamController {
         /**
      * Accept a team invitation using the invitation token.
      * POST /api/team/invitations/token/{token}/accept
-     * This endpoint works without authentication and will:
-     * - If user exists: Accept the invitation for existing user
-     * - If user doesn't exist: Redirect to registration endpoint
+     * Works without authentication. If the invited email has no account, one is created on the fly.
      */
+    /**
+     * Optional request body for the accept-invitation endpoint.
+     * If the invited email has no account yet, {@code name} and {@code password} are used
+     * to create one on the fly. Both fields are optional — name defaults to the email prefix
+     * and a random password is generated when omitted (returned {@code isPasswordTemporary=true}).
+     */
+    public static class AcceptInvitationBody {
+        private String name;
+        private String password;
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+    }
+
     @PostMapping("/invitations/token/{token}/accept")
-    public ResponseEntity<?> acceptInvitationByToken(@PathVariable String token) {
-        
+    public ResponseEntity<?> acceptInvitationByToken(
+            @PathVariable String token,
+            @RequestBody(required = false) AcceptInvitationBody body) {
+
         logger.info("Accepting team invitation for token: {}", token);
-        
+
+        String name     = body != null ? body.getName()     : null;
+        String password = body != null ? body.getPassword() : null;
+
         try {
-            // Try to accept invitation without authentication (for existing users)
-            TeamMemberResponse response = teamMemberService.acceptInvitationByToken(token);
-            return ResponseEntity.ok(response);
+            TeamMemberService.InvitationAcceptResult result =
+                teamMemberService.acceptInvitationByToken(token, name, password);
+            return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
-            logger.info("Could not accept invitation without authentication: {}", e.getMessage());
-            
-            // If user doesn't exist, return structured response so frontend can redirect to registration
-            if (e.getMessage() != null && e.getMessage().contains("No user found with email")) {
-                String inviteEmail = null;
-                try {
-                    TeamMemberResponse invitation = teamMemberService.getInvitationByToken(token);
-                    inviteEmail = invitation.getUserEmail();
-                } catch (Exception ignored) {
-                    // best-effort: proceed without email
-                }
-                return ResponseEntity.status(422).body(
-                    new RegistrationRequiredResponse(
-                        "User account not found. Please complete registration to accept this invitation.",
-                        token,
-                        inviteEmail
-                    )
-                );
-            }
-            
+            logger.error("Error accepting team invitation by token: {}", e.getMessage());
+
             // If user is already a team member
-            if (e.getMessage().contains("User is already a team member")) {
+            if (e.getMessage() != null && e.getMessage().contains("User is already a team member")) {
                 return ResponseEntity.status(409).body(
                     new ErrorResponse("User is already a team member. The invitation has already been accepted.")
                 );
             }
-            
+
             // If invitation is not pending
-            if (e.getMessage().contains("Invitation is not pending")) {
+            if (e.getMessage() != null && e.getMessage().contains("Invitation is not pending")) {
                 return ResponseEntity.status(410).body(
                     new ErrorResponse("This invitation is no longer valid. It may have already been processed or expired.")
                 );
