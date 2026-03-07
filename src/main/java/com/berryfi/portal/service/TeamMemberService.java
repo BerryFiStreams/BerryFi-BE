@@ -430,6 +430,8 @@ public class TeamMemberService {
         TeamMember teamMember = new TeamMember();
         teamMember.setId("tm_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
         teamMember.setUserId(user.getId());
+        teamMember.setUserName(user.getName());   // NOT NULL in DB
+        teamMember.setEmail(user.getEmail());      // NOT NULL in DB
         teamMember.setOrganizationId(invitation.getOrganizationId());
         teamMember.setRole(invitation.getRole());
         teamMember.setStatus(UserStatus.ACTIVE);
