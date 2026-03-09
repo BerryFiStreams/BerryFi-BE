@@ -207,6 +207,50 @@ public class AzureVmService {
     }
 
     /**
+     * Get VM's public IP address from Azure
+     * @param vm The VM instance to fetch the public IP for
+     * @return The public IP address, or null if not available
+     */
+    public String getVmPublicIpAddress(VmInstance vm) {
+        try {
+            logger.debug("Getting public IP for VM: {} (Azure Resource: {}) in subscription: {}", 
+                vm.getVmName(), vm.getAzureResourceId(), vm.getAzureSubscriptionId());
+            
+            if (!statusSyncEnabled) {
+                logger.debug("Azure sync disabled, cannot fetch IP for: {}", vm.getVmName());
+                return null;
+            }
+            
+            AzureResourceManager azure = getOrCreateAzureClient(vm);
+            VirtualMachine virtualMachine = azure.virtualMachines()
+                .getByResourceGroup(vm.getAzureResourceGroup(), vm.getVmName());
+                
+            if (virtualMachine == null) {
+                logger.error("VM not found in Azure: {} in resource group: {}", 
+                    vm.getVmName(), vm.getAzureResourceGroup());
+                return null;
+            }
+            
+            // Get the primary public IP address
+            String publicIp = virtualMachine.getPrimaryPublicIPAddress() != null 
+                ? virtualMachine.getPrimaryPublicIPAddress().ipAddress() 
+                : null;
+            
+            if (publicIp != null) {
+                logger.info("Found public IP for VM {}: {}", vm.getVmName(), publicIp);
+            } else {
+                logger.debug("No public IP found for VM: {}", vm.getVmName());
+            }
+            
+            return publicIp;
+            
+        } catch (Exception e) {
+            logger.error("Failed to get public IP for VM {}: {}", vm.getVmName(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
      * Get VM details from Azure using its specific credentials
      */
     public VmDetails getVmDetails(VmInstance vm) {

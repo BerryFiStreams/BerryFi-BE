@@ -38,6 +38,7 @@ public class VmMonitoringService {
     /**
      * Monitor for sessions that have timed out (no heartbeat)
      * Runs every 10 seconds to ensure quick detection of inactive sessions
+     * Only checks ACTIVE sessions - STARTING sessions need more time to boot
      */
     @Scheduled(fixedRate = 10000) // 10 seconds
     public void monitorTimedOutSessions() {
@@ -46,7 +47,7 @@ public class VmMonitoringService {
             List<VmSession> timedOutSessions = vmSessionService.getTimedOutSessions();
             
             if (!timedOutSessions.isEmpty()) {
-                logger.info("Found {} timed-out sessions (inactive >30s)", timedOutSessions.size());
+                logger.info("Found {} timed-out ACTIVE sessions (inactive >30s)", timedOutSessions.size());
                 
                 for (VmSession session : timedOutSessions) {
                     logger.info("Terminating inactive session: {} (User: {}, Duration: {} seconds, Last heartbeat: {})", 
@@ -55,7 +56,7 @@ public class VmMonitoringService {
                     
                     VmSessionResult result = vmSessionService.forceTerminateSession(
                         session.getId(), 
-                        "Session inactive - no heartbeat received for more than 30 seconds"
+                        "Session inactive - no heartbeat received for more than 180 seconds"
                     );
                     
                     if (result.isSuccess()) {
@@ -66,7 +67,30 @@ public class VmMonitoringService {
                     }
                 }
             } else {
-                logger.debug("No inactive sessions found (>30s without heartbeat)");
+                logger.debug("No inactive ACTIVE sessions found (>180s without heartbeat)");
+            }
+            
+            // Also check for stuck STARTING sessions (separate from heartbeat timeout)
+            List<VmSession> stuckStartingSessions = vmSessionService.getStuckStartingSessions();
+            if (!stuckStartingSessions.isEmpty()) {
+                logger.info("Found {} sessions stuck in STARTING state (>5 minutes)", stuckStartingSessions.size());
+                
+                for (VmSession session : stuckStartingSessions) {
+                    logger.info("Terminating stuck STARTING session: {} (User: {}, Duration: {} seconds)", 
+                        session.getId(), session.getUserId(), session.getDurationInSeconds());
+                    
+                    VmSessionResult result = vmSessionService.forceTerminateSession(
+                        session.getId(), 
+                        "Session stuck in STARTING state for more than 5 minutes - VM failed to boot"
+                    );
+                    
+                    if (result.isSuccess()) {
+                        logger.info("Successfully terminated stuck STARTING session: {}", session.getId());
+                    } else {
+                        logger.error("Failed to terminate stuck STARTING session {}: {}", 
+                            session.getId(), result.getMessage());
+                    }
+                }
             }
             
         } catch (Exception e) {

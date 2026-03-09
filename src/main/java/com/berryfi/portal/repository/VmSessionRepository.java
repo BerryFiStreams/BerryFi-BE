@@ -57,17 +57,23 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
 
     /**
      * Find ACTIVE and STARTING sessions that have timed out (no heartbeat for 30+ seconds)
-     * Targets sessions that are in ACTIVE or STARTING status. Sessions without any heartbeat
-     * are considered timed out if they've been active for at least minActiveTime.
+     * Targets sessions that are in ACTIVE status only. STARTING sessions are excluded
+     * because they can't send heartbeats until the VM is fully running and iframe loads.
+     * Sessions without any heartbeat are considered timed out if they've been active for at least minActiveTime.
      * Sessions with heartbeats are timed out if the last heartbeat was before cutoffTime.
-     * Ensures startTime has been updated after VM actually started (not equal to createdAt).
      */
-    @Query("SELECT s FROM VmSession s WHERE s.status IN ('ACTIVE', 'STARTING') " +
-           "AND s.startTime <> s.createdAt " +
+    @Query("SELECT s FROM VmSession s WHERE s.status = 'ACTIVE' " +
            "AND (s.startTime < :minActiveTime) " +
            "AND (s.lastHeartbeat IS NULL OR s.lastHeartbeat < :cutoffTime)")
     List<VmSession> findTimedOutSessions(@Param("cutoffTime") LocalDateTime cutoffTime, 
                                         @Param("minActiveTime") LocalDateTime minActiveTime);
+
+    /**
+     * Find sessions stuck in STARTING status for too long (VM failed to boot).
+     * Separate from heartbeat timeout - these sessions never transitioned to ACTIVE.
+     */
+    @Query("SELECT s FROM VmSession s WHERE s.status = 'STARTING' AND s.startTime < :maxStartingTime")
+    List<VmSession> findStuckStartingSessions(@Param("maxStartingTime") LocalDateTime maxStartingTime);
 
     /**
      * Find sessions needing heartbeat (haven't sent one recently)

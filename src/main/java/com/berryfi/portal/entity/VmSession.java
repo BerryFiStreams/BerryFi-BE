@@ -198,8 +198,10 @@ public class VmSession {
         this.status = SessionStatus.ACTIVE;
         this.vmIpAddress = ipAddress;
         this.vmPort = port;
+        // Set initial heartbeat when session becomes active - gives iframe time to load
+        this.lastHeartbeat = LocalDateTime.now();
         if (ipAddress != null && port != null) {
-            this.connectionUrl = String.format("http://%s:%d", ipAddress, port);
+            this.connectionUrl = String.format("http://%s:%d?sessionId=%s", ipAddress, port, this.id);
         }
     }
 

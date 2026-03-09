@@ -340,13 +340,24 @@ public class VmSessionService {
     }
 
     /**
-     * Get active sessions that have timed out
+     * Get active sessions that have timed out (no heartbeat)
+     * Only checks ACTIVE sessions - STARTING sessions can't send heartbeats yet
      */
     public List<VmSession> getTimedOutSessions() {
         LocalDateTime cutoffTime = LocalDateTime.now().minusSeconds(heartbeatTimeoutSeconds);
         // Ensure the VM has been active for at least 30 seconds before considering it for termination
         LocalDateTime minActiveTime = LocalDateTime.now().minusSeconds(heartbeatTimeoutSeconds);
         return vmSessionRepository.findTimedOutSessions(cutoffTime, minActiveTime);
+    }
+
+    /**
+     * Get sessions stuck in STARTING status for more than 5 minutes
+     * These sessions failed to transition to ACTIVE (VM boot failed)
+     */
+    public List<VmSession> getStuckStartingSessions() {
+        // Sessions starting for more than 5 minutes are considered stuck
+        LocalDateTime maxStartingTime = LocalDateTime.now().minusMinutes(5);
+        return vmSessionRepository.findStuckStartingSessions(maxStartingTime);
     }
 
     /**
@@ -414,6 +425,8 @@ public class VmSessionService {
                     
                     // Get real-time Azure VM status
                     VmStatus azureStatus = azureVmService.getVmStatus(vm);
+                    logger.info("Azure returned status {} for VM {} (current DB status: {})", 
+                        azureStatus, vm.getVmName(), vm.getStatus());
                     
                     // Update VM status if different
                     if (vm.getStatus() != azureStatus) {
@@ -421,6 +434,24 @@ public class VmSessionService {
                             vm.getVmName(), vm.getStatus(), azureStatus);
                         vm.setStatus(azureStatus);
                         vmUpdated = true;
+                    }
+                    
+                    // If VM is running but has no IP, fetch it from Azure
+                    if ((azureStatus == VmStatus.RUNNING || vm.getStatus() == VmStatus.RUNNING) 
+                        && vm.getIpAddress() == null) {
+                        logger.info("VM {} is RUNNING but has no IP, fetching from Azure...", vm.getVmName());
+                        String publicIp = azureVmService.getVmPublicIpAddress(vm);
+                        if (publicIp != null) {
+                            logger.info("Fetched public IP from Azure for VM {}: {}", vm.getVmName(), publicIp);
+                            vm.setIpAddress(publicIp);
+                            // Use stored port or default to 8081
+                            Integer port = vm.getPort() != null ? vm.getPort() : 8081;
+                            vm.setPort(port);
+                            vm.setConnectionUrl(String.format("http://%s:%d", publicIp, port));
+                            vmUpdated = true;
+                        } else {
+                            logger.warn("Could not fetch public IP from Azure for VM {}", vm.getVmName());
+                        }
                     }
                     
                     if (vmUpdated) {
@@ -441,10 +472,13 @@ public class VmSessionService {
                     session.setVmPort(vm.getPort());
                     sessionUpdated = true;
                 }
-                if (session.getConnectionUrl() == null && vm.getConnectionUrl() != null) {
-                    logger.info("Copying connection URL from VM {} to session {}: {}", 
-                        vm.getId(), session.getId(), vm.getConnectionUrl());
-                    session.setConnectionUrl(vm.getConnectionUrl());
+                if (session.getConnectionUrl() == null && vm.getIpAddress() != null && vm.getPort() != null) {
+                    // Build connection URL with sessionId as query param
+                    String connectionUrl = String.format("http://%s:%d?sessionId=%s", 
+                        vm.getIpAddress(), vm.getPort(), session.getId());
+                    logger.info("Setting connection URL for session {}: {}", 
+                        session.getId(), connectionUrl);
+                    session.setConnectionUrl(connectionUrl);
                     sessionUpdated = true;
                 }
                 
@@ -453,9 +487,14 @@ public class VmSessionService {
                     vm.getStatus() == VmStatus.RUNNING &&
                     session.getVmIpAddress() != null && 
                     session.getVmPort() != null) {
-                    logger.info("VM {} is RUNNING with connection details - marking session {} as ACTIVE", 
+                    logger.info("=== SESSION ACTIVATION ===");
+                    logger.info("VM {} status is RUNNING - transitioning session {} from STARTING to ACTIVE", 
                         vm.getVmName(), session.getId());
+                    logger.info("Session {} connection details: IP={}, Port={}, URL={}", 
+                        session.getId(), session.getVmIpAddress(), session.getVmPort(), session.getConnectionUrl());
                     session.markAsActive(session.getVmIpAddress(), session.getVmPort());
+                    logger.info("Session {} is now ACTIVE with initial heartbeat set to: {}", 
+                        session.getId(), session.getLastHeartbeat());
                     sessionUpdated = true;
                 }
                 

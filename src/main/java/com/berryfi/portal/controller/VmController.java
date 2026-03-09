@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -52,6 +53,10 @@ public class VmController {
     // SSE emitters and their scheduled tasks for real-time session status updates
     private final Map<String, SseEmitter> sessionEmitters = new ConcurrentHashMap<>();
     private final Map<String, java.util.concurrent.ScheduledFuture<?>> sessionTasks = new ConcurrentHashMap<>();
+    // Track emitter versions to detect stale tasks (incremented on each new connection)
+    private final Map<String, Long> emitterVersions = new ConcurrentHashMap<>();
+    // Track completed sessions to prevent sending after completion
+    private final Set<String> completedSessions = ConcurrentHashMap.newKeySet();
     private final ScheduledExecutorService sseScheduler = Executors.newScheduledThreadPool(2);
 
     @Autowired
@@ -295,14 +300,25 @@ public class VmController {
         // Close any existing connection for this session (handles React StrictMode double-mount)
         cleanupSession(sessionId);
         
+        // Remove from completed set since we're starting fresh
+        completedSessions.remove(sessionId);
+        
         // Create emitter with 5 minute timeout
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
+        
+        // Increment version to invalidate any stale tasks
+        long currentVersion = emitterVersions.compute(sessionId, (k, v) -> (v == null ? 0 : v) + 1);
         
         // Store emitter for this session
         sessionEmitters.put(sessionId, emitter);
         
-        // Cleanup handler
-        Runnable cleanup = () -> cleanupSession(sessionId);
+        // Cleanup handler - only clean up if this is still the current version
+        Runnable cleanup = () -> {
+            Long storedVersion = emitterVersions.get(sessionId);
+            if (storedVersion != null && storedVersion == currentVersion) {
+                cleanupSession(sessionId);
+            }
+        };
         
         emitter.onCompletion(() -> {
             logger.debug("SSE connection completed for session: {}", sessionId);
@@ -317,21 +333,40 @@ public class VmController {
             cleanup.run();
         });
         
+        // Capture version for task closure
+        final long taskVersion = currentVersion;
+        
         // Start pushing status updates and store the scheduled task
         java.util.concurrent.ScheduledFuture<?> task = sseScheduler.scheduleAtFixedRate(() -> {
+            // Check if session is already completed/cleaned up
+            if (completedSessions.contains(sessionId)) {
+                logger.debug("SSE task for session {} found session in completed set, stopping", sessionId);
+                return;
+            }
+            
+            // Check if this task's version is still current (not superseded by newer connection)
+            Long storedVersion = emitterVersions.get(sessionId);
+            if (storedVersion == null || storedVersion != taskVersion) {
+                // This task is stale (newer connection exists), stop running
+                logger.debug("SSE task for session {} is stale (version {} vs {}), stopping", 
+                    sessionId, taskVersion, storedVersion);
+                return;
+            }
+            
             SseEmitter currentEmitter = sessionEmitters.get(sessionId);
-            if (currentEmitter == null || currentEmitter != emitter) {
-                // Emitter was removed or replaced, cancel this task
-                java.util.concurrent.ScheduledFuture<?> currentTask = sessionTasks.get(sessionId);
-                if (currentTask != null) {
-                    currentTask.cancel(false);
-                    sessionTasks.remove(sessionId);
-                }
+            if (currentEmitter == null) {
+                // Emitter was removed
                 return;
             }
             
             try {
                 Optional<VmSession> sessionOpt = vmSessionService.getSessionWithRealTimeStatus(sessionId);
+                
+                // Re-check if session was completed while we were fetching status
+                if (completedSessions.contains(sessionId)) {
+                    logger.debug("SSE task for session {} found session completed after status fetch, stopping", sessionId);
+                    return;
+                }
                 
                 if (sessionOpt.isEmpty()) {
                     try {
@@ -339,7 +374,7 @@ public class VmController {
                             .name("error")
                             .data("{\"error\": \"Session not found\"}"));
                     } catch (IOException ignored) {}
-                    currentEmitter.complete();
+                    cleanupSession(sessionId);
                     return;
                 }
                 
@@ -350,26 +385,42 @@ public class VmController {
                     vmInstance = vmOpt.orElse(null);
                 }
                 
+                logger.debug("SSE check for session {}: VM status={}, IP={}, Port={}", 
+                    sessionId, 
+                    vmInstance != null ? vmInstance.getStatus() : "N/A",
+                    session.getVmIpAddress(), 
+                    session.getVmPort());
+                
                 VmSessionResponseDto response = new VmSessionResponseDto(session, vmInstance);
                 
-                // Check if session is ready (has IP and port) before sending status
-                boolean isReady = session.getVmIpAddress() != null && session.getVmPort() != null;
+                // Check if session is ready: must have IP, port, AND VM must be RUNNING
+                boolean vmIsRunning = vmInstance != null && 
+                    vmInstance.getStatus() == com.berryfi.portal.enums.VmStatus.RUNNING;
+                boolean isReady = session.getVmIpAddress() != null && 
+                                  session.getVmPort() != null &&
+                                  vmIsRunning;
                 boolean isFailed = session.getStatus().name().equals("FAILED") || 
                                    session.getStatus().name().equals("TERMINATED");
                 
+                // Final check before sending
+                if (completedSessions.contains(sessionId)) {
+                    return;
+                }
+                
                 if (isReady) {
-                    logger.info("SSE: Session {} is ready (IP: {}, Port: {}), sending ready event", 
-                        sessionId, session.getVmIpAddress(), session.getVmPort());
+                    logger.info("SSE: Session {} is ready (IP: {}, Port: {}, VM Status: {}), sending ready event", 
+                        sessionId, session.getVmIpAddress(), session.getVmPort(), 
+                        vmInstance != null ? vmInstance.getStatus() : "N/A");
                     currentEmitter.send(SseEmitter.event()
                         .name("ready")
                         .data(response));
-                    currentEmitter.complete();
+                    cleanupSession(sessionId);
                 } else if (isFailed) {
                     logger.info("SSE: Session {} failed/terminated, completing stream", sessionId);
                     currentEmitter.send(SseEmitter.event()
                         .name("status")
                         .data(response));
-                    currentEmitter.complete();
+                    cleanupSession(sessionId);
                 } else {
                     // Send regular status update
                     currentEmitter.send(SseEmitter.event()
@@ -397,6 +448,9 @@ public class VmController {
      * Clean up SSE resources for a session
      */
     private void cleanupSession(String sessionId) {
+        // Mark session as completed FIRST to prevent any more sends
+        completedSessions.add(sessionId);
+        
         // Cancel scheduled task
         java.util.concurrent.ScheduledFuture<?> task = sessionTasks.remove(sessionId);
         if (task != null) {
