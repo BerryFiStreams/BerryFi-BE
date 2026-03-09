@@ -197,9 +197,9 @@ public class VmInstance {
     public void markAsStopped() {
         this.status = VmStatus.STOPPED;
         this.lastStopped = LocalDateTime.now();
-        this.ipAddress = null;
-        this.port = null;
-        this.connectionUrl = null;
+        // Note: We preserve ipAddress, port, and connectionUrl as they represent
+        // the VM's static configuration, not just the current session's connection details.
+        // These values should persist across sessions for VMs with static IPs.
         
         // Calculate runtime if we have start and stop times
         if (this.lastStarted != null && this.lastStopped != null) {

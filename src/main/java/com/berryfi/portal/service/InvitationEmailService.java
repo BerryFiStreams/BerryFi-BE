@@ -294,4 +294,39 @@ public class InvitationEmailService {
             // Don't throw exception - welcome email failure shouldn't break registration
         }
     }
+
+    /**
+     * Send password reset email to user.
+     */
+    public void sendPasswordResetEmail(String userEmail, String userName, String resetToken) {
+        logger.info("Sending password reset email to: {}", userEmail);
+        
+        try {
+            // Build reset link
+            String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
+            
+            // Generate password reset email content
+            String htmlContent = emailTemplateService.generatePasswordResetEmail(userName, resetLink);
+            
+            // Create and send email
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            helper.setTo(userEmail);
+            helper.setSubject("Reset Your Password - BerryFi Studio");
+            helper.setText("Hi " + userName + ", click this link to reset your password: " + resetLink, htmlContent);
+            helper.setFrom("no-reply@berryfi.com");
+            
+            mailSender.send(message);
+            
+            logger.info("Password reset email sent successfully to: {}", userEmail);
+            
+        } catch (MessagingException e) {
+            logger.error("Failed to send password reset email to {}: {}", userEmail, e.getMessage(), e);
+            throw new RuntimeException("Failed to send password reset email", e);
+        } catch (Exception e) {
+            logger.error("Unexpected error sending password reset email to {}: {}", userEmail, e.getMessage(), e);
+            throw new RuntimeException("Failed to send password reset email", e);
+        }
+    }
 }

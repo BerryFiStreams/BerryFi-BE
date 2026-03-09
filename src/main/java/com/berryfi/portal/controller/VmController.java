@@ -21,14 +21,22 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * REST controller for VM session management.
@@ -40,6 +48,11 @@ import java.util.Optional;
 public class VmController {
 
     private static final Logger logger = LoggerFactory.getLogger(VmController.class);
+
+    // SSE emitters and their scheduled tasks for real-time session status updates
+    private final Map<String, SseEmitter> sessionEmitters = new ConcurrentHashMap<>();
+    private final Map<String, java.util.concurrent.ScheduledFuture<?>> sessionTasks = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService sseScheduler = Executors.newScheduledThreadPool(2);
 
     @Autowired
     private VmSessionService vmSessionService;
@@ -266,6 +279,138 @@ public class VmController {
             logger.error("Failed to get session: " + e.getMessage(), e);
             return ResponseEntity.internalServerError()
                 .body(ApiResponse.error("Failed to get session: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * SSE endpoint for real-time session status updates.
+     * Client subscribes once and receives push updates as VM status changes.
+     * This eliminates the need for polling.
+     */
+    @GetMapping(value = "/sessions/{sessionId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "Stream session status updates via SSE")
+    public SseEmitter streamSessionStatus(@PathVariable String sessionId) {
+        logger.info("SSE connection requested for session: {}", sessionId);
+        
+        // Close any existing connection for this session (handles React StrictMode double-mount)
+        cleanupSession(sessionId);
+        
+        // Create emitter with 5 minute timeout
+        SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
+        
+        // Store emitter for this session
+        sessionEmitters.put(sessionId, emitter);
+        
+        // Cleanup handler
+        Runnable cleanup = () -> cleanupSession(sessionId);
+        
+        emitter.onCompletion(() -> {
+            logger.debug("SSE connection completed for session: {}", sessionId);
+            cleanup.run();
+        });
+        emitter.onTimeout(() -> {
+            logger.debug("SSE connection timed out for session: {}", sessionId);
+            cleanup.run();
+        });
+        emitter.onError(e -> {
+            logger.debug("SSE connection error for session {}: {}", sessionId, e.getMessage());
+            cleanup.run();
+        });
+        
+        // Start pushing status updates and store the scheduled task
+        java.util.concurrent.ScheduledFuture<?> task = sseScheduler.scheduleAtFixedRate(() -> {
+            SseEmitter currentEmitter = sessionEmitters.get(sessionId);
+            if (currentEmitter == null || currentEmitter != emitter) {
+                // Emitter was removed or replaced, cancel this task
+                java.util.concurrent.ScheduledFuture<?> currentTask = sessionTasks.get(sessionId);
+                if (currentTask != null) {
+                    currentTask.cancel(false);
+                    sessionTasks.remove(sessionId);
+                }
+                return;
+            }
+            
+            try {
+                Optional<VmSession> sessionOpt = vmSessionService.getSessionWithRealTimeStatus(sessionId);
+                
+                if (sessionOpt.isEmpty()) {
+                    try {
+                        currentEmitter.send(SseEmitter.event()
+                            .name("error")
+                            .data("{\"error\": \"Session not found\"}"));
+                    } catch (IOException ignored) {}
+                    currentEmitter.complete();
+                    return;
+                }
+                
+                VmSession session = sessionOpt.get();
+                VmInstance vmInstance = null;
+                if (session.getVmInstanceId() != null) {
+                    Optional<VmInstance> vmOpt = vmInstanceRepository.findById(session.getVmInstanceId());
+                    vmInstance = vmOpt.orElse(null);
+                }
+                
+                VmSessionResponseDto response = new VmSessionResponseDto(session, vmInstance);
+                
+                // Check if session is ready (has IP and port) before sending status
+                boolean isReady = session.getVmIpAddress() != null && session.getVmPort() != null;
+                boolean isFailed = session.getStatus().name().equals("FAILED") || 
+                                   session.getStatus().name().equals("TERMINATED");
+                
+                if (isReady) {
+                    logger.info("SSE: Session {} is ready (IP: {}, Port: {}), sending ready event", 
+                        sessionId, session.getVmIpAddress(), session.getVmPort());
+                    currentEmitter.send(SseEmitter.event()
+                        .name("ready")
+                        .data(response));
+                    currentEmitter.complete();
+                } else if (isFailed) {
+                    logger.info("SSE: Session {} failed/terminated, completing stream", sessionId);
+                    currentEmitter.send(SseEmitter.event()
+                        .name("status")
+                        .data(response));
+                    currentEmitter.complete();
+                } else {
+                    // Send regular status update
+                    currentEmitter.send(SseEmitter.event()
+                        .name("status")
+                        .data(response));
+                    
+                    logger.debug("SSE sent status for session {}: status={}, vmStatus={}", 
+                        sessionId, session.getStatus(), vmInstance != null ? vmInstance.getStatus() : "N/A");
+                }
+                
+            } catch (IOException e) {
+                logger.debug("SSE send failed for session {}: {}", sessionId, e.getMessage());
+                cleanupSession(sessionId);
+            } catch (Exception e) {
+                logger.error("SSE error for session {}: {}", sessionId, e.getMessage());
+            }
+        }, 0, 3, TimeUnit.SECONDS); // Check every 3 seconds
+        
+        sessionTasks.put(sessionId, task);
+        
+        return emitter;
+    }
+    
+    /**
+     * Clean up SSE resources for a session
+     */
+    private void cleanupSession(String sessionId) {
+        // Cancel scheduled task
+        java.util.concurrent.ScheduledFuture<?> task = sessionTasks.remove(sessionId);
+        if (task != null) {
+            task.cancel(false);
+            logger.debug("Cancelled SSE task for session: {}", sessionId);
+        }
+        
+        // Remove emitter
+        SseEmitter emitter = sessionEmitters.remove(sessionId);
+        if (emitter != null) {
+            try {
+                emitter.complete();
+            } catch (Exception ignored) {}
+            logger.debug("Removed SSE emitter for session: {}", sessionId);
         }
     }
 

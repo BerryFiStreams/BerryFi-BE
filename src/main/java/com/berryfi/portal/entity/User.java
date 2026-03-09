@@ -75,6 +75,13 @@ public class User implements UserDetails {
     @Column(name = "refresh_token")
     private String refreshToken;
 
+    @JsonIgnore
+    @Column(name = "password_reset_token")
+    private String passwordResetToken;
+
+    @Column(name = "password_reset_token_expiry")
+    private LocalDateTime passwordResetTokenExpiry;
+
     public User() {
         this.id = generateUserId();
         this.createdAt = LocalDateTime.now();
@@ -231,6 +238,22 @@ public class User implements UserDetails {
 
     public void setRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
+    }
+
+    public String getPasswordResetToken() {
+        return passwordResetToken;
+    }
+
+    public void setPasswordResetToken(String passwordResetToken) {
+        this.passwordResetToken = passwordResetToken;
+    }
+
+    public LocalDateTime getPasswordResetTokenExpiry() {
+        return passwordResetTokenExpiry;
+    }
+
+    public void setPasswordResetTokenExpiry(LocalDateTime passwordResetTokenExpiry) {
+        this.passwordResetTokenExpiry = passwordResetTokenExpiry;
     }
 
     // Helper methods for role checking

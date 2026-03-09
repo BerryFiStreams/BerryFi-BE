@@ -448,6 +448,17 @@ public class VmSessionService {
                     sessionUpdated = true;
                 }
                 
+                // Transition session to ACTIVE when VM is RUNNING and we have connection details
+                if (session.getStatus() == SessionStatus.STARTING && 
+                    vm.getStatus() == VmStatus.RUNNING &&
+                    session.getVmIpAddress() != null && 
+                    session.getVmPort() != null) {
+                    logger.info("VM {} is RUNNING with connection details - marking session {} as ACTIVE", 
+                        vm.getVmName(), session.getId());
+                    session.markAsActive(session.getVmIpAddress(), session.getVmPort());
+                    sessionUpdated = true;
+                }
+                
                 if (sessionUpdated) {
                     logger.info("Saving session {} with updated connection details", session.getId());
                     session = vmSessionRepository.save(session);

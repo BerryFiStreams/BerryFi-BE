@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -194,6 +195,54 @@ public class AuthService {
         }
 
         SecurityContextHolder.clearContext();
+    }
+
+    /**
+     * Initiate forgot password flow by generating reset token and sending email.
+     */
+    public void forgotPassword(String email) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        
+        // Always return success to prevent email enumeration attacks
+        if (userOptional.isEmpty()) {
+            return;
+        }
+        
+        User user = userOptional.get();
+        
+        // Generate reset token
+        String resetToken = UUID.randomUUID().toString();
+        user.setPasswordResetToken(resetToken);
+        user.setPasswordResetTokenExpiry(LocalDateTime.now().plusHours(1)); // Token expires in 1 hour
+        userRepository.save(user);
+        
+        // Send password reset email
+        try {
+            invitationEmailService.sendPasswordResetEmail(user.getEmail(), user.getName(), resetToken);
+        } catch (Exception e) {
+            // Log error but don't fail - user can request again
+            System.err.println("Failed to send password reset email: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Reset password using reset token.
+     */
+    public void resetPassword(String token, String newPassword) {
+        User user = userRepository.findByPasswordResetToken(token)
+                .orElseThrow(() -> new AuthenticationException("Invalid or expired reset token"));
+        
+        // Check if token has expired
+        if (user.getPasswordResetTokenExpiry() == null || 
+            user.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new AuthenticationException("Reset token has expired. Please request a new password reset.");
+        }
+        
+        // Update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordResetToken(null);
+        user.setPasswordResetTokenExpiry(null);
+        userRepository.save(user);
     }
 
     /**

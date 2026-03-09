@@ -1,10 +1,12 @@
 package com.berryfi.portal.controller;
 
 import com.berryfi.portal.dto.auth.AuthResponse;
+import com.berryfi.portal.dto.auth.ForgotPasswordRequest;
 import com.berryfi.portal.dto.auth.LoginRequest;
 import com.berryfi.portal.dto.auth.RefreshTokenRequest;
 import com.berryfi.portal.dto.auth.RefreshTokenResponse;
 import com.berryfi.portal.dto.auth.RegisterRequest;
+import com.berryfi.portal.dto.auth.ResetPasswordRequest;
 import com.berryfi.portal.dto.error.ApiError;
 import com.berryfi.portal.dto.user.UserDto;
 import com.berryfi.portal.exception.AuthenticationException;
@@ -109,6 +111,47 @@ public class AuthController {
         } catch (AuthenticationException e) {
             ApiError error = new ApiError(401, e.getMessage(), "Unauthorized");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        } catch (Exception e) {
+            ApiError error = new ApiError(500, "Internal Server Error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Forgot password endpoint - initiates password reset flow.
+     * POST /api/auth/forgot-password
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        try {
+            authService.forgotPassword(request.getEmail());
+            // Always return success to prevent email enumeration attacks
+            return ResponseEntity.ok().body(java.util.Map.of(
+                "message", "If an account exists with this email, a password reset link has been sent."
+            ));
+        } catch (Exception e) {
+            // Log error but still return success to prevent email enumeration
+            System.err.println("Error during forgot password: " + e.getMessage());
+            return ResponseEntity.ok().body(java.util.Map.of(
+                "message", "If an account exists with this email, a password reset link has been sent."
+            ));
+        }
+    }
+
+    /**
+     * Reset password endpoint - completes password reset flow.
+     * POST /api/auth/reset-password
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            authService.resetPassword(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok().body(java.util.Map.of(
+                "message", "Password has been reset successfully. You can now log in with your new password."
+            ));
+        } catch (AuthenticationException e) {
+            ApiError error = new ApiError(400, e.getMessage(), "Bad Request");
+            return ResponseEntity.badRequest().body(error);
         } catch (Exception e) {
             ApiError error = new ApiError(500, "Internal Server Error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
