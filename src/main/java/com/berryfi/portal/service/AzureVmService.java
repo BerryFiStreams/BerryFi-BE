@@ -193,7 +193,18 @@ public class AzureVmService {
             }
             
             PowerState powerState = virtualMachine.powerState();
+            if (powerState == null) {
+                logger.warn("Azure returned null power state for VM {}. Retaining cached status {}", 
+                    vm.getVmName(), vm.getStatus());
+                return vm.getStatus();
+            }
+
             VmStatus vmStatus = mapPowerStateToVmStatus(powerState);
+            if (vmStatus == VmStatus.ERROR) {
+                logger.warn("Azure returned unmapped power state {} for VM {}. Retaining cached status {}", 
+                    powerState, vm.getVmName(), vm.getStatus());
+                return vm.getStatus();
+            }
             
             logger.debug("Azure VM {} power state: {} -> mapped to: {}", 
                 vm.getVmName(), powerState, vmStatus);
@@ -201,8 +212,9 @@ public class AzureVmService {
             return vmStatus;
             
         } catch (Exception e) {
-            logger.error("Failed to get status for VM {}: {}", vm.getVmName(), e.getMessage(), e);
-            return VmStatus.ERROR;
+            logger.error("Failed to get status for VM {}: {}. Retaining cached status {}", 
+                vm.getVmName(), e.getMessage(), vm.getStatus(), e);
+            return vm.getStatus();
         }
     }
 

@@ -429,7 +429,10 @@ public class VmSessionService {
                         azureStatus, vm.getVmName(), vm.getStatus());
                     
                     // Update VM status if different
-                    if (vm.getStatus() != azureStatus) {
+                    if (azureStatus == VmStatus.ERROR) {
+                        logger.warn("Azure status check failed for VM {}. Retaining cached VM status {} for session {}", 
+                            vm.getVmName(), vm.getStatus(), session.getId());
+                    } else if (vm.getStatus() != azureStatus) {
                         logger.info("Updating VM {} status from {} to {} (real-time check)", 
                             vm.getVmName(), vm.getStatus(), azureStatus);
                         vm.setStatus(azureStatus);
