@@ -450,7 +450,9 @@ public class VmSessionService {
                             // Use stored port or default to 8081
                             Integer port = vm.getPort() != null ? vm.getPort() : 8081;
                             vm.setPort(port);
-                            vm.setConnectionUrl(String.format("http://%s:%d", publicIp, port));
+                            if (vm.getConnectionUrl() == null || vm.getConnectionUrl().isBlank()) {
+                                vm.setConnectionUrl(String.format("http://%s:%d", publicIp, port));
+                            }
                             vmUpdated = true;
                         } else {
                             logger.warn("Could not fetch public IP from Azure for VM {}", vm.getVmName());
@@ -475,14 +477,21 @@ public class VmSessionService {
                     session.setVmPort(vm.getPort());
                     sessionUpdated = true;
                 }
-                if (session.getConnectionUrl() == null && vm.getIpAddress() != null && vm.getPort() != null) {
-                    // Build connection URL with sessionId as query param
-                    String connectionUrl = String.format("http://%s:%d?sessionId=%s", 
-                        vm.getIpAddress(), vm.getPort(), session.getId());
-                    logger.info("Setting connection URL for session {}: {}", 
-                        session.getId(), connectionUrl);
-                    session.setConnectionUrl(connectionUrl);
-                    sessionUpdated = true;
+                if (session.getConnectionUrl() == null || session.getConnectionUrl().isBlank()) {
+                    String baseConnectionUrl = vm.getConnectionUrl();
+                    if ((baseConnectionUrl == null || baseConnectionUrl.isBlank()) && vm.getIpAddress() != null && vm.getPort() != null) {
+                        baseConnectionUrl = String.format("http://%s:%d", vm.getIpAddress(), vm.getPort());
+                    }
+
+                    if (baseConnectionUrl != null && !baseConnectionUrl.isBlank()) {
+                        String connectionUrl = baseConnectionUrl.contains("?")
+                            ? baseConnectionUrl + "&sessionId=" + session.getId()
+                            : baseConnectionUrl + "?sessionId=" + session.getId();
+                        logger.info("Setting connection URL for session {}: {}", 
+                            session.getId(), connectionUrl);
+                        session.setConnectionUrl(connectionUrl);
+                        sessionUpdated = true;
+                    }
                 }
                 
                 // Transition session to ACTIVE when VM is RUNNING and we have connection details

@@ -185,7 +185,7 @@ public class VmInstance {
         this.status = VmStatus.RUNNING;
         this.ipAddress = ipAddress;
         this.port = port;
-        if (ipAddress != null && port != null) {
+        if ((this.connectionUrl == null || this.connectionUrl.isBlank()) && ipAddress != null && port != null) {
             this.connectionUrl = String.format("http://%s:%d", ipAddress, port);
         }
     }

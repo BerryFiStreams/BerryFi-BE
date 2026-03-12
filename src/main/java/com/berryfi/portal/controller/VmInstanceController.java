@@ -164,6 +164,14 @@ public class VmInstanceController {
                 vmInstance.setDescription(request.getDescription());
             }
 
+            if (request.getIpAddress() != null && !request.getIpAddress().trim().isEmpty()) {
+                vmInstance.setIpAddress(request.getIpAddress().trim());
+            }
+
+            if (request.getConnectionUrl() != null && !request.getConnectionUrl().trim().isEmpty()) {
+                vmInstance.setConnectionUrl(request.getConnectionUrl().trim());
+            }
+
             vmInstance = vmInstanceRepository.save(vmInstance);
             
             logger.info("Created VM instance: {} for project: {}", vmInstance.getId(), vmInstance.getProjectId());
@@ -450,6 +458,12 @@ public class VmInstanceController {
             if (request.getDescription() != null) {
                 vmInstance.setDescription(request.getDescription().trim());
             }
+            if (request.getIpAddress() != null) {
+                vmInstance.setIpAddress(request.getIpAddress().trim().isEmpty() ? null : request.getIpAddress().trim());
+            }
+            if (request.getConnectionUrl() != null) {
+                vmInstance.setConnectionUrl(request.getConnectionUrl().trim().isEmpty() ? null : request.getConnectionUrl().trim());
+            }
 
             vmInstance = vmInstanceRepository.save(vmInstance);
             
@@ -504,6 +518,9 @@ public class VmInstanceController {
             maskedInstance.setProjectId(vmInstance.getProjectId());
             maskedInstance.setCreatedAt(vmInstance.getCreatedAt());
             maskedInstance.setDescription(vmInstance.getDescription());
+            maskedInstance.setIpAddress(vmInstance.getIpAddress());
+            maskedInstance.setPort(vmInstance.getPort());
+            maskedInstance.setConnectionUrl(vmInstance.getConnectionUrl());
             
             return ResponseEntity.ok(ApiResponse.success("VM instance retrieved successfully", maskedInstance));
 
@@ -876,6 +893,13 @@ public class VmInstanceController {
         @Schema(description = "Project ID", example = "proj_12345", required = true)
         @NotBlank(message = "Project ID is required")
         private String projectId;
+
+        @Schema(description = "VM IP address", example = "10.0.0.100")
+        private String ipAddress;
+
+        @Schema(description = "VM connection URL", example = "https://vm1.makb.in", required = true)
+        @NotBlank(message = "Connection URL is required")
+        private String connectionUrl;
         
         @Schema(description = "Azure region", example = "East US")
         private String azureRegion;
@@ -910,6 +934,12 @@ public class VmInstanceController {
         
         public String getProjectId() { return projectId; }
         public void setProjectId(String projectId) { this.projectId = projectId; }
+
+        public String getIpAddress() { return ipAddress; }
+        public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
+
+        public String getConnectionUrl() { return connectionUrl; }
+        public void setConnectionUrl(String connectionUrl) { this.connectionUrl = connectionUrl; }
         
         public String getAzureRegion() { return azureRegion; }
         public void setAzureRegion(String azureRegion) { this.azureRegion = azureRegion; }
@@ -961,6 +991,12 @@ public class VmInstanceController {
         @Schema(description = "VM description", example = "Development VM for BerryFi project")
         private String description;
 
+        @Schema(description = "VM IP address", example = "10.0.0.100")
+        private String ipAddress;
+
+        @Schema(description = "VM connection URL", example = "https://vm1.makb.in")
+        private String connectionUrl;
+
         // Getters and setters
         public String getVmName() { return vmName; }
         public void setVmName(String vmName) { this.vmName = vmName; }
@@ -976,5 +1012,11 @@ public class VmInstanceController {
         
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
+
+        public String getIpAddress() { return ipAddress; }
+        public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
+
+        public String getConnectionUrl() { return connectionUrl; }
+        public void setConnectionUrl(String connectionUrl) { this.connectionUrl = connectionUrl; }
     }
 }
