@@ -58,6 +58,21 @@ public class UrlTrackingService {
     private ObjectMapper objectMapper;
 
     /**
+     * Return the publicly accessible base URL for a project (for use in project cards, etc.)
+     * Priority: customDomain (if verified) > subdomain > null (no public URL configured)
+     */
+    public String getProjectAccessUrl(Project project) {
+        if (project.getCustomDomain() != null &&
+            Boolean.TRUE.equals(project.getCustomDomainVerified())) {
+            return "https://" + project.getCustomDomain();
+        }
+        if (project.getSubdomain() != null && !project.getSubdomain().trim().isEmpty()) {
+            return "https://" + project.getSubdomain() + "." + appDomain;
+        }
+        return null;
+    }
+
+    /**
      * Build the base URL for a project based on custom domain or subdomain.
      * Priority: customDomain (if verified) > subdomain > default base URL
      */

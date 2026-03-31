@@ -15,6 +15,7 @@ public class ProjectSummary {
     private String name;
     private String description;
     private ProjectStatus status;
+    private String productionUrl; // Publicly accessible project URL (subdomain or custom domain)
     private String trackingUrl; // User-specific tracking URL
     private String organizationId;
     private AccountType accountType;
@@ -101,6 +102,14 @@ public class ProjectSummary {
 
     public void setStatus(ProjectStatus status) {
         this.status = status;
+    }
+
+    public String getProductionUrl() {
+        return productionUrl;
+    }
+
+    public void setProductionUrl(String productionUrl) {
+        this.productionUrl = productionUrl;
     }
 
     public String getTrackingUrl() {

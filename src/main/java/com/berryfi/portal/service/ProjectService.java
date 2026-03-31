@@ -153,6 +153,9 @@ public class ProjectService {
                     summary.setSessionsCount(sessionsCount != null ? sessionsCount.intValue() : 0);
                     summary.setUptime(uptime);
                     
+                    // Set the publicly accessible project URL
+                    summary.setProductionUrl(urlTrackingService.getProjectAccessUrl(project));
+
                     // Generate user-specific tracking URL using project's subdomain or custom domain
                     if (project.getLinks() != null && !project.getLinks().trim().isEmpty()) {
                         String trackingUrl = urlTrackingService.generateTrackingUrl(
@@ -423,7 +426,10 @@ public class ProjectService {
                     summary.setTotalCreditsUsed(totalCreditsUsed != null ? totalCreditsUsed : 0.0);
                     summary.setSessionsCount(sessionsCount != null ? sessionsCount.intValue() : 0);
                     summary.setUptime(uptime);
-                    
+
+                    // Set the publicly accessible project URL
+                    summary.setProductionUrl(urlTrackingService.getProjectAccessUrl(project));
+
                     // Generate user-specific tracking URL using project's subdomain or custom domain
                     if (project.getLinks() != null && !project.getLinks().trim().isEmpty()) {
                         String trackingUrl = urlTrackingService.generateTrackingUrl(
