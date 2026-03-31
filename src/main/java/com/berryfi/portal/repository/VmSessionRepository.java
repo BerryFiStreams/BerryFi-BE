@@ -89,6 +89,15 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
                                           @Param("endDate") LocalDateTime endDate, 
                                           Pageable pageable);
 
+    /**
+     * Find sessions by date range filtered by organization
+     */
+    @Query("SELECT s FROM VmSession s WHERE s.startTime BETWEEN :startDate AND :endDate AND s.organizationId = :organizationId ORDER BY s.startTime DESC")
+    Page<VmSession> findSessionsByDateRangeAndOrganization(@Param("startDate") LocalDateTime startDate,
+                                                           @Param("endDate") LocalDateTime endDate,
+                                                           @Param("organizationId") String organizationId,
+                                                           Pageable pageable);
+
 
 
 
@@ -188,4 +197,10 @@ public interface VmSessionRepository extends JpaRepository<VmSession, String> {
     @Query("SELECT MAX(s.startTime) FROM VmSession s WHERE s.projectId = :projectId AND s.organizationId = :organizationId AND s.status IN ('COMPLETED', 'TERMINATED')")
     LocalDateTime getLastUsageByProjectAndOrganization(@Param("projectId") String projectId, 
                                                       @Param("organizationId") String organizationId);
+
+    /**
+     * Count all completed/terminated sessions for an organization (dashboard stat)
+     */
+    @Query("SELECT COUNT(s) FROM VmSession s WHERE s.organizationId = :organizationId AND s.status IN ('COMPLETED', 'TERMINATED')")
+    Long countCompletedSessionsByOrganizationId(@Param("organizationId") String organizationId);
 }

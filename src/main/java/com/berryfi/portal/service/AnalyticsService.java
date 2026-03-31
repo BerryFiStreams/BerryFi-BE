@@ -22,9 +22,9 @@ public class AnalyticsService {
     private VmSessionRepository vmSessionRepository;
 
     /**
-     * Get usage analytics data with optional filters.
+     * Get usage analytics data with optional filters, scoped to the given organization.
      */
-    public UsageAnalyticsResponse getUsageAnalytics(String dateRange, String dateFrom, String dateTo,
+    public UsageAnalyticsResponse getUsageAnalytics(String organizationId, String dateRange, String dateFrom, String dateTo,
                                                    String filterType, String selectedFilter, String projectId) {
         // Parse date range - support both dateRange format (7d, 30d) and dateFrom/dateTo format
         LocalDateTime[] dateRangeParsed;
@@ -39,15 +39,15 @@ public class AnalyticsService {
         LocalDateTime startDate = dateRangeParsed[0];
         LocalDateTime endDate = dateRangeParsed[1];
         
-        // Get sessions based on filters
+        // Get sessions based on filters, scoped to the organization
         List<VmSession> sessions;
         if ("project".equals(filterType) && selectedFilter != null) {
-            sessions = vmSessionRepository.findSessionsByDateRange(startDate, endDate, org.springframework.data.domain.Pageable.unpaged())
+            sessions = vmSessionRepository.findSessionsByDateRangeAndOrganization(startDate, endDate, organizationId, org.springframework.data.domain.Pageable.unpaged())
                     .getContent().stream()
                     .filter(s -> selectedFilter.equals(s.getProjectId()))
                     .collect(Collectors.toList());
         } else {
-            sessions = vmSessionRepository.findSessionsByDateRange(startDate, endDate, org.springframework.data.domain.Pageable.unpaged())
+            sessions = vmSessionRepository.findSessionsByDateRangeAndOrganization(startDate, endDate, organizationId, org.springframework.data.domain.Pageable.unpaged())
                     .getContent();
         }
         

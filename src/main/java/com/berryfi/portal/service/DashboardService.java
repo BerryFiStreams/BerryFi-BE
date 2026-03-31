@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +42,6 @@ public class DashboardService {
     /**
      * Get dashboard data for the current user's organization.
      */
-    @PreAuthorize("hasPermission('reports', 'view_dashboard')")
     public DashboardResponse getDashboardData(User currentUser) {
         logger.info("Getting dashboard data for user: {} in organization: {}", 
                    currentUser.getId(), currentUser.getOrganizationId());
@@ -63,16 +61,14 @@ public class DashboardService {
      * Get dashboard summary statistics.
      */
     private DashboardSummary getDashboardSummary(String organizationId) {
-        // For now, use a simple count - could be enhanced to filter by organization
-        Long totalSessions = vmSessionRepository.count();
-        
-        // Get credits as of today (current balance from latest billing transaction)
+        Long totalSessions = vmSessionRepository.countCompletedSessionsByOrganizationId(organizationId);
         Double currentCredits = getCurrentCreditsBalance(organizationId);
+        long totalProjects = projectRepository.countByOrganizationId(organizationId);
         
         return new DashboardSummary(
             totalSessions != null ? totalSessions.intValue() : 0,
             currentCredits != null ? currentCredits : 0.0,
-            0 // No separate workspace count needed
+            (int) totalProjects
         );
     }
 

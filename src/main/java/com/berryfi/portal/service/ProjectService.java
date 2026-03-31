@@ -75,7 +75,7 @@ public class ProjectService {
     /**
      * Create a new project.
      */
-    @PreAuthorize("hasPermission('project', 'create')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ORG_OWNER', 'ROLE_ORG_ADMIN')")
     public ProjectResponse createProject(CreateProjectRequest request, User currentUser) {
         String organizationId = currentUser.getOrganizationId();
         logger.info("Creating new project: {} for organization: {}", request.getName(), organizationId);
@@ -111,7 +111,6 @@ public class ProjectService {
     /**
      * Get all projects for an organization with pagination.
      */
-    @PreAuthorize("hasPermission('project', 'read')")
     public Page<ProjectSummary> getProjects(String organizationId, Pageable pageable, User currentUser) {
         logger.debug("Fetching projects for organization: {}", organizationId);
 
@@ -167,7 +166,6 @@ public class ProjectService {
     /**
      * Get a specific project by ID.
      */
-    @PreAuthorize("hasPermission('project', 'read')")
     public ProjectResponse getProject(String projectId, User currentUser) {
         logger.debug("Fetching project: {}", projectId);
 
@@ -218,7 +216,7 @@ public class ProjectService {
     /**
      * Update a project.
      */
-    @PreAuthorize("hasPermission('project', 'update')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ORG_OWNER', 'ROLE_ORG_ADMIN')")
     public ProjectResponse updateProject(String projectId, UpdateProjectRequest request, User currentUser) {
         logger.info("Updating project: {}", projectId);
 
@@ -313,7 +311,7 @@ public class ProjectService {
     /**
      * Delete a project.
      */
-    @PreAuthorize("hasPermission('project', 'delete')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ORG_OWNER', 'ROLE_ORG_ADMIN')")
     public void deleteProject(String projectId, User currentUser) {
         logger.info("Deleting project: {}", projectId);
 
@@ -333,7 +331,7 @@ public class ProjectService {
     /**
      * Deploy a project.
      */
-    @PreAuthorize("hasPermission('project', 'deploy')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ORG_OWNER', 'ROLE_ORG_ADMIN')")
     public ProjectResponse deployProject(String projectId, DeployProjectRequest request, User currentUser) {
         logger.info("Deploying project: {}", projectId);
 
@@ -371,7 +369,7 @@ public class ProjectService {
     /**
      * Stop a project.
      */
-    @PreAuthorize("hasPermission('project', 'deploy')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ORG_OWNER', 'ROLE_ORG_ADMIN')")
     public ProjectResponse stopProject(String projectId, User currentUser) {
         logger.info("Stopping project: {}", projectId);
 
@@ -393,7 +391,6 @@ public class ProjectService {
     /**
      * Get project status.
      */
-    @PreAuthorize("hasPermission('project', 'read')")
     public ProjectStatus getProjectStatus(String projectId, User currentUser) {
         logger.debug("Getting status for project: {}", projectId);
 
@@ -404,7 +401,6 @@ public class ProjectService {
     /**
      * Search projects by keyword.
      */
-    @PreAuthorize("hasPermission('project', 'read')")
     public Page<ProjectSummary> searchProjects(String organizationId, String keyword, Pageable pageable, User currentUser) {
         logger.debug("Searching projects in organization: {} with keyword: {}", organizationId, keyword);
 
@@ -441,7 +437,6 @@ public class ProjectService {
     /**
      * Get project statistics for an organization.
      */
-    @PreAuthorize("hasPermission('project', 'read')")
     public ProjectStatistics getProjectStatistics(String organizationId, User currentUser) {
         logger.debug("Getting project statistics for organization: {}", organizationId);
 

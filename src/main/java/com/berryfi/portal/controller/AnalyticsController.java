@@ -1,9 +1,11 @@
 package com.berryfi.portal.controller;
 
 import com.berryfi.portal.dto.analytics.*;
+import com.berryfi.portal.entity.User;
 import com.berryfi.portal.service.AnalyticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -27,10 +29,12 @@ public class AnalyticsController {
             @RequestParam(required = false) String dateTo,
             @RequestParam(required = false) String filterType,
             @RequestParam(required = false) String selectedFilter,
-            @RequestParam(required = false) String projectId) {
+            @RequestParam(required = false) String projectId,
+            @AuthenticationPrincipal User currentUser) {
         try {
+            String organizationId = currentUser.getOrganizationId();
             UsageAnalyticsResponse analytics = analyticsService.getUsageAnalytics(
-                    dateRange, dateFrom, dateTo, filterType, selectedFilter, projectId);
+                    organizationId, dateRange, dateFrom, dateTo, filterType, selectedFilter, projectId);
             return ResponseEntity.ok(analytics);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
