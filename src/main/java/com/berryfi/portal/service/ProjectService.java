@@ -302,6 +302,11 @@ public class ProjectService {
                 }
             }
             
+            // Update team auth setting
+            if (tenantConfigDTO.getRequireTeamAuth() != null) {
+                project.setRequireTeamAuth(tenantConfigDTO.getRequireTeamAuth());
+            }
+
             logger.info("Updated tenant configuration for project: {}", projectId);
         }
 

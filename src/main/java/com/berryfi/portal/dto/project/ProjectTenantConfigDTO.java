@@ -54,6 +54,12 @@ public class ProjectTenantConfigDTO {
      * Tenant access URLs
      */
     private TenantUrls urls;
+
+    /**
+     * Whether to require team member login before accessing the experience.
+     * When true, only users with an account in the organization can access.
+     */
+    private Boolean requireTeamAuth;
     
     /**
      * Custom Domain Configuration

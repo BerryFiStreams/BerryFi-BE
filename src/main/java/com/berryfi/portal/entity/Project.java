@@ -133,6 +133,9 @@ public class Project {
     @Column(name = "brand_youtube_url", length = 500)
     private String brandYoutubeUrl; // YouTube channel or video URL
 
+    @Column(name = "require_team_auth")
+    private Boolean requireTeamAuth = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -599,5 +602,13 @@ public class Project {
 
     public void setBrandYoutubeUrl(String brandYoutubeUrl) {
         this.brandYoutubeUrl = brandYoutubeUrl;
+    }
+
+    public Boolean getRequireTeamAuth() {
+        return requireTeamAuth;
+    }
+
+    public void setRequireTeamAuth(Boolean requireTeamAuth) {
+        this.requireTeamAuth = requireTeamAuth;
     }
 }

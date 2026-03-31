@@ -20,6 +20,9 @@ public class TenantConfigResponse {
     private String brandAppName;
     private String brandYoutubeUrl;
 
+    // Access control
+    private Boolean requireTeamAuth;
+
     // Constructors
     public TenantConfigResponse() {
     }
@@ -117,5 +120,13 @@ public class TenantConfigResponse {
 
     public void setBrandYoutubeUrl(String brandYoutubeUrl) {
         this.brandYoutubeUrl = brandYoutubeUrl;
+    }
+
+    public Boolean getRequireTeamAuth() {
+        return requireTeamAuth;
+    }
+
+    public void setRequireTeamAuth(Boolean requireTeamAuth) {
+        this.requireTeamAuth = requireTeamAuth;
     }
 }

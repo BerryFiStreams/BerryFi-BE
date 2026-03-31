@@ -69,6 +69,7 @@ public class ProjectResponse {
         if (project.getSubdomain() != null || project.getBrandAppName() != null || project.getCustomDomain() != null) {
             ProjectTenantConfigDTO tenantDto = new ProjectTenantConfigDTO();
             tenantDto.setSubdomain(project.getSubdomain());
+            tenantDto.setRequireTeamAuth(project.getRequireTeamAuth() != null ? project.getRequireTeamAuth() : false);
             
             // Set branding if any branding fields exist
             if (project.getBrandAppName() != null || project.getBrandPrimaryColor() != null) {

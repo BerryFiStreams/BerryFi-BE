@@ -124,6 +124,7 @@ public class TenantController {
         config.setBrandAppName(project.getBrandAppName() != null ? 
                               project.getBrandAppName() : project.getName());
         config.setBrandYoutubeUrl(project.getBrandYoutubeUrl());
+        config.setRequireTeamAuth(project.getRequireTeamAuth() != null ? project.getRequireTeamAuth() : false);
         
         return config;
     }
